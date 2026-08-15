@@ -50,6 +50,17 @@ first real result: the `FileSystemAccess` set is insufficient. Record what you
 tried. The set currently in `app.rsf` is the conventional one for a save manager
 and is deliberately narrow.
 
+Before suspecting the code, run `make cia-verify`. It reads the built CIA back and
+checks that the rights are actually in the exheader, so "the permissions did not
+take" and "the permissions are not enough" can be told apart without guessing.
+That check already found one real problem: `am:u` was missing from the service
+list, which would have produced exactly this empty list.
+
+If the rights are present and the list is still empty, the next thing to try is
+`AccessibleSaveDataIds` with `UseOtherVariationSaveData` in the RSF, which is the
+finer grained mechanism for reaching another title's save data. Record whether it
+was needed.
+
 ### 2. The backend behaves the way core assumes
 
 Menu: **Run the backend self test**. It asks twice, then backs up first, then runs

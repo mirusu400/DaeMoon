@@ -16,6 +16,11 @@ FROM devkitpro/devkitarm:latest
 # Both are verified rather than trusted. A build tool that silently changes is a
 # build that silently changes, and this one signs the permissions that let the app
 # reach other titles' save data.
+# ctrtool reads a CIA back. It is what turns "the permissions in app.rsf are
+# probably right" into something checkable without a console: the exheader either
+# carries the filesystem rights and the service list, or it does not.
+ARG CTRTOOL_VERSION=1.3.0
+ARG CTRTOOL_SHA256=f553194b0ab2b539457160231cf5651c554e148f17ec960fae63424e82582aa8
 ARG MAKEROM_VERSION=0.18.4
 ARG MAKEROM_SHA256=dd596854718c195c6e3229286be485b122921715555af8ae5cf8e9a465d9f970
 ARG BANNERTOOL_VERSION=v1.2.2
@@ -36,7 +41,13 @@ RUN set -eux; \
     echo "${BANNERTOOL_SHA256}  /tmp/bannertool.zip" | sha256sum -c -; \
     unzip -j -o /tmp/bannertool.zip linux-x86_64/bannertool -d /opt/devkitpro/tools/bin; \
     \
-    chmod +x /opt/devkitpro/tools/bin/makerom /opt/devkitpro/tools/bin/bannertool; \
-    rm -f /tmp/makerom.zip /tmp/bannertool.zip
+    curl -fsSL -o /tmp/ctrtool.zip \
+      "https://github.com/3DSGuy/Project_CTR/releases/download/ctrtool-v${CTRTOOL_VERSION}/ctrtool-v${CTRTOOL_VERSION}-ubuntu_x86_64.zip"; \
+    echo "${CTRTOOL_SHA256}  /tmp/ctrtool.zip" | sha256sum -c -; \
+    unzip -j -o /tmp/ctrtool.zip ctrtool -d /opt/devkitpro/tools/bin; \
+    \
+    chmod +x /opt/devkitpro/tools/bin/makerom /opt/devkitpro/tools/bin/bannertool \
+             /opt/devkitpro/tools/bin/ctrtool; \
+    rm -f /tmp/makerom.zip /tmp/bannertool.zip /tmp/ctrtool.zip
 
 WORKDIR /work

@@ -36,6 +36,13 @@ jobs:
       # archive. See platform/3ds/CLAUDE.md.
       - name: build the cia
         run: make docker-cia
+      # The permissions are the reason this is a CIA. Reading them back turns a
+      # broken app.rsf into a build failure instead of a console that shows an
+      # empty title list and looks like a code bug.
+      - name: check the cia permissions
+        run: |
+          docker build -f docker/ctrtool.Dockerfile -t daemoon-ctrtool:local .
+          make cia-verify
       - uses: actions/upload-artifact@v4
         with:
           name: daemoon-3ds-cia

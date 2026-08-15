@@ -124,7 +124,8 @@ cia: $(OUTPUT).cia
 # makerom and bannertool are third party and are not in the devkitPro repositories.
 # docker/3ds.Dockerfile installs them at pinned versions with checksums; a local
 # toolchain needs them on PATH.
-$(OUTPUT).cia: $(OUTPUT).elf $(OUTPUT).smdh $(TOPDIR)/assets/banner.png $(TOPDIR)/assets/audio.wav
+$(OUTPUT).cia: $(OUTPUT).elf $(OUTPUT).smdh $(RSF) \
+              $(TOPDIR)/assets/banner.png $(TOPDIR)/assets/audio.wav
 	@bannertool makebanner -i $(TOPDIR)/assets/banner.png -a $(TOPDIR)/assets/audio.wav \
 		-o $(OUTPUT).bnr >/dev/null
 	@makerom -f cia -o $@ -elf $(OUTPUT).elf -rsf $(RSF) \

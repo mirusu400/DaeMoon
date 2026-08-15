@@ -119,6 +119,7 @@ AccessControlInfo:
   # cam:u is here for Phase 4 QR pairing, and nothing uses it before then.
   # soc:U and ssl:C are for Phase 2 onwards, when the client talks to a server.
   ServiceAccessControl:
+    - am:u
     - cfg:u
     - fs:USER
     - hid:USER

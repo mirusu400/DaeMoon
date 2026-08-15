@@ -8,7 +8,8 @@ ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 .PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check \
         core-isolation spec-check server 3ds nx run-server clean \
-        docker-images docker-3ds docker-cia docker-nx docker-test docker-shell
+        docker-images docker-3ds docker-cia docker-nx docker-test docker-shell \
+        cia-verify
 
 all: help
 
@@ -20,6 +21,7 @@ help:
 	@echo "make server        build the server binary into build/"
 	@echo "make run-server    build and run it on :8080 with a local database"
 	@echo "make docker-cia    3DS CIA in a container, no toolchain to install"
+	@echo "make cia-verify    read the built CIA back and check its permissions"
 	@echo "make docker-nx     Switch NRO in a container"
 	@echo "make docker-test   the desktop suites in a container"
 	@echo "make 3ds           devkitARM, needs a local toolchain"
@@ -105,10 +107,11 @@ DOCKER_RUN := docker run --rm -u $(shell id -u):$(shell id -g) -e HOME=/tmp \
               -v $(ROOT):/work -w /work
 
 docker-images:
-	@docker build -q -f $(ROOT)/docker/dev.Dockerfile  -t daemoon-dev:local  $(ROOT) >/dev/null
-	@docker build -q -f $(ROOT)/docker/3ds.Dockerfile  -t daemoon-3ds:local  $(ROOT) >/dev/null
-	@docker build -q -f $(ROOT)/docker/nx.Dockerfile   -t daemoon-nx:local   $(ROOT) >/dev/null
-	@echo "daemoon-dev:local daemoon-3ds:local daemoon-nx:local"
+	@docker build -q -f $(ROOT)/docker/dev.Dockerfile     -t daemoon-dev:local     $(ROOT) >/dev/null
+	@docker build -q -f $(ROOT)/docker/3ds.Dockerfile     -t daemoon-3ds:local     $(ROOT) >/dev/null
+	@docker build -q -f $(ROOT)/docker/nx.Dockerfile      -t daemoon-nx:local      $(ROOT) >/dev/null
+	@docker build -q -f $(ROOT)/docker/ctrtool.Dockerfile -t daemoon-ctrtool:local $(ROOT) >/dev/null
+	@echo "daemoon-dev:local daemoon-3ds:local daemoon-nx:local daemoon-ctrtool:local"
 
 # A .3dsx is for iterating on the UI. It cannot reach another title's save
 # archive, so it is never what a save path is tested with.
@@ -118,6 +121,12 @@ docker-3ds:
 # The build that matters.
 docker-cia:
 	@$(DOCKER_RUN) -w /work/platform/3ds daemoon-3ds:local make cia
+
+# Reads the CIA back rather than trusting that makerom did what app.rsf said. A
+# .3dsx cannot reach another title's save archive; the exheader is the difference,
+# and a missing right there looks exactly like a code bug on hardware.
+cia-verify: docker-cia
+	@$(DOCKER_RUN) daemoon-ctrtool:local sh tools/verify-cia.sh platform/3ds/daemoon.cia
 
 docker-nx:
 	@$(DOCKER_RUN) -w /work/platform/nx daemoon-nx:local make

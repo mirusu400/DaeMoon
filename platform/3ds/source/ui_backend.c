@@ -37,42 +37,46 @@ static float draw_wrapped(float x, float y, float w, float scale, u32 colour,
 
     while (*p != '\0') {
         size_t take = 0;
-        size_t last_break = 0;
         size_t i = 0;
 
-        /* Grow the line until it no longer fits, remembering the last place a
-         * break would look deliberate. */
+        /* Word by word, measuring once per word rather than once per character.
+         * The per character version parsed text hundreds of times a frame and
+         * exhausted the citro2d text buffer, which shows up as a crash somewhere
+         * else entirely. */
         while (p[i] != '\0' && i < sizeof(line) - 1) {
-            size_t step = daemoon_utf8_truncate(p + i, strlen(p + i), 1);
+            size_t word = i;
 
-            if (step == 0) {
-                step = 1;
+            while (p[word] != '\0' && p[word] != ' ') {
+                size_t step = daemoon_utf8_truncate(p + word, strlen(p + word), 1);
+                word += (step == 0) ? 1 : step;
             }
-            memcpy(line + i, p + i, step);
-            line[i + step] = '\0';
-            if (daemoon_gfx_text_width(scale, line) > w) {
+            while (p[word] == ' ') {
+                ++word;
+            }
+            if (word >= sizeof(line) - 1) {
+                word = sizeof(line) - 2;
+            }
+
+            memcpy(line, p, word);
+            line[word] = '\0';
+            if (daemoon_gfx_text_width(scale, line) > w && take > 0) {
                 break;
             }
-            i += step;
-            take = i;
-            if (p[i] == ' ') {
-                last_break = i;
+            take = word;
+            i = word;
+            if (p[i] == '\0') {
+                break;
             }
         }
 
-        if (p[i] == '\0') {
-            take = i;
-        } else if (last_break > 0) {
-            take = last_break;
-        }
         if (take == 0) {
-            take = 1;
+            take = i > 0 ? i : 1;
         }
 
         memcpy(line, p, take);
         line[take] = '\0';
         daemoon_gfx_text(x, y, scale, colour, line);
-        y += 16.0f * scale / 0.5f * 0.5f + 4.0f;
+        y += 18.0f;
 
         p += take;
         while (*p == ' ') {

@@ -7,11 +7,20 @@
 #include <stdio.h>
 #include <string.h>
 
-#define TEXT_BUF_GLYPHS 4096
+#define TEXT_BUF_GLYPHS    4096
+#define MEASURE_BUF_GLYPHS 512
 
 static C3D_RenderTarget *g_top;
 static C3D_RenderTarget *g_bottom;
 static C2D_TextBuf       g_text_buf;
+/* Measuring parses text too, and measuring happens far more often than drawing:
+ * fitting one label to a cell probes it once per character. Sharing the frame's
+ * buffer meant those probes filled it, and a citro2d text buffer that runs out
+ * does not fail politely - the console came back with a prefetch abort inside
+ * printf, which is what memory corruption looks like from the outside.
+ *
+ * So measurements get their own buffer and clear it every time. */
+static C2D_TextBuf       g_measure_buf;
 static C2D_Font          g_font;
 static int               g_have_font;
 
@@ -47,13 +56,15 @@ int daemoon_gfx_init(daemoon_lang_t lang)
     g_top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     g_bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
     g_text_buf = C2D_TextBufNew(TEXT_BUF_GLYPHS);
+    g_measure_buf = C2D_TextBufNew(MEASURE_BUF_GLYPHS);
 
     /* The console's own font for the selected language, and the default one when
      * it has none. The default draws Latin and nothing else. */
     g_font = C2D_FontLoadSystem(region_for(lang));
     g_have_font = (g_font != NULL);
 
-    return g_top != NULL && g_bottom != NULL && g_text_buf != NULL;
+    return g_top != NULL && g_bottom != NULL && g_text_buf != NULL &&
+           g_measure_buf != NULL;
 }
 
 void daemoon_gfx_exit(void)
@@ -65,6 +76,10 @@ void daemoon_gfx_exit(void)
     if (g_text_buf != NULL) {
         C2D_TextBufDelete(g_text_buf);
         g_text_buf = NULL;
+    }
+    if (g_measure_buf != NULL) {
+        C2D_TextBufDelete(g_measure_buf);
+        g_measure_buf = NULL;
     }
     C2D_Fini();
     C3D_Fini();
@@ -107,12 +122,12 @@ void daemoon_gfx_rect(float x, float y, float w, float h, u32 colour)
     C2D_DrawRectSolid(x, y, 0.0f, w, h, colour);
 }
 
-static void build_text(C2D_Text *out, const char *text)
+static void build_text(C2D_Text *out, C2D_TextBuf buf, const char *text)
 {
     if (g_font != NULL) {
-        C2D_TextFontParse(out, g_font, g_text_buf, text);
+        C2D_TextFontParse(out, g_font, buf, text);
     } else {
-        C2D_TextParse(out, g_text_buf, text);
+        C2D_TextParse(out, buf, text);
     }
     C2D_TextOptimize(out);
 }
@@ -124,7 +139,7 @@ void daemoon_gfx_text(float x, float y, float scale, u32 colour, const char *tex
     if (text == NULL || text[0] == '\0') {
         return;
     }
-    build_text(&t, text);
+    build_text(&t, g_text_buf, text);
     C2D_DrawText(&t, C2D_WithColor, x, y, 0.0f, scale, scale, colour);
 }
 
@@ -137,7 +152,9 @@ float daemoon_gfx_text_width(float scale, const char *text)
     if (text == NULL || text[0] == '\0') {
         return 0.0f;
     }
-    build_text(&t, text);
+    /* Cleared per call, so a hundred measurements cost what one does. */
+    C2D_TextBufClear(g_measure_buf);
+    build_text(&t, g_measure_buf, text);
     C2D_TextGetDimensions(&t, scale, scale, &w, &h);
     return w;
 }
@@ -145,8 +162,9 @@ float daemoon_gfx_text_width(float scale, const char *text)
 void daemoon_gfx_text_fit(float x, float y, float w, float scale, u32 colour,
                           const char *text)
 {
-    char cut[128];
+    char cut[160];
     float width;
+    size_t len;
 
     if (text == NULL || text[0] == '\0') {
         return;
@@ -158,27 +176,30 @@ void daemoon_gfx_text_fit(float x, float y, float w, float scale, u32 colour,
         return;
     }
 
-    /* Cut on a code point boundary and mark it. A name chopped mid sequence draws
-     * as a broken glyph, which looks like a bug in the font rather than a label
-     * that did not fit. */
+    /* Estimate the cut from the proportion that fits, then walk it in rather than
+     * measuring once per character. A game name is measured every frame, for every
+     * visible cell, and the naive version was enough to exhaust the text buffer. */
     (void)snprintf(cut, sizeof(cut), "%s", text);
-    while (cut[0] != '\0') {
-        size_t len = strlen(cut);
-        size_t shorter = daemoon_utf8_truncate(cut, len, len - 1);
+    len = strlen(cut);
+    {
+        size_t guess = (size_t)((float)len * (w / width));
 
-        cut[shorter] = '\0';
-        if (shorter == 0) {
+        if (guess >= len) {
+            guess = len - 1;
+        }
+        len = daemoon_utf8_truncate(cut, strlen(cut), guess);
+    }
+
+    while (len > 0) {
+        char probe[168];
+
+        cut[len] = '\0';
+        (void)snprintf(probe, sizeof(probe), "%s...", cut);
+        if (daemoon_gfx_text_width(scale, probe) <= w) {
+            daemoon_gfx_text(x, y, scale, colour, probe);
             return;
         }
-
-        {
-            char probe[132];
-            (void)snprintf(probe, sizeof(probe), "%s...", cut);
-            if (daemoon_gfx_text_width(scale, probe) <= w) {
-                daemoon_gfx_text(x, y, scale, colour, probe);
-                return;
-            }
-        }
+        len = daemoon_utf8_truncate(cut, len, len - 1);
     }
 }
 

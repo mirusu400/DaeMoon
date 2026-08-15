@@ -425,6 +425,36 @@ static void action_survey(void)
         daemoon_strbuf_add(&sb, "\ticon=");
         daemoon_strbuf_add(&sb, (i < MAX_ICONS && g_icons[i].loaded) ? "yes" : "no");
 
+        /* Why the name is what it is, and the raw Result when it is not a name.
+         * A wire code says "not supported"; a Result says which module said it,
+         * and this question has already cost two trips to a console. */
+        {
+            char real[DAEMOON_NAME_MAX];
+            daemoon_result_t nr = daemoon_3ds_title_name(g_save_ctx.media, tid_of(t),
+                                                         g_save_ctx.smdh_language, 0,
+                                                         real, sizeof(real));
+
+            daemoon_strbuf_add(&sb, "\tname=");
+            daemoon_strbuf_add(&sb, nr == DAEMOON_OK ? "smdh" : daemoon_result_code(nr));
+            if (nr != DAEMOON_OK) {
+                static const char hexd[] = "0123456789ABCDEF";
+                unsigned long raw = daemoon_3ds_last_name_result();
+                char hex[11];
+                int k;
+
+                hex[0] = '0';
+                hex[1] = 'x';
+                for (k = 0; k < 8; ++k) {
+                    hex[2 + k] = hexd[(raw >> ((7 - k) * 4)) & 0xf];
+                }
+                hex[10] = '\0';
+                daemoon_strbuf_addc(&sb, '/');
+                daemoon_strbuf_add(&sb, hex);
+            }
+            daemoon_strbuf_add(&sb, "\treal=");
+            daemoon_strbuf_add(&sb, nr == DAEMOON_OK ? real : "-");
+        }
+
         /* The name as the console knows it, in whatever script that is. This file
          * is read on a machine with fonts. */
         daemoon_strbuf_add(&sb, "\t");

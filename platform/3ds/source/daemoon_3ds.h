@@ -50,6 +50,15 @@ daemoon_result_t daemoon_3ds_read_secure_value(const daemoon_title_t *t,
 daemoon_result_t daemoon_3ds_write_secure_value(const daemoon_title_t *t,
                                                 const daemoon_3ds_secure_value_t *value);
 
+/* The name the HOME menu shows, read from the title's SMDH.
+ *
+ * lang is an SMDH index, which is also the console's own language numbering. A
+ * game sold in one region leaves the other slots blank, so this falls back to
+ * English, then Japanese, then whatever the game does carry. Returns not_found
+ * when it carries nothing at all. */
+daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
+                                        int lang, char *out, size_t cap);
+
 /* Creates this application's own save archive, and refuses any other title. A
  * declared SaveDataSize does not create one; the title has to format it once. */
 daemoon_result_t daemoon_3ds_format_own_save(const daemoon_title_t *t, unsigned blocks);

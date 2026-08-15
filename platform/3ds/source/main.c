@@ -278,6 +278,14 @@ static void action_secure_value(void)
  * about a whole console, and reading that off a screen one title at a time is how
  * a survey turns into three titles and a guess. The file can be pulled off the
  * card with tools/3ds-deploy.sh and read on a desktop. */
+static unsigned long long tid_of(const daemoon_title_t *t)
+{
+    unsigned long long id = 0;
+
+    (void)daemoon_3ds_parse_title_id(t->id, &id);
+    return id;
+}
+
 static int survey_count_cb(void *user, const char *path, unsigned long long size)
 {
     unsigned long long *total = (unsigned long long *)user;
@@ -355,6 +363,18 @@ static void action_survey(void)
         } else {
             daemoon_strbuf_add(&sb, "none");
         }
+        /* Why the name is what it is. "names do not show" is otherwise a report
+         * with nowhere to go: this says whether the SMDH was unreadable, or
+         * readable and empty, without another trip to the console. */
+        {
+            char probe[DAEMOON_NAME_MAX];
+            daemoon_result_t nr = daemoon_3ds_title_name(g_save_ctx.media, tid_of(t),
+                                                         g_save_ctx.smdh_language,
+                                                         probe, sizeof(probe));
+            daemoon_strbuf_add(&sb, "\tname=");
+            daemoon_strbuf_add(&sb, nr == DAEMOON_OK ? "smdh" : daemoon_result_code(nr));
+        }
+
         daemoon_strbuf_add(&sb, "\t");
         daemoon_strbuf_add(&sb, t->name);
         daemoon_strbuf_addc(&sb, '\n');

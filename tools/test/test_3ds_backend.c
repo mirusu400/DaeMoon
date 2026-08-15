@@ -588,7 +588,7 @@ TEST_CASE(titles_are_named_from_their_smdh)
     CHECK_EQ_INT(make_archive(root, TEST_TITLE_ID), 0);
     CHECK_EQ_INT(make_archive(root, TEST_TITLE_OTHER), 0);
 
-    /* One title has a name in the console's language, the other has none. */
+    /* One title has a name in the console's language. */
     daemoon_stub_set_title_name(TEST_TITLE_ID, 7, "포켓몬스터");
 
     memset(&ctx, 0, sizeof(ctx));
@@ -614,6 +614,55 @@ TEST_CASE(titles_are_named_from_their_smdh)
     (void)daemoon_posix_rmtree(root);
 }
 
+/* A game sold in one region carries a name for its own languages and blanks for
+ * the rest, so reading only the console's language leaves most of a library
+ * showing up as a product code. That is what happened on hardware. */
+TEST_CASE(a_name_missing_in_the_console_language_falls_back)
+{
+    char root[256];
+    daemoon_3ds_save_ctx_t ctx;
+    daemoon_title_t *titles = NULL;
+    size_t count = 0;
+    size_t i;
+    int seen_english = 0;
+    int seen_other = 0;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-smdh-fallback"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    daemoon_stub_add_title(TEST_TITLE_OTHER, "CTR-P-DUM2");
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_ID), 0);
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_OTHER), 0);
+
+    /* Nothing in Korean. One has English, the other only Japanese. */
+    daemoon_stub_set_title_name(TEST_TITLE_ID, 1, "Some Game");
+    daemoon_stub_set_title_name(TEST_TITLE_OTHER, 0, "ゲーム");
+
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.media = MEDIATYPE_SD;
+    ctx.only_with_saves = 1;
+    ctx.smdh_language = 7; /* Korean, and neither title has one */
+
+    CHECK_OK(daemoon_3ds_save_backend.list_titles(&ctx, &titles, &count));
+    for (i = 0; i < count; ++i) {
+        if (strcmp(titles[i].id, "0004000000055D00") == 0) {
+            CHECK_STR(titles[i].name, "Some Game");
+            seen_english = 1;
+        }
+        if (strcmp(titles[i].id, "0004000000030800") == 0) {
+            /* Not English either: whatever the game does have beats a code. */
+            CHECK_STR(titles[i].name, "ゲーム");
+            seen_other = 1;
+        }
+    }
+    CHECK(seen_english);
+    CHECK(seen_other);
+
+    daemoon_3ds_save_backend.free_titles(&ctx, titles, count);
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
 void test_3ds_backend(void)
 {
     printf("3ds backend (stubbed libctru)\n");
@@ -628,4 +677,5 @@ void test_3ds_backend(void)
     RUN(a_backup_and_restore_round_trip_through_the_3ds_backends);
     RUN(an_empty_archive_is_not_backed_up);
     RUN(titles_are_named_from_their_smdh);
+    RUN(a_name_missing_in_the_console_language_falls_back);
 }

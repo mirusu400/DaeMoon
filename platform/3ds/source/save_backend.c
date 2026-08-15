@@ -554,9 +554,48 @@ static daemoon_result_t remove_all(void *ctx, daemoon_save_t *s)
  */
 #define SMDH_TITLE_OFFSET(lang) (8u + (u32)(lang) * 0x200u)
 #define SMDH_SHORT_DESC_UNITS   0x40
+/* The SMDH language order, which is also the console's own numbering. */
+#define SMDH_LANG_JAPANESE 0
+#define SMDH_LANG_ENGLISH  1
+#define SMDH_LANG_COUNT    12
 
-static daemoon_result_t read_smdh_name(FS_MediaType media, u64 title_id, int lang,
-                                       char *out, size_t cap)
+/* One language slot out of an open SMDH. Empty is a normal answer: a game sold in
+ * one region carries a name for its own languages and blanks for the rest. */
+static daemoon_result_t read_smdh_slot(Handle handle, int lang, char *out, size_t cap)
+{
+    u16 utf16[SMDH_SHORT_DESC_UNITS + 1];
+    u32 got = 0;
+    ssize_t bytes;
+    Result res;
+
+    res = FSFILE_Read(handle, &got, SMDH_TITLE_OFFSET(lang), utf16,
+                      SMDH_SHORT_DESC_UNITS * sizeof(u16));
+    if (R_FAILED(res) || got < sizeof(u16)) {
+        return from_result(res);
+    }
+    utf16[SMDH_SHORT_DESC_UNITS] = 0;
+
+    bytes = utf16_to_utf8((uint8_t *)out, utf16, cap - 1);
+    if (bytes < 0 || (size_t)bytes > cap - 1) {
+        return DAEMOON_ERR_BUFFER_TOO_SMALL;
+    }
+    out[bytes] = '\0';
+
+    /* A name that is only whitespace is the same as no name for this purpose. */
+    {
+        const char *p = out;
+        while (*p == ' ' || *p == '\n' || *p == '\r' || *p == '\t') {
+            ++p;
+        }
+        if (*p == '\0') {
+            return DAEMOON_ERR_NOT_FOUND;
+        }
+    }
+    return DAEMOON_OK;
+}
+
+daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
+                                        int lang, char *out, size_t cap)
 {
     /* Binary paths, as the service wants them. */
     u32 archive_path[4];
@@ -566,10 +605,9 @@ static daemoon_result_t read_smdh_name(FS_MediaType media, u64 title_id, int lan
     FS_Path archive;
     FS_Path file;
     Handle handle = 0;
-    u16 utf16[SMDH_SHORT_DESC_UNITS + 1];
-    u32 got = 0;
-    ssize_t bytes;
     Result res;
+    daemoon_result_t r;
+    int i;
 
     archive_path[0] = (u32)(title_id & 0xffffffffull);
     archive_path[1] = (u32)(title_id >> 32);
@@ -590,21 +628,26 @@ static daemoon_result_t read_smdh_name(FS_MediaType media, u64 title_id, int lan
         return from_result(res);
     }
 
-    res = FSFILE_Read(handle, &got, SMDH_TITLE_OFFSET(lang), utf16,
-                      SMDH_SHORT_DESC_UNITS * sizeof(u16));
+    /* The console's language first, then the two that almost every 3DS game
+     * carries, then whatever the game does have.
+     *
+     * Reading only the console's language is why this came back empty on
+     * hardware: a Korean console asks for slot 7, and a game that was never sold
+     * in Korea leaves that slot blank. The fallback is not a nicety - without it
+     * most of a library shows up as a product code. */
+    r = read_smdh_slot(handle, lang, out, cap);
+    if (r != DAEMOON_OK && lang != SMDH_LANG_ENGLISH) {
+        r = read_smdh_slot(handle, SMDH_LANG_ENGLISH, out, cap);
+    }
+    if (r != DAEMOON_OK && lang != SMDH_LANG_JAPANESE) {
+        r = read_smdh_slot(handle, SMDH_LANG_JAPANESE, out, cap);
+    }
+    for (i = 0; r != DAEMOON_OK && i < SMDH_LANG_COUNT; ++i) {
+        r = read_smdh_slot(handle, i, out, cap);
+    }
+
     (void)FSFILE_Close(handle);
-
-    if (R_FAILED(res) || got < sizeof(u16)) {
-        return from_result(res);
-    }
-    utf16[SMDH_SHORT_DESC_UNITS] = 0;
-
-    bytes = utf16_to_utf8((uint8_t *)out, utf16, cap - 1);
-    if (bytes < 0 || (size_t)bytes > cap - 1) {
-        return DAEMOON_ERR_BUFFER_TOO_SMALL;
-    }
-    out[bytes] = '\0';
-    return out[0] != '\0' ? DAEMOON_OK : DAEMOON_ERR_NOT_FOUND;
+    return r;
 }
 
 /* -------------------------------------------------------------------- titles */
@@ -668,8 +711,8 @@ static daemoon_result_t list_titles(void *ctx, daemoon_title_t **out, size_t *co
 
         /* The name the HOME menu shows, then the product code, then the id. Each
          * fallback is less useful than the last and none of them is a failure. */
-        if (read_smdh_name(c->media, ids[i], c->smdh_language, t->name,
-                           sizeof(t->name)) != DAEMOON_OK) {
+        if (daemoon_3ds_title_name(c->media, ids[i], c->smdh_language, t->name,
+                                   sizeof(t->name)) != DAEMOON_OK) {
             memset(product, 0, sizeof(product));
             if (R_SUCCEEDED(AM_GetTitleProductCode(c->media, ids[i], product))) {
                 product[sizeof(product) - 1] = '\0';

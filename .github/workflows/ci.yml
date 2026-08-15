@@ -59,10 +59,19 @@ jobs:
       - name: build
         run: make server
 
-  cli:
-    name: daemoonctl
+  e2e:
+    name: end to end
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: build
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: server/go.sum
+      # The real daemoonctl against the real daemoond. The unit suites each pass
+      # against a stand in, and the two bugs this catches were only visible when
+      # the actual binaries spoke to each other.
+      - name: build daemoonctl
         run: make -C tools/cli ROOT=$PWD
+      - name: end to end
+        run: make e2e

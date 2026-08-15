@@ -6,7 +6,7 @@
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-.PHONY: help all test check core-test server-test tools-test gen gen-check lang-check \
+.PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check \
         core-isolation spec-check server 3ds nx run-server clean
 
 all: help
@@ -14,6 +14,7 @@ all: help
 help:
 	@echo "make test          core tests plus go tests, no console required"
 	@echo "make core-test     core only, the main development loop"
+	@echo "make e2e           the real client against the real server"
 	@echo "make check         everything CI runs except the console builds"
 	@echo "make server        build the server binary into build/"
 	@echo "make run-server    build and run it on :8080 with a local database"
@@ -60,11 +61,17 @@ server-test:
 	@cd $(ROOT)/server && go test ./...
 
 tools-test:
-	@cd $(ROOT)/tools && go test ./... && go vet ./...
+	@cd $(ROOT)/tools && go vet ./... && go test $$(cd $(ROOT)/tools && go list ./... | grep -v /e2e)
+
+# Builds both binaries and drives daemoonctl against daemoond. Kept out of `test`
+# because it is slower and needs a C compiler; it is the only thing that sees the
+# two sides talking to each other, so `check` does run it.
+e2e:
+	@cd $(ROOT)/tools && go test ./e2e/
 
 test: core-test server-test tools-test
 
-check: gen-check core-isolation spec-check test
+check: gen-check core-isolation spec-check test e2e
 	@echo "all checks passed"
 
 server:

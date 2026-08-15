@@ -13,6 +13,7 @@
 int daemoon_test_failures = 0;
 int daemoon_test_checks = 0;
 const char *daemoon_test_current = "";
+int daemoon_test_quiet = 0;
 
 static char g_root[512] = ".";
 
@@ -96,6 +97,7 @@ int main(int argc, char **argv)
     test_hostile();
     test_net();
     test_fuzz();
+    test_backend();
 
     printf("%d checks, %d failures\n", daemoon_test_checks, daemoon_test_failures);
     return daemoon_test_failures == 0 ? 0 : 1;

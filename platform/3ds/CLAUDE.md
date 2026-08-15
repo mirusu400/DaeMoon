@@ -21,6 +21,18 @@ treat it as corrupt and delete it. `FSUSER_SetSaveDataSecureValue` and friends.
 Verify the behaviour on hardware during Phase 1 and record the outcome: Phase 7
 sharing depends on the answer.
 
+## Proving the backend
+
+`tools/test/backend_conformance.c` is the contract, written against the interface
+only and free of anything filesystem shaped. Link it into this build, point it at a
+dummy title, and run it on hardware before a real save is anywhere near the app.
+
+Every case there names the caller in core that would break, so a failure says what
+is wrong rather than only that something is. "It synced once" is not the bar: the
+cases that matter are the ones a happy path never reaches, like `remove_all`
+missing a nested file, or `open_file` for writing not creating the directories a
+path needs.
+
 ## TLS
 
 `httpc:C` ships old cipher suites and a stale root CA store and fails against

@@ -14,6 +14,10 @@ extern int daemoon_test_failures;
 extern int daemoon_test_checks;
 extern const char *daemoon_test_current;
 
+/* Set while a test deliberately provokes failures, so a passing run does not print
+ * the word FAIL. Failures are still counted; the caller checks the count. */
+extern int daemoon_test_quiet;
+
 #define TEST_CASE(name) static void name(void)
 
 #define RUN(fn)                                  \
@@ -27,8 +31,10 @@ extern const char *daemoon_test_current;
         daemoon_test_checks++;                                                   \
         if (!(cond)) {                                                           \
             daemoon_test_failures++;                                             \
-            printf("  FAIL %s:%d in %s: %s\n", __FILE__, __LINE__,               \
-                   daemoon_test_current, #cond);                                 \
+            if (!daemoon_test_quiet) {                                           \
+                printf("  FAIL %s:%d in %s: %s\n", __FILE__, __LINE__,           \
+                       daemoon_test_current, #cond);                             \
+            }                                                                    \
         }                                                                        \
     } while (0)
 
@@ -39,8 +45,10 @@ extern const char *daemoon_test_current;
         daemoon_test_checks++;                                                   \
         if (got_ != want_) {                                                     \
             daemoon_test_failures++;                                             \
-            printf("  FAIL %s:%d in %s: %s == %lld, want %lld\n", __FILE__,      \
-                   __LINE__, daemoon_test_current, #got, got_, want_);           \
+            if (!daemoon_test_quiet) {                                           \
+                printf("  FAIL %s:%d in %s: %s == %lld, want %lld\n", __FILE__,  \
+                       __LINE__, daemoon_test_current, #got, got_, want_);       \
+            }                                                                    \
         }                                                                        \
     } while (0)
 
@@ -53,9 +61,11 @@ extern const char *daemoon_test_current;
         daemoon_test_checks++;                                                   \
         if (got_ != want_) {                                                     \
             daemoon_test_failures++;                                             \
-            printf("  FAIL %s:%d in %s: %s == %s, want %s\n", __FILE__, __LINE__,\
-                   daemoon_test_current, #got, daemoon_result_code(got_),        \
-                   daemoon_result_code(want_));                                  \
+            if (!daemoon_test_quiet) {                                           \
+                printf("  FAIL %s:%d in %s: %s == %s, want %s\n", __FILE__,      \
+                       __LINE__, daemoon_test_current, #got,                     \
+                       daemoon_result_code(got_), daemoon_result_code(want_));   \
+            }                                                                    \
         }                                                                        \
     } while (0)
 
@@ -68,9 +78,11 @@ extern const char *daemoon_test_current;
         daemoon_test_checks++;                                                   \
         if (got_ == NULL || strcmp(got_, want_) != 0) {                          \
             daemoon_test_failures++;                                             \
-            printf("  FAIL %s:%d in %s: %s == \"%s\", want \"%s\"\n", __FILE__,  \
-                   __LINE__, daemoon_test_current, #got,                         \
-                   got_ != NULL ? got_ : "(null)", want_);                       \
+            if (!daemoon_test_quiet) {                                           \
+                printf("  FAIL %s:%d in %s: %s == \"%s\", want \"%s\"\n",       \
+                       __FILE__, __LINE__, daemoon_test_current, #got,           \
+                       got_ != NULL ? got_ : "(null)", want_);                   \
+            }                                                                    \
         }                                                                        \
     } while (0)
 
@@ -84,6 +96,7 @@ void test_sync(void);
 void test_hostile(void);
 void test_net(void);
 void test_fuzz(void);
+void test_backend(void);
 
 /* Repository root, so a test can read shared/fixtures/. Set from argv or the
  * DAEMOON_ROOT environment variable. */

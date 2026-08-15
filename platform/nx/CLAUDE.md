@@ -19,6 +19,16 @@ anything else can happen. `daemoon_title_t.account_bound` exists for this.
 `SaveDataSpaceId`, and hbloader has to launch the app with adequate `fsp-srv`
 permissions.
 
+## Proving the backend
+
+`tools/test/backend_conformance.c` applies here unchanged: it is written against
+`daemoon_save_backend_t` and knows nothing about how a save is reached. Run it
+against a dummy title, under a selected account, before trusting this backend with
+anything real.
+
+The isolation case matters more here than on the 3DS, because a different
+`AccountUid` is a different save and nothing in core knows that.
+
 ## Applet mode
 
 Applet mode has severely limited memory. Assume title takeover. Detect applet mode

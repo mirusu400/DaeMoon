@@ -77,6 +77,14 @@ over the files, not over the zip, so the same save packed twice hashes the same.
 implementation. Both the C tests and the Go tests check against them, which is what
 stops the client and the server from drifting apart.
 
+## The backend contract
+
+`backend.h` says what the function pointers mean in prose.
+`tools/test/backend_conformance.c` says the same thing in a form that can be run,
+against any implementation, on the machine or console it will run on. Changing what
+core expects of a backend means changing that file in the same commit, or the 3DS
+and Switch backends will be written against a contract that no longer holds.
+
 ## Testing
 
 `make core-test` builds everything here against `platform/posix` with the address

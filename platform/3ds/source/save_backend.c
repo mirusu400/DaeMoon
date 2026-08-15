@@ -1,0 +1,638 @@
+/* The 3DS save backend.
+ *
+ * Implements core/include/daemoon/backend.h against libctru. Everything above this
+ * file - packing, digests, conflict resolution - already runs on a desktop and is
+ * tested there. What is new here is the only part that can lose someone's save.
+ *
+ * Two things are load bearing and easy to get quietly wrong:
+ *
+ *   - The archive is ARCHIVE_USER_SAVEDATA opened with a binary path carrying the
+ *     media type and title id. That is what needs the FS rights in app.rsf, and it
+ *     is why a .3dsx cannot do any of this.
+ *   - Nothing is persisted until FSUSER_ControlArchive commits. A write that
+ *     "succeeded" without a commit is gone at power off, and the user finds out
+ *     the next time they launch the game.
+ */
+#include "daemoon_3ds.h"
+
+#include <daemoon/util/strbuf.h>
+
+#include <3ds.h>
+
+#include <stdlib.h>
+#include <string.h>
+
+/* A save is a small tree. 3DS save archives are FAT, so paths are short and the
+ * depth is shallow, but neither is guaranteed by anything. */
+#define TDS_PATH_MAX  DAEMOON_PATH_MAX
+#define TDS_UTF16_MAX (TDS_PATH_MAX + 1)
+
+struct daemoon_save {
+    FS_Archive archive;
+    int        writable;
+    int        open;
+};
+
+/* libctru results carry a summary. Anything that means "it is not there" has to
+ * come back as not_found, because daemoon_sync_scan_local reads that as "no save
+ * yet" rather than a failure the user has to act on. */
+static daemoon_result_t from_result(Result res)
+{
+    if (R_SUCCEEDED(res)) {
+        return DAEMOON_OK;
+    }
+    switch (R_SUMMARY(res)) {
+    case RS_NOTFOUND:
+        return DAEMOON_ERR_NOT_FOUND;
+    case RS_OUTOFRESOURCE:
+        return DAEMOON_ERR_OUT_OF_MEMORY;
+    case RS_INVALIDARG:
+    case RS_WRONGARG:
+        return DAEMOON_ERR_INVALID_REQUEST;
+    case RS_NOTSUPPORTED:
+        return DAEMOON_ERR_UNSUPPORTED;
+    default:
+        break;
+    }
+    if (R_DESCRIPTION(res) == RD_NOT_FOUND) {
+        return DAEMOON_ERR_NOT_FOUND;
+    }
+    return DAEMOON_FROM_BACKEND(res);
+}
+
+/* Paths inside the archive are UTF-16. Core speaks UTF-8 everywhere, so this is
+ * the only place the two meet. */
+static daemoon_result_t to_fs_path(const char *rel, u16 *out, size_t out_len, FS_Path *path)
+{
+    char joined[TDS_PATH_MAX + 2];
+    daemoon_strbuf_t sb;
+    ssize_t units;
+
+    daemoon_strbuf_init(&sb, joined, sizeof(joined));
+    daemoon_strbuf_addc(&sb, '/');
+    daemoon_strbuf_add(&sb, rel);
+    DAEMOON_TRY(daemoon_strbuf_result(&sb));
+
+    units = utf8_to_utf16(out, (const uint8_t *)joined, out_len - 1);
+    if (units < 0) {
+        return DAEMOON_ERR_INVALID_REQUEST;
+    }
+    out[units] = 0;
+
+    path->type = PATH_UTF16;
+    path->size = (u32)((units + 1) * sizeof(u16));
+    path->data = out;
+    return DAEMOON_OK;
+}
+
+/* ------------------------------------------------------------------ streams */
+
+typedef struct {
+    daemoon_stream_t stream;
+    Handle           handle;
+    u64              offset;
+    int              writable;
+} tds_file_t;
+
+static daemoon_result_t file_read(void *ctx, void *buf, size_t cap, size_t *out_len)
+{
+    tds_file_t *f = (tds_file_t *)ctx;
+    u32 got = 0;
+    Result res;
+
+    if (cap == 0) {
+        *out_len = 0;
+        return DAEMOON_OK;
+    }
+    res = FSFILE_Read(f->handle, &got, f->offset, buf, (u32)cap);
+    if (R_FAILED(res)) {
+        return from_result(res);
+    }
+    f->offset += got;
+    *out_len = got;
+    return DAEMOON_OK;
+}
+
+static daemoon_result_t file_write(void *ctx, const void *buf, size_t len)
+{
+    tds_file_t *f = (tds_file_t *)ctx;
+    const unsigned char *p = (const unsigned char *)buf;
+    size_t done = 0;
+
+    while (done < len) {
+        u32 wrote = 0;
+        /* FS_WRITE_FLUSH on every chunk. The commit is what persists the archive,
+         * but leaving writes sitting in the service's buffers across a whole save
+         * only widens the window where a crash loses half of it. */
+        Result res = FSFILE_Write(f->handle, &wrote, f->offset, p + done, (u32)(len - done),
+                                  FS_WRITE_FLUSH);
+        if (R_FAILED(res)) {
+            return from_result(res);
+        }
+        if (wrote == 0) {
+            return DAEMOON_ERR_NO_SPACE;
+        }
+        f->offset += wrote;
+        done += wrote;
+    }
+    return DAEMOON_OK;
+}
+
+static daemoon_result_t file_seek(void *ctx, unsigned long long offset)
+{
+    ((tds_file_t *)ctx)->offset = offset;
+    return DAEMOON_OK;
+}
+
+static daemoon_result_t file_close(void *ctx)
+{
+    tds_file_t *f = (tds_file_t *)ctx;
+    Result res = DAEMOON_OK;
+
+    if (f->writable) {
+        /* A full archive shows up here rather than at write time. */
+        res = FSFILE_Flush(f->handle);
+    }
+    if (R_SUCCEEDED(res)) {
+        res = FSFILE_Close(f->handle);
+    } else {
+        (void)FSFILE_Close(f->handle);
+    }
+    free(f);
+    return from_result(res);
+}
+
+/* -------------------------------------------------------------------- saves */
+
+static daemoon_result_t archive_for(const daemoon_title_t *t, FS_Archive *out)
+{
+    u64 title_id;
+    u32 path[3];
+    FS_Path binpath;
+
+    DAEMOON_TRY(daemoon_3ds_parse_title_id(t->id, &title_id));
+
+    path[0] = (u32)(t->size_hint == 0 ? MEDIATYPE_SD : (FS_MediaType)t->size_hint);
+    path[1] = (u32)(title_id & 0xffffffffull);
+    path[2] = (u32)(title_id >> 32);
+
+    binpath.type = PATH_BINARY;
+    binpath.size = sizeof(path);
+    binpath.data = path;
+
+    return from_result(FSUSER_OpenArchive(out, ARCHIVE_USER_SAVEDATA, binpath));
+}
+
+static daemoon_result_t open_common(const daemoon_title_t *t, int writable,
+                                    daemoon_save_t **out)
+{
+    daemoon_save_t *s = (daemoon_save_t *)calloc(1, sizeof(*s));
+    daemoon_result_t r;
+
+    if (s == NULL) {
+        return DAEMOON_ERR_OUT_OF_MEMORY;
+    }
+    r = archive_for(t, &s->archive);
+    if (r != DAEMOON_OK) {
+        free(s);
+        return r;
+    }
+    s->writable = writable;
+    s->open = 1;
+    *out = s;
+    return DAEMOON_OK;
+}
+
+static daemoon_result_t open_save(void *ctx, const daemoon_title_t *t, daemoon_save_t **out)
+{
+    (void)ctx;
+    return open_common(t, 0, out);
+}
+
+static daemoon_result_t open_save_write(void *ctx, const daemoon_title_t *t,
+                                        daemoon_save_t **out)
+{
+    (void)ctx;
+    return open_common(t, 1, out);
+}
+
+static daemoon_result_t close_save(void *ctx, daemoon_save_t *s)
+{
+    Result res;
+
+    (void)ctx;
+    if (s == NULL) {
+        return DAEMOON_OK;
+    }
+    res = FSUSER_CloseArchive(s->archive);
+    free(s);
+    return from_result(res);
+}
+
+/* This is the call the whole project hinges on. Never skip it, never ignore what
+ * it returns: without it nothing written above is persisted. */
+static daemoon_result_t commit(void *ctx, daemoon_save_t *s)
+{
+    (void)ctx;
+    if (!s->writable) {
+        return DAEMOON_ERR_FORBIDDEN;
+    }
+    return from_result(FSUSER_ControlArchive(s->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA,
+                                             NULL, 0, NULL, 0));
+}
+
+/* ------------------------------------------------------------------ walking */
+
+/* Depth first, with paths relative to the save root and forward slashes, which is
+ * what backend.h promises and what goes straight into a package. */
+static daemoon_result_t walk(daemoon_save_t *s, const char *rel, daemoon_entry_cb cb,
+                             void *user, int *stopped, int depth)
+{
+    u16 utf16[TDS_UTF16_MAX];
+    FS_Path path;
+    Handle dir = 0;
+    FS_DirectoryEntry *entries;
+    daemoon_result_t r;
+
+    /* A save archive that nests this deep is not a save archive. Refusing beats
+     * recursing until the stack gives out. */
+    if (depth > 8) {
+        return DAEMOON_ERR_ARCHIVE_ERROR;
+    }
+
+    DAEMOON_TRY(to_fs_path(rel, utf16, TDS_UTF16_MAX, &path));
+    DAEMOON_TRY(from_result(FSUSER_OpenDirectory(&dir, s->archive, path)));
+
+    /* One entry at a time. FS_DirectoryEntry is over half a kilobyte and the heap
+     * here is small enough that a batch would be a real allocation. */
+    entries = (FS_DirectoryEntry *)calloc(1, sizeof(*entries));
+    if (entries == NULL) {
+        (void)FSDIR_Close(dir);
+        return DAEMOON_ERR_OUT_OF_MEMORY;
+    }
+
+    r = DAEMOON_OK;
+    while (!*stopped) {
+        char name[TDS_PATH_MAX];
+        char child[TDS_PATH_MAX];
+        daemoon_strbuf_t sb;
+        u32 read = 0;
+        ssize_t bytes;
+
+        if (R_FAILED(FSDIR_Read(dir, &read, 1, entries)) || read == 0) {
+            break;
+        }
+
+        bytes = utf16_to_utf8((uint8_t *)name, entries->name, sizeof(name) - 1);
+        if (bytes < 0) {
+            /* A name this backend cannot represent would go into a package as
+             * something else, and come back as something else again. */
+            r = DAEMOON_ERR_ARCHIVE_ERROR;
+            break;
+        }
+        name[bytes] = '\0';
+
+        daemoon_strbuf_init(&sb, child, sizeof(child));
+        if (rel[0] != '\0') {
+            daemoon_strbuf_add(&sb, rel);
+            daemoon_strbuf_addc(&sb, '/');
+        }
+        daemoon_strbuf_add(&sb, name);
+        r = daemoon_strbuf_result(&sb);
+        if (r != DAEMOON_OK) {
+            break;
+        }
+
+        if (entries->attributes & FS_ATTRIBUTE_DIRECTORY) {
+            r = walk(s, child, cb, user, stopped, depth + 1);
+            if (r != DAEMOON_OK) {
+                break;
+            }
+            continue;
+        }
+
+        if (cb(user, child, entries->fileSize) != 0) {
+            *stopped = 1;
+        }
+    }
+
+    free(entries);
+    (void)FSDIR_Close(dir);
+    return r;
+}
+
+static daemoon_result_t list_entries(void *ctx, daemoon_save_t *s, daemoon_entry_cb cb,
+                                     void *user)
+{
+    int stopped = 0;
+
+    (void)ctx;
+    return walk(s, "", cb, user, &stopped, 0);
+}
+
+/* --------------------------------------------------------------------- files */
+
+/* The archive has no mkdir -p, so a nested path needs its parents made one at a
+ * time. core never creates a directory itself; the backend contract says this is
+ * where it happens. */
+static daemoon_result_t make_parents(daemoon_save_t *s, const char *rel)
+{
+    char partial[TDS_PATH_MAX];
+    size_t i;
+    size_t len = strlen(rel);
+
+    if (len >= sizeof(partial)) {
+        return DAEMOON_ERR_BUFFER_TOO_SMALL;
+    }
+    memcpy(partial, rel, len + 1);
+
+    for (i = 0; i < len; ++i) {
+        u16 utf16[TDS_UTF16_MAX];
+        FS_Path path;
+        Result res;
+
+        if (partial[i] != '/') {
+            continue;
+        }
+        partial[i] = '\0';
+        if (to_fs_path(partial, utf16, TDS_UTF16_MAX, &path) == DAEMOON_OK) {
+            res = FSUSER_CreateDirectory(s->archive, path, 0);
+            /* Already there is the common case and not an error. */
+            if (R_FAILED(res) && R_DESCRIPTION(res) != RD_ALREADY_EXISTS) {
+                partial[i] = '/';
+                return from_result(res);
+            }
+        }
+        partial[i] = '/';
+    }
+    return DAEMOON_OK;
+}
+
+static daemoon_result_t open_file(void *ctx, daemoon_save_t *s, const char *rel,
+                                  daemoon_open_mode_t mode, daemoon_stream_t **out)
+{
+    u16 utf16[TDS_UTF16_MAX];
+    FS_Path path;
+    tds_file_t *f;
+    Handle handle = 0;
+    u32 flags;
+    Result res;
+
+    (void)ctx;
+    if (mode == DAEMOON_OPEN_WRITE && !s->writable) {
+        return DAEMOON_ERR_FORBIDDEN;
+    }
+
+    if (mode == DAEMOON_OPEN_WRITE) {
+        DAEMOON_TRY(make_parents(s, rel));
+        flags = FS_OPEN_WRITE | FS_OPEN_CREATE;
+    } else {
+        flags = FS_OPEN_READ;
+    }
+
+    DAEMOON_TRY(to_fs_path(rel, utf16, TDS_UTF16_MAX, &path));
+    res = FSUSER_OpenFile(&handle, s->archive, path, flags, 0);
+    if (R_FAILED(res)) {
+        return from_result(res);
+    }
+
+    if (mode == DAEMOON_OPEN_WRITE) {
+        /* Create or truncate. Without this a shorter save leaves the tail of the
+         * longer one behind, and the result verifies against nothing because the
+         * digest is taken from what was written. */
+        res = FSFILE_SetSize(handle, 0);
+        if (R_FAILED(res)) {
+            (void)FSFILE_Close(handle);
+            return from_result(res);
+        }
+    }
+
+    f = (tds_file_t *)calloc(1, sizeof(*f));
+    if (f == NULL) {
+        (void)FSFILE_Close(handle);
+        return DAEMOON_ERR_OUT_OF_MEMORY;
+    }
+    f->handle = handle;
+    f->writable = (mode == DAEMOON_OPEN_WRITE);
+    f->stream.ctx = f;
+    f->stream.close = file_close;
+    f->stream.seek = file_seek;
+    if (f->writable) {
+        f->stream.write = file_write;
+    } else {
+        u64 size = 0;
+        f->stream.read = file_read;
+        if (R_SUCCEEDED(FSFILE_GetSize(handle, &size))) {
+            f->stream.size = size;
+        }
+    }
+
+    *out = &f->stream;
+    return DAEMOON_OK;
+}
+
+typedef struct {
+    daemoon_save_t  *save;
+    daemoon_result_t err;
+} unlink_ctx_t;
+
+static int unlink_cb(void *user, const char *rel, unsigned long long size)
+{
+    unlink_ctx_t *u = (unlink_ctx_t *)user;
+    u16 utf16[TDS_UTF16_MAX];
+    FS_Path path;
+    Result res;
+
+    (void)size;
+    if (to_fs_path(rel, utf16, TDS_UTF16_MAX, &path) != DAEMOON_OK) {
+        u->err = DAEMOON_ERR_BUFFER_TOO_SMALL;
+        return 1;
+    }
+    res = FSUSER_DeleteFile(u->save->archive, path);
+    if (R_FAILED(res) && R_DESCRIPTION(res) != RD_NOT_FOUND) {
+        u->err = from_result(res);
+        return 1;
+    }
+    return 0;
+}
+
+/* Called before a restore writes anything, so a file the incoming package does
+ * not contain cannot survive. Directories are left: an empty one is harmless, and
+ * removing them mid walk is where this kind of code usually goes wrong. */
+static daemoon_result_t remove_all(void *ctx, daemoon_save_t *s)
+{
+    unlink_ctx_t u;
+    int stopped = 0;
+    daemoon_result_t r;
+
+    (void)ctx;
+    if (!s->writable) {
+        return DAEMOON_ERR_FORBIDDEN;
+    }
+
+    u.save = s;
+    u.err = DAEMOON_OK;
+    r = walk(s, "", unlink_cb, &u, &stopped, 0);
+    if (r != DAEMOON_OK) {
+        return r;
+    }
+    return u.err;
+}
+
+/* -------------------------------------------------------------------- titles */
+
+static daemoon_result_t list_titles(void *ctx, daemoon_title_t **out, size_t *count)
+{
+    daemoon_3ds_save_ctx_t *c = (daemoon_3ds_save_ctx_t *)ctx;
+    daemoon_title_t *titles = NULL;
+    u64 *ids = NULL;
+    u32 total = 0;
+    u32 read = 0;
+    u32 i;
+    size_t n = 0;
+    daemoon_result_t r;
+
+    *out = NULL;
+    *count = 0;
+
+    r = from_result(AM_GetTitleCount(c->media, &total));
+    if (r != DAEMOON_OK) {
+        return r;
+    }
+    if (total == 0) {
+        return DAEMOON_OK;
+    }
+
+    ids = (u64 *)calloc(total, sizeof(*ids));
+    if (ids == NULL) {
+        return DAEMOON_ERR_OUT_OF_MEMORY;
+    }
+    r = from_result(AM_GetTitleList(&read, c->media, total, ids));
+    if (r != DAEMOON_OK) {
+        free(ids);
+        return r;
+    }
+
+    titles = (daemoon_title_t *)calloc(read, sizeof(*titles));
+    if (titles == NULL) {
+        free(ids);
+        return DAEMOON_ERR_OUT_OF_MEMORY;
+    }
+
+    for (i = 0; i < read; ++i) {
+        daemoon_title_t *t = &titles[n];
+        char product[24];
+
+        /* Applications only. System titles, DLC and updates have no save of their
+         * own worth touching, and reaching into them is how a console stops
+         * booting. */
+        if ((u32)(ids[i] >> 32) != 0x00040000u) {
+            continue;
+        }
+
+        memset(t, 0, sizeof(*t));
+        daemoon_3ds_format_title_id(ids[i], t->id, sizeof(t->id));
+        t->platform = DAEMOON_PLATFORM_3DS;
+        t->save_type = DAEMOON_SAVE_SAVEDATA;
+        /* The media type is carried here so archive_for can reopen the same
+         * archive later without another lookup. */
+        t->size_hint = (unsigned long long)c->media;
+
+        memset(product, 0, sizeof(product));
+        if (R_SUCCEEDED(AM_GetTitleProductCode(c->media, ids[i], product))) {
+            product[sizeof(product) - 1] = '\0';
+        }
+        if (product[0] != '\0') {
+            (void)daemoon_strlcpy(t->name, sizeof(t->name), product);
+        } else {
+            (void)daemoon_strlcpy(t->name, sizeof(t->name), t->id);
+        }
+
+        /* Whether a save exists is answered by opening it, because that is the
+         * question core actually asks and a title list cannot answer it. */
+        {
+            FS_Archive archive;
+            if (archive_for(t, &archive) == DAEMOON_OK) {
+                t->has_save = 1;
+                (void)FSUSER_CloseArchive(archive);
+            }
+        }
+        if (!t->has_save && c->only_with_saves) {
+            continue;
+        }
+
+        /* Whether this title binds its save to the console is a Phase 1 question
+         * that hardware has to answer. Until it is answered, every title is
+         * treated as if it might, and the user is warned before a restore. */
+        t->secure_value = 1;
+
+        ++n;
+    }
+
+    free(ids);
+    *out = titles;
+    *count = n;
+    return DAEMOON_OK;
+}
+
+static void free_titles(void *ctx, daemoon_title_t *titles, size_t count)
+{
+    (void)ctx;
+    (void)count;
+    free(titles);
+}
+
+const daemoon_save_backend_t daemoon_3ds_save_backend = {
+    list_titles,
+    free_titles,
+    open_save,
+    open_save_write,
+    list_entries,
+    open_file,
+    remove_all,
+    commit,
+    close_save,
+    NULL /* is_title_running: there is no reliable way to ask, so the UI warns */
+};
+
+/* ------------------------------------------------------------ secure values */
+
+daemoon_result_t daemoon_3ds_read_secure_value(const daemoon_title_t *t,
+                                               daemoon_3ds_secure_value_t *out)
+{
+    u64 title_id = 0;
+    bool exists = false;
+    u64 value = 0;
+    Result res;
+
+    DAEMOON_TRY(daemoon_3ds_parse_title_id(t->id, &title_id));
+
+    memset(out, 0, sizeof(*out));
+    res = FSUSER_GetSaveDataSecureValue(&exists, &value,
+                                        SECUREVALUE_SLOT_SD,
+                                        (u32)((title_id >> 8) & 0xffffffu),
+                                        (u8)(title_id & 0xffu));
+    if (R_FAILED(res)) {
+        return from_result(res);
+    }
+    out->exists = exists ? 1 : 0;
+    out->value = value;
+    return DAEMOON_OK;
+}
+
+daemoon_result_t daemoon_3ds_write_secure_value(const daemoon_title_t *t,
+                                                const daemoon_3ds_secure_value_t *value)
+{
+    u64 title_id = 0;
+
+    DAEMOON_TRY(daemoon_3ds_parse_title_id(t->id, &title_id));
+    if (!value->exists) {
+        /* Nothing was recorded, so there is nothing to put back. Inventing one
+         * would be worse than leaving whatever is there. */
+        return DAEMOON_OK;
+    }
+    return from_result(FSUSER_SetSaveDataSecureValue(value->value,
+                                                     SECUREVALUE_SLOT_SD,
+                                                     (u32)((title_id >> 8) & 0xffffffu),
+                                                     (u8)(title_id & 0xffu)));
+}

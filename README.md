@@ -6,9 +6,11 @@ The name is Korean for "main gate" (대문). The resemblance to "daemon" is word
 there is no background daemon here and there cannot be one, because syncing while a
 game holds a save archive corrupts it.
 
-**Status: Phase 0.** The shared core, the desktop backend, the server and the
-internationalization pipeline are done and tested. The console backends are not
-written yet. See the roadmap in `CLAUDE.md`.
+**Status: Phase 1, pending hardware.** The shared core, the desktop backend, the
+server and the internationalization pipeline are done and tested. The 3DS backend
+is written and the CIA builds; what remains is the part only a console can answer -
+whether the CIA's permissions reach another title's save archive, and what the
+secure value does to a restored save. The procedure is `docs/phase1-hardware.md`.
 
 ## What works today
 

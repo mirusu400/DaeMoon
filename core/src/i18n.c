@@ -15,7 +15,10 @@ static const char k_missing[] = "?";
 
 void daemoon_i18n_set_language(daemoon_lang_t lang)
 {
-    if (lang >= 0 && lang < DAEMOON_LANG_COUNT) {
+    /* Compared as unsigned so this reads the same whether the toolchain gives the
+     * enum a signed or an unsigned underlying type: devkitARM picks unsigned, and
+     * a signed bounds check there is a warning and half a check. */
+    if ((unsigned)lang < (unsigned)DAEMOON_LANG_COUNT) {
         g_lang = lang;
     }
 }
@@ -27,7 +30,7 @@ daemoon_lang_t daemoon_i18n_language(void)
 
 const char *daemoon_lang_code(daemoon_lang_t lang)
 {
-    if (lang < 0 || lang >= DAEMOON_LANG_COUNT) {
+    if ((unsigned)lang >= (unsigned)DAEMOON_LANG_COUNT) {
         return daemoon_lang_codes[DAEMOON_LANG_EN];
     }
     return daemoon_lang_codes[lang];
@@ -84,10 +87,10 @@ const char *daemoon_str_in(daemoon_lang_t lang, daemoon_str_id_t id)
 {
     const char *s;
 
-    if (id < 0 || id >= DAEMOON_STR_COUNT) {
+    if ((unsigned)id >= (unsigned)DAEMOON_STR_COUNT) {
         return k_missing;
     }
-    if (lang >= 0 && lang < DAEMOON_LANG_COUNT) {
+    if ((unsigned)lang < (unsigned)DAEMOON_LANG_COUNT) {
         s = daemoon_lang_table[lang][id];
         if (s != NULL) {
             return s;

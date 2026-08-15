@@ -2,8 +2,18 @@
 
 libctru, devkitARM. Implements the interfaces in `core/include/daemoon/backend.h`.
 
-Phase 1 in the roadmap. What is here now is the build wiring and the entry point;
-the backend implementations land with Phase 1, on hardware.
+Phase 1 in the roadmap. The save, filesystem and UI backends are written and the
+CIA builds. What is left is the part only a console can answer, and the procedure
+for answering it is `docs/phase1-hardware.md`:
+
+- whether the `FileSystemAccess` set in `app.rsf` actually reaches another title's
+  save archive, and which entries of it are needed
+- what the secure value does to a restored save
+
+Until those are answered, `list_titles` marks **every** title as
+`secure_value = 1`, so the warning fires before any restore. That is deliberately
+pessimistic and should be narrowed once hardware says which titles bind their
+saves.
 
 ## Non negotiable
 

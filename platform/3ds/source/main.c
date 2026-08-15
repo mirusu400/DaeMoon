@@ -1,26 +1,40 @@
-/* 3DS entry point. Phase 1.
+/* 3DS entry point. Phase 1: local backup and restore, no server involved.
  *
- * Everything below the platform layer already exists and is tested: this file only
- * has to assemble a daemoon_env_t out of libctru and hand it to core. The backend
- * implementations (save_backend.c, net_backend.c, ui_backend.c) land with Phase 1,
- * against a CIA, on hardware.
+ * Everything below the platform layer already exists and is tested on a desktop.
+ * This file assembles a daemoon_env_t out of libctru and drives it from a menu.
  *
- * The scratch buffer is static rather than malloc'd. The 3DS heap fragments badly
- * and this one lives for the whole run, so there is nothing to gain by putting it
- * on the heap and a slow leak of headroom to lose.
+ * The scratch buffer is static rather than malloc'd. The 3DS heap fragments badly,
+ * this one lives for the whole run, and there is nothing to gain from putting it
+ * on the heap and a slow loss of headroom to lose.
  */
-#include <3ds.h>
+#include "daemoon_3ds.h"
+
+#include "../../../tools/test/backend_conformance.h"
+#include "../../../tools/test/test.h"
 
 #include <daemoon/archive.h>
 #include <daemoon/i18n.h>
 #include <daemoon/sync.h>
+#include <daemoon/util/strbuf.h>
+
+#include <3ds.h>
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static unsigned char g_scratch[64 * 1024];
 static daemoon_archive_ctx_t g_archive;
 
-/* Console setting first, user choice on top of it once settings exist. */
+static daemoon_3ds_save_ctx_t g_save_ctx;
+static daemoon_3ds_ui_ctx_t   g_ui_ctx;
+static daemoon_env_t          g_env;
+
+static daemoon_title_t *g_titles;
+static size_t           g_title_count;
+
+/* --------------------------------------------------------------------- i18n */
+
 static void select_language(void)
 {
     u8 code = 0;
@@ -42,34 +56,369 @@ static void select_language(void)
     daemoon_i18n_set_language(lang);
 }
 
-int main(void)
+/* -------------------------------------------------------------------- input */
+
+static u32 wait_keys(u32 mask)
 {
-    gfxInitDefault();
-    consoleInit(GFX_TOP, NULL);
-
-    if (R_FAILED(cfguInit())) {
-        printf("cfg:u unavailable\n");
-    } else {
-        select_language();
-    }
-
-    g_archive.count = 0;
-    (void)g_scratch;
-
-    printf("%s\n\n", daemoon_str(DAEMOON_STR_APP_TITLE));
-    printf("Phase 1: the save, net and UI backends are not implemented yet.\n");
-    printf("Press START to exit.\n");
-
     while (aptMainLoop()) {
+        u32 down;
+
         hidScanInput();
-        if (hidKeysDown() & KEY_START) {
-            break;
+        down = hidKeysDown();
+        if (down & mask) {
+            return down;
         }
         gfxFlushBuffers();
         gfxSwapBuffers();
         gspWaitForVBlank();
     }
+    return 0;
+}
 
+static void pause_for_a(void)
+{
+    printf("\n  (A) continue\n");
+    (void)wait_keys(KEY_A);
+}
+
+static void report(const char *what, daemoon_result_t r)
+{
+    if (r == DAEMOON_OK) {
+        printf("%s: ok\n", what);
+        return;
+    }
+    /* The wire code and the translated text. One is for whoever reads a photo of
+     * the screen in a bug report, the other is for the person holding the console. */
+    printf("%s: %s\n  %s\n", what, daemoon_result_code(r),
+           daemoon_str(daemoon_result_str_id(r)));
+}
+
+/* ------------------------------------------------------------------- titles */
+
+static daemoon_result_t reload_titles(void)
+{
+    if (g_titles != NULL) {
+        g_env.save->free_titles(g_env.save_ctx, g_titles, g_title_count);
+        g_titles = NULL;
+        g_title_count = 0;
+    }
+    return g_env.save->list_titles(g_env.save_ctx, &g_titles, &g_title_count);
+}
+
+/* Returns the selected index, or -1. */
+static int pick_title(const char *prompt)
+{
+    size_t selected = 0;
+    size_t page = 0;
+    const size_t per_page = 20;
+
+    if (g_title_count == 0) {
+        consoleClear();
+        printf("No titles with save data were found.\n");
+        pause_for_a();
+        return -1;
+    }
+
+    for (;;) {
+        size_t i;
+        u32 down;
+
+        page = selected / per_page;
+        consoleClear();
+        printf("%s\n\n", prompt);
+        for (i = page * per_page; i < g_title_count && i < (page + 1) * per_page; ++i) {
+            printf("%s %s  %s\n", i == selected ? ">" : " ", g_titles[i].id,
+                   g_titles[i].name);
+        }
+        printf("\n  up/down select   (A) choose   (B) back\n");
+
+        down = wait_keys(KEY_A | KEY_B | KEY_UP | KEY_DOWN | KEY_L | KEY_R);
+        if (down == 0 || (down & KEY_B)) {
+            return -1;
+        }
+        if (down & KEY_A) {
+            return (int)selected;
+        }
+        if ((down & KEY_UP) && selected > 0) {
+            --selected;
+        }
+        if ((down & KEY_DOWN) && selected + 1 < g_title_count) {
+            ++selected;
+        }
+        if ((down & KEY_L) && selected >= per_page) {
+            selected -= per_page;
+        }
+        if ((down & KEY_R) && selected + per_page < g_title_count) {
+            selected += per_page;
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ actions */
+
+static void action_backup(void)
+{
+    char path[DAEMOON_PATH_MAX * 2];
+    int index = pick_title("Back up which title?");
+    daemoon_result_t r;
+
+    if (index < 0) {
+        return;
+    }
+
+    consoleClear();
+    printf("%s\n%s\n\n", g_titles[index].id, g_titles[index].name);
+
+    r = daemoon_sync_backup_local(&g_env, &g_archive, &g_titles[index], path, sizeof(path));
+    report("backup", r);
+    if (r == DAEMOON_OK) {
+        printf("  %s\n", path);
+    }
+    pause_for_a();
+}
+
+/* Lists what is in the backup directory for a title and restores one. */
+static void action_restore(void)
+{
+    char dir[DAEMOON_PATH_MAX * 2];
+    char pick[DAEMOON_PATH_MAX * 2];
+    daemoon_strbuf_t sb;
+    int index = pick_title("Restore into which title?");
+    daemoon_result_t r;
+
+    if (index < 0) {
+        return;
+    }
+
+    /* Backups are named after their content, so the newest is not obvious from the
+     * name and there is nothing to sort by that can be trusted. Phase 1 restores
+     * the one the user points at, and the list is the directory. */
+    daemoon_strbuf_init(&sb, dir, sizeof(dir));
+    daemoon_strbuf_add(&sb, DAEMOON_3DS_WORK_DIR);
+    daemoon_strbuf_add(&sb, "/backups");
+    if (daemoon_strbuf_result(&sb) != DAEMOON_OK) {
+        return;
+    }
+
+    if (daemoon_3ds_pick_backup(dir, &g_titles[index], pick, sizeof(pick)) != DAEMOON_OK) {
+        consoleClear();
+        printf("No backup for this title yet.\n");
+        pause_for_a();
+        return;
+    }
+
+    consoleClear();
+    printf("%s\n%s\n\n", g_titles[index].id, g_titles[index].name);
+    printf("Restoring from:\n  %s\n\n", pick);
+
+    /* The secure value is read before anything is written and put back after. A
+     * title that binds its save to this console will otherwise treat the restored
+     * save as corrupt and delete it, which is the failure this phase exists to
+     * understand. */
+    {
+        daemoon_3ds_secure_value_t secure;
+        daemoon_result_t sr = daemoon_3ds_read_secure_value(&g_titles[index], &secure);
+
+        if (sr == DAEMOON_OK && secure.exists) {
+            printf("secure value present: %016llX\n", (unsigned long long)secure.value);
+        } else if (sr == DAEMOON_OK) {
+            printf("no secure value for this title\n");
+        } else {
+            printf("secure value unreadable: %s\n", daemoon_result_code(sr));
+        }
+
+        r = daemoon_sync_restore_package(&g_env, &g_archive, &g_titles[index], pick);
+        report("restore", r);
+
+        if (r == DAEMOON_OK && sr == DAEMOON_OK && secure.exists) {
+            daemoon_result_t wr = daemoon_3ds_write_secure_value(&g_titles[index], &secure);
+            report("secure value restored", wr);
+        }
+    }
+    pause_for_a();
+}
+
+static void action_secure_value(void)
+{
+    int index = pick_title("Show the secure value of which title?");
+    daemoon_3ds_secure_value_t secure;
+    daemoon_result_t r;
+
+    if (index < 0) {
+        return;
+    }
+
+    consoleClear();
+    printf("%s\n%s\n\n", g_titles[index].id, g_titles[index].name);
+
+    r = daemoon_3ds_read_secure_value(&g_titles[index], &secure);
+    if (r != DAEMOON_OK) {
+        report("secure value", r);
+    } else if (secure.exists) {
+        printf("secure value: %016llX\n", (unsigned long long)secure.value);
+        printf("\nThis title ties its save to this console.\n");
+        printf("A save from another console may be deleted by the game.\n");
+    } else {
+        printf("no secure value\n\nA save from another console should be safe here,\n");
+        printf("as far as this mechanism is concerned.\n");
+    }
+    pause_for_a();
+}
+
+/* The conformance suite writes, clears and commits a real save archive. It exists
+ * to prove this backend behaves the way core is entitled to assume, and running it
+ * on a title someone plays would be indefensible. */
+static void action_self_test(void)
+{
+    int index;
+    int before;
+    char path[DAEMOON_PATH_MAX * 2];
+    daemoon_backend_under_test_t ut;
+
+    consoleClear();
+    printf("Backend self test\n\n");
+    printf("This DESTROYS the save of the title you pick.\n");
+    printf("It writes files, clears the archive and commits.\n\n");
+    printf("Use a dummy title. Never one you play.\n");
+    printf("A backup is made first, but do not rely on it.\n");
+    printf("\n  (A) continue   (B) back\n");
+    if (!(wait_keys(KEY_A | KEY_B) & KEY_A)) {
+        return;
+    }
+
+    index = pick_title("Self test on which title? Its save WILL be destroyed.");
+    if (index < 0) {
+        return;
+    }
+
+    consoleClear();
+    printf("%s\n%s\n\n", g_titles[index].id, g_titles[index].name);
+    printf("Last chance. This wipes the save above.\n");
+    printf("\n  (A) run   (B) back\n");
+    if (!(wait_keys(KEY_A | KEY_B) & KEY_A)) {
+        return;
+    }
+
+    consoleClear();
+    printf("backing up first...\n");
+    report("backup", daemoon_sync_backup_local(&g_env, &g_archive, &g_titles[index],
+                                               path, sizeof(path)));
+
+    memset(&ut, 0, sizeof(ut));
+    ut.name = "3ds";
+    ut.backend = &daemoon_3ds_save_backend;
+    ut.ctx = &g_save_ctx;
+    ut.title = &g_titles[index];
+    ut.other = NULL; /* a second title would be a second save to destroy */
+    ut.scratch = g_scratch;
+    ut.scratch_len = sizeof(g_scratch);
+
+    before = daemoon_test_failures;
+    daemoon_backend_conformance(&ut);
+
+    printf("\n%d checks, %d failures\n", daemoon_test_checks,
+           daemoon_test_failures - before);
+    if (daemoon_test_failures == before) {
+        printf("this backend behaves the way core assumes\n");
+    } else {
+        printf("DO NOT sync with this build\n");
+    }
+    pause_for_a();
+}
+
+/* ---------------------------------------------------------------------- main */
+
+static void draw_menu(size_t selected)
+{
+    static const char *const items[] = {
+        "Back up a save",
+        "Restore a save from a backup",
+        "Show a title's secure value",
+        "Run the backend self test (destroys a save)",
+        "Exit"
+    };
+    size_t i;
+
+    consoleClear();
+    printf("%s  -  Phase 1\n", daemoon_str(DAEMOON_STR_APP_TITLE));
+    printf("%s\n", DAEMOON_3DS_WORK_DIR);
+    printf("%u titles with save data\n\n", (unsigned)g_title_count);
+
+    for (i = 0; i < sizeof(items) / sizeof(items[0]); ++i) {
+        printf("%s %s\n", i == selected ? ">" : " ", items[i]);
+    }
+    printf("\n  up/down   (A) select   START exit\n");
+}
+
+int main(void)
+{
+    size_t selected = 0;
+
+    gfxInitDefault();
+    consoleInit(GFX_TOP, NULL);
+
+    if (R_SUCCEEDED(cfguInit())) {
+        select_language();
+    }
+    if (R_FAILED(amInit())) {
+        printf("am:u unavailable. Title enumeration will not work.\n");
+        printf("This build has to be installed as a CIA.\n");
+    }
+
+    g_save_ctx.media = 1; /* MEDIATYPE_SD */
+    g_save_ctx.only_with_saves = 1;
+    daemoon_3ds_ui_init(&g_ui_ctx);
+    g_archive.count = 0;
+
+    memset(&g_env, 0, sizeof(g_env));
+    g_env.save = &daemoon_3ds_save_backend;
+    g_env.fs = &daemoon_3ds_fs_backend;
+    g_env.ui = &daemoon_3ds_ui_backend;
+    g_env.net = NULL; /* Phase 2 */
+    g_env.save_ctx = &g_save_ctx;
+    g_env.fs_ctx = NULL;
+    g_env.ui_ctx = &g_ui_ctx;
+    g_env.device_label = "3DS";
+    g_env.work_dir = DAEMOON_3DS_WORK_DIR;
+    g_env.scratch = g_scratch;
+    g_env.scratch_len = sizeof(g_scratch);
+
+    report("titles", reload_titles());
+
+    while (aptMainLoop()) {
+        u32 down;
+
+        draw_menu(selected);
+        down = wait_keys(KEY_A | KEY_UP | KEY_DOWN | KEY_START);
+        if (down == 0 || (down & KEY_START)) {
+            break;
+        }
+        if ((down & KEY_UP) && selected > 0) {
+            --selected;
+        }
+        if ((down & KEY_DOWN) && selected < 4) {
+            ++selected;
+        }
+        if (!(down & KEY_A)) {
+            continue;
+        }
+
+        switch (selected) {
+        case 0: action_backup(); break;
+        case 1: action_restore(); break;
+        case 2: action_secure_value(); break;
+        case 3: action_self_test(); (void)reload_titles(); break;
+        default:
+            aptSetChainloader(0, 0);
+            goto done;
+        }
+    }
+
+done:
+    if (g_titles != NULL) {
+        g_env.save->free_titles(g_env.save_ctx, g_titles, g_title_count);
+    }
+    amExit();
     cfguExit();
     gfxExit();
     return 0;

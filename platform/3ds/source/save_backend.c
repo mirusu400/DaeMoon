@@ -559,40 +559,14 @@ static daemoon_result_t remove_all(void *ctx, daemoon_save_t *s)
 #define SMDH_LANG_ENGLISH  1
 #define SMDH_LANG_COUNT    12
 
-/* One language slot out of an open SMDH. Empty is a normal answer: a game sold in
- * one region carries a name for its own languages and blanks for the rest. */
-static daemoon_result_t read_smdh_slot(Handle handle, int lang, char *out, size_t cap)
-{
-    u16 utf16[SMDH_SHORT_DESC_UNITS + 1];
-    u32 got = 0;
-    ssize_t bytes;
-    Result res;
-
-    res = FSFILE_Read(handle, &got, SMDH_TITLE_OFFSET(lang), utf16,
-                      SMDH_SHORT_DESC_UNITS * sizeof(u16));
-    if (R_FAILED(res) || got < sizeof(u16)) {
-        return from_result(res);
-    }
-    utf16[SMDH_SHORT_DESC_UNITS] = 0;
-
-    bytes = utf16_to_utf8((uint8_t *)out, utf16, cap - 1);
-    if (bytes < 0 || (size_t)bytes > cap - 1) {
-        return DAEMOON_ERR_BUFFER_TOO_SMALL;
-    }
-    out[bytes] = '\0';
-
-    /* A name that is only whitespace is the same as no name for this purpose. */
-    {
-        const char *p = out;
-        while (*p == ' ' || *p == '\n' || *p == '\r' || *p == '\t') {
-            ++p;
-        }
-        if (*p == '\0') {
-            return DAEMOON_ERR_NOT_FOUND;
-        }
-    }
-    return DAEMOON_OK;
-}
+/* All twelve name slots in one read.
+ *
+ * A slot is 0x200 bytes and there are twelve, so the whole block is 6 KiB - one
+ * IPC round trip. Reading them one at a time meant up to fifteen round trips per
+ * title for the fallback chain, on top of opening the title's content, and it is
+ * why the list took as long as it did to appear.
+ */
+#define SMDH_NAMES_BYTES (SMDH_LANG_COUNT * 0x200)
 
 /* Whether the console's text renderer can draw this at all.
  *
@@ -611,6 +585,43 @@ static int is_ascii_printable(const char *s)
     return 1;
 }
 
+/* One slot out of the block already in memory. Empty is a normal answer: a game
+ * sold in one region carries a name for its own languages and blanks for the
+ * rest. */
+static daemoon_result_t take_smdh_slot(const u8 *names, int lang, unsigned flags,
+                                       char *out, size_t cap)
+{
+    const u16 *utf16 = (const u16 *)(const void *)(names + (size_t)lang * 0x200);
+    u16 copy[SMDH_SHORT_DESC_UNITS + 1];
+    ssize_t bytes;
+    int i;
+
+    for (i = 0; i < SMDH_SHORT_DESC_UNITS; ++i) {
+        copy[i] = utf16[i];
+    }
+    copy[SMDH_SHORT_DESC_UNITS] = 0;
+
+    bytes = utf16_to_utf8((uint8_t *)out, copy, cap - 1);
+    if (bytes < 0 || (size_t)bytes > cap - 1) {
+        return DAEMOON_ERR_BUFFER_TOO_SMALL;
+    }
+    out[bytes] = '\0';
+
+    {
+        const char *p = out;
+        while (*p == ' ' || *p == '\n' || *p == '\r' || *p == '\t') {
+            ++p;
+        }
+        if (*p == '\0') {
+            return DAEMOON_ERR_NOT_FOUND;
+        }
+    }
+    if ((flags & DAEMOON_3DS_NAME_ASCII) && !is_ascii_printable(out)) {
+        return DAEMOON_ERR_UNSUPPORTED;
+    }
+    return DAEMOON_OK;
+}
+
 static Result g_last_name_result;
 
 unsigned long daemoon_3ds_last_name_result(void)
@@ -626,9 +637,12 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
     static const u32 file_path[5] = {
         0x00000000u, 0x00000000u, 0x00000002u, 0x6E6F6369u /* "icon" */, 0x00000000u
     };
+    /* Static rather than on the stack: 6 KiB per call, once per title. */
+    static u8 names[SMDH_NAMES_BYTES];
     FS_Path archive;
     FS_Path file;
     Handle handle = 0;
+    u32 got = 0;
     Result res;
     daemoon_result_t r;
     int i;
@@ -650,7 +664,21 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
                                   FS_OPEN_READ, 0);
     g_last_name_result = res;
     if (R_FAILED(res)) {
+        out[0] = '\0';
         return from_result(res);
+    }
+
+    res = FSFILE_Read(handle, &got, SMDH_TITLE_OFFSET(0), names, sizeof(names));
+    (void)FSFILE_Close(handle);
+    g_last_name_result = res;
+    if (R_FAILED(res) || got < 0x200) {
+        out[0] = '\0';
+        return R_FAILED(res) ? from_result(res) : DAEMOON_ERR_NOT_FOUND;
+    }
+    if (got < sizeof(names)) {
+        /* A short read is not an error, but a slot beyond what arrived is not
+         * there to be picked. */
+        memset(names + got, 0, sizeof(names) - got);
     }
 
     /* The console's language first, then the two that almost every 3DS game
@@ -658,33 +686,18 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
      *
      * Reading only the console's language is why this came back empty on
      * hardware: a Korean console asks for slot 7, and a game that was never sold
-     * in Korea leaves that slot blank. The fallback is not a nicety - without it
-     * most of a library shows up as a product code. */
-    r = read_smdh_slot(handle, lang, out, cap);
-    if (r == DAEMOON_OK && (flags & DAEMOON_3DS_NAME_ASCII) && !is_ascii_printable(out)) {
-        r = DAEMOON_ERR_UNSUPPORTED;
-    }
-
+     * in Korea leaves that slot blank. */
+    r = take_smdh_slot(names, lang, flags, out, cap);
     if (r != DAEMOON_OK && lang != SMDH_LANG_ENGLISH) {
-        r = read_smdh_slot(handle, SMDH_LANG_ENGLISH, out, cap);
-        if (r == DAEMOON_OK && (flags & DAEMOON_3DS_NAME_ASCII) && !is_ascii_printable(out)) {
-            r = DAEMOON_ERR_UNSUPPORTED;
-        }
+        r = take_smdh_slot(names, SMDH_LANG_ENGLISH, flags, out, cap);
     }
     if (r != DAEMOON_OK && lang != SMDH_LANG_JAPANESE) {
-        r = read_smdh_slot(handle, SMDH_LANG_JAPANESE, out, cap);
-        if (r == DAEMOON_OK && (flags & DAEMOON_3DS_NAME_ASCII) && !is_ascii_printable(out)) {
-            r = DAEMOON_ERR_UNSUPPORTED;
-        }
+        r = take_smdh_slot(names, SMDH_LANG_JAPANESE, flags, out, cap);
     }
     for (i = 0; r != DAEMOON_OK && i < SMDH_LANG_COUNT; ++i) {
-        r = read_smdh_slot(handle, i, out, cap);
-        if (r == DAEMOON_OK && (flags & DAEMOON_3DS_NAME_ASCII) && !is_ascii_printable(out)) {
-            r = DAEMOON_ERR_UNSUPPORTED;
-        }
+        r = take_smdh_slot(names, i, flags, out, cap);
     }
 
-    (void)FSFILE_Close(handle);
     if (r != DAEMOON_OK) {
         out[0] = '\0';
     }
@@ -752,6 +765,24 @@ static daemoon_result_t list_titles(void *ctx, daemoon_title_t **out, size_t *co
 
         /* The name the HOME menu shows, then the product code, then the id. Each
          * fallback is less useful than the last and none of them is a failure. */
+        /* Whether a save exists is answered by opening it, because that is the
+         * question core actually asks and a title list cannot answer it.
+         *
+         * This comes before the name lookup on purpose. Reading a name opens the
+         * title's content, which is an SD read and a decrypt, and doing that for
+         * titles that are about to be filtered out is most of what made the list
+         * slow to appear. */
+        {
+            FS_Archive archive;
+            if (archive_for(t, &archive) == DAEMOON_OK) {
+                t->has_save = 1;
+                (void)FSUSER_CloseArchive(archive);
+            }
+        }
+        if (!t->has_save && c->only_with_saves) {
+            continue;
+        }
+
         /* The list is drawn by the console's text renderer, so a name it cannot
          * draw is worse than a product code: a blank line tells the user nothing
          * about which game they are about to overwrite. The real name is still
@@ -765,19 +796,6 @@ static daemoon_result_t list_titles(void *ctx, daemoon_title_t **out, size_t *co
             }
             (void)daemoon_strlcpy(t->name, sizeof(t->name),
                                   product[0] != '\0' ? product : t->id);
-        }
-
-        /* Whether a save exists is answered by opening it, because that is the
-         * question core actually asks and a title list cannot answer it. */
-        {
-            FS_Archive archive;
-            if (archive_for(t, &archive) == DAEMOON_OK) {
-                t->has_save = 1;
-                (void)FSUSER_CloseArchive(archive);
-            }
-        }
-        if (!t->has_save && c->only_with_saves) {
-            continue;
         }
 
         /* Whether this title binds its save to the console is a Phase 1 question

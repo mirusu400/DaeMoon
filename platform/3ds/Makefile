@@ -50,7 +50,7 @@ LDFLAGS   = -specs=3dsx.specs -g $(ARCH) -Wl,--gc-sections -Wl,-Map,$(notdir $*.
 
 # 3ds-curl and 3ds-mbedtls rather than httpc:C, which ships old cipher suites and a
 # stale root CA store. See CLAUDE.md in this directory.
-LIBS    := -lcurl -lmbedtls -lmbedx509 -lmbedcrypto -lz -lctru -lm
+LIBS    := -lcitro2d -lcitro3d -lcurl -lmbedtls -lmbedx509 -lmbedcrypto -lz -lctru -lm
 LIBDIRS := $(PORTLIBS) $(CTRULIB)
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))

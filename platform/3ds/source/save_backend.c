@@ -623,10 +623,16 @@ static daemoon_result_t take_smdh_slot(const u8 *names, int lang, unsigned flags
 }
 
 static Result g_last_name_result;
+static Result g_last_name_result_alt;
 
 unsigned long daemoon_3ds_last_name_result(void)
 {
     return (unsigned long)g_last_name_result;
+}
+
+unsigned long daemoon_3ds_last_name_result_alt(void)
+{
+    return (unsigned long)g_last_name_result_alt;
 }
 
 daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
@@ -662,10 +668,23 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
 
     res = FSUSER_OpenFileDirectly(&handle, ARCHIVE_SAVEDATA_AND_CONTENT, archive, file,
                                   FS_OPEN_READ, 0);
-    g_last_name_result = res;
     if (R_FAILED(res)) {
-        out[0] = '\0';
-        return from_result(res);
+        /* The second archive id exists for fs:LDR and exposes only the ExeFS,
+         * which is all this needs. Trying it costs one call and means a console
+         * that refuses the first one still answers the question, rather than
+         * costing another round trip to find out. */
+        Result alt = FSUSER_OpenFileDirectly(&handle, ARCHIVE_SAVEDATA_AND_CONTENT2,
+                                             archive, file, FS_OPEN_READ, 0);
+
+        g_last_name_result = res;
+        g_last_name_result_alt = alt;
+        if (R_FAILED(alt)) {
+            out[0] = '\0';
+            return from_result(res);
+        }
+    } else {
+        g_last_name_result = res;
+        g_last_name_result_alt = 0;
     }
 
     res = FSFILE_Read(handle, &got, SMDH_TITLE_OFFSET(0), names, sizeof(names));

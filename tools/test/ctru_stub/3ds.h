@@ -97,7 +97,9 @@ typedef enum {
     ARCHIVE_USER_SAVEDATA = 0x567890B2,
     /* The title's own content as well as its save, which is where the SMDH with
      * the name the HOME menu shows lives. */
-    ARCHIVE_SAVEDATA_AND_CONTENT = 0x2345678A
+    ARCHIVE_SAVEDATA_AND_CONTENT = 0x2345678A,
+    /* ExeFS only, for fs:LDR. Tried when the first one is refused. */
+    ARCHIVE_SAVEDATA_AND_CONTENT2 = 0x2345678E
 } FS_ArchiveID;
 
 typedef enum {

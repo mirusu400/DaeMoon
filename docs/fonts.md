@@ -60,6 +60,17 @@ noticing that it fails exactly where it matters most: a Korean user with Korean
 games sees English or a product code. Deciding this properly is the point of the
 section above.
 
+## What the 3DS build does now
+
+citro2d with `C2D_FontLoadSystem` for the region matching the selected language.
+On a console that has that font - a Korean console asked for the Korean one - the
+names render properly and the ASCII fallback never engages.
+
+The fallback is still there and still applies when `C2D_FontLoadSystem` comes back
+empty, which is the case this file exists for: a European console has no Hangul
+to load. Nothing here has answered that, and a user in that position still sees
+English or a product code.
+
 ## What has to be recorded here
 
 - Which option was taken, and the measured size if it is option 2.

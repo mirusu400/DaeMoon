@@ -84,6 +84,11 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
  * the module, the summary and the description, and can be looked up. */
 unsigned long daemoon_3ds_last_name_result(void);
 
+/* The result of the fallback archive, when the first one was refused. 0 means it
+ * was not needed. Both are recorded so one hardware run answers the question
+ * whichever way it goes. */
+unsigned long daemoon_3ds_last_name_result_alt(void);
+
 /* Creates this application's own save archive, and refuses any other title. A
  * declared SaveDataSize does not create one; the title has to format it once. */
 daemoon_result_t daemoon_3ds_format_own_save(const daemoon_title_t *t, unsigned blocks);

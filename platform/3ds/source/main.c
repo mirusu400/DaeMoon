@@ -491,6 +491,15 @@ static void action_survey(void)
                 hex[10] = '\0';
                 daemoon_strbuf_addc(&sb, '/');
                 daemoon_strbuf_add(&sb, hex);
+
+                raw = daemoon_3ds_last_name_result_alt();
+                if (raw != 0) {
+                    for (k = 0; k < 8; ++k) {
+                        hex[2 + k] = hexd[(raw >> ((7 - k) * 4)) & 0xf];
+                    }
+                    daemoon_strbuf_add(&sb, "/alt");
+                    daemoon_strbuf_add(&sb, hex);
+                }
             }
             daemoon_strbuf_add(&sb, "\treal=");
             daemoon_strbuf_add(&sb, nr == DAEMOON_OK ? real : "-");

@@ -60,15 +60,29 @@ the app's own Survey action):
 
 - **Every save archive opened.** `CategorySystemApplication`, `DirectSdmc` and
   `DirectSdmcWrite` are enough for the save work itself.
-- **No SMDH could be read** with only those three: every title came back
-  `not supported`, so every name fell back to a product code. `Core` was added for
-  that and nothing else. Whether something narrower would do is worth one more
-  experiment; every right is one more thing an app that writes to save data can
-  get wrong.
+- **No SMDH could be read.** Every title came back `not supported`, so every name
+  fell back to a product code and no icon loaded. It took three rounds to find
+  out why, and the answer was not the filesystem rights: with every single
+  `FileSystemAccess` bit set it still failed, and the code turned out to be
+  identical to Checkpoint's line for line.
+
+  The raw Result said it: `0xE0C046F8` is fs / not_supported / usage. Reading
+  another title's content is not purely an ARM11 filesystem operation - the NCCH
+  is decrypted by the ARM9 - and the exheader had an empty `Arm9Capability`
+  because the RSF declared no `IoAccessControl`. The service says "not supported"
+  for that just as it does for a missing FS right, which is why three rounds went
+  into the wrong half of the exheader.
+
+  **Record the raw Result, not the wire code.** A coarse code is right for a user
+  and useless here; `daemoon_result_code` said `unsupported` every time and never
+  once narrowed anything down.
 - **Secure values are rare.** One title out of sixteen had one. Two Pokemon titles
   sat next to each other in the list and only one of them did. That is the first
   real evidence on the question Phase 7 depends on, and it says the answer is per
   title rather than per publisher or per genre.
+- **The build stamp needs a content hash, not just a commit.** Two builds from the
+  same dirty tree carried the same stamp, and a survey could not be attributed to
+  either of them. That is precisely the case the stamp was added for.
 - **Three titles had an archive with nothing in it.** Backing one of those up is
   now refused rather than producing a package whose restore would clear a save.
 

@@ -15,6 +15,7 @@
  */
 #include "daemoon_3ds.h"
 
+#include <daemoon/archive.h>
 #include <daemoon/util/strbuf.h>
 
 #include <3ds.h>
@@ -76,6 +77,13 @@ static daemoon_result_t to_fs_path(const char *rel, u16 *out, size_t out_len, FS
     units = utf8_to_utf16(out, (const uint8_t *)joined, out_len - 1);
     if (units < 0) {
         return DAEMOON_ERR_INVALID_REQUEST;
+    }
+    /* libctru fills the buffer and reports what the input *would* have produced,
+     * so a return larger than the buffer means it truncated and said nothing. A
+     * truncated path is a different path: it would open, write to, or delete the
+     * wrong file. */
+    if ((size_t)units > out_len - 1) {
+        return DAEMOON_ERR_BUFFER_TOO_SMALL;
     }
     out[units] = 0;
 
@@ -284,9 +292,11 @@ static daemoon_result_t walk(daemoon_save_t *s, const char *rel, daemoon_entry_c
         }
 
         bytes = utf16_to_utf8((uint8_t *)name, entries->name, sizeof(name) - 1);
-        if (bytes < 0) {
-            /* A name this backend cannot represent would go into a package as
-             * something else, and come back as something else again. */
+        if (bytes < 0 || (size_t)bytes > sizeof(name) - 1) {
+            /* Either a name this backend cannot represent, or one longer than the
+             * buffer, which the converter truncates without saying so. Both would
+             * go into a package as something else and come back as something else
+             * again. */
             r = DAEMOON_ERR_ARCHIVE_ERROR;
             break;
         }
@@ -431,28 +441,34 @@ static daemoon_result_t open_file(void *ctx, daemoon_save_t *s, const char *rel,
     return DAEMOON_OK;
 }
 
+/* Collecting the paths before deleting any of them, rather than deleting during
+ * the walk. Removing an entry from a directory that has an open handle being read
+ * is undefined on FAT: the walk can skip the entry after the one just deleted, and
+ * a file left behind after remove_all is a file the game sees mixed into the save
+ * that was just restored. */
 typedef struct {
-    daemoon_save_t  *save;
-    daemoon_result_t err;
-} unlink_ctx_t;
+    char            (*paths)[DAEMOON_PATH_MAX];
+    size_t            capacity;
+    size_t            count;
+    daemoon_result_t  err;
+} collect_ctx_t;
 
-static int unlink_cb(void *user, const char *rel, unsigned long long size)
+static int collect_cb(void *user, const char *rel, unsigned long long size)
 {
-    unlink_ctx_t *u = (unlink_ctx_t *)user;
-    u16 utf16[TDS_UTF16_MAX];
-    FS_Path path;
-    Result res;
+    collect_ctx_t *c = (collect_ctx_t *)user;
 
     (void)size;
-    if (to_fs_path(rel, utf16, TDS_UTF16_MAX, &path) != DAEMOON_OK) {
-        u->err = DAEMOON_ERR_BUFFER_TOO_SMALL;
+    if (c->count >= c->capacity) {
+        /* Refusing beats clearing most of a save: the caller aborts and nothing
+         * has been written yet. */
+        c->err = DAEMOON_ERR_ARCHIVE_ERROR;
         return 1;
     }
-    res = FSUSER_DeleteFile(u->save->archive, path);
-    if (R_FAILED(res) && R_DESCRIPTION(res) != RD_NOT_FOUND) {
-        u->err = from_result(res);
+    if (daemoon_strlcpy(c->paths[c->count], DAEMOON_PATH_MAX, rel) != DAEMOON_OK) {
+        c->err = DAEMOON_ERR_BUFFER_TOO_SMALL;
         return 1;
     }
+    c->count++;
     return 0;
 }
 
@@ -461,8 +477,9 @@ static int unlink_cb(void *user, const char *rel, unsigned long long size)
  * removing them mid walk is where this kind of code usually goes wrong. */
 static daemoon_result_t remove_all(void *ctx, daemoon_save_t *s)
 {
-    unlink_ctx_t u;
+    collect_ctx_t c;
     int stopped = 0;
+    size_t i;
     daemoon_result_t r;
 
     (void)ctx;
@@ -470,13 +487,36 @@ static daemoon_result_t remove_all(void *ctx, daemoon_save_t *s)
         return DAEMOON_ERR_FORBIDDEN;
     }
 
-    u.save = s;
-    u.err = DAEMOON_OK;
-    r = walk(s, "", unlink_cb, &u, &stopped, 0);
-    if (r != DAEMOON_OK) {
-        return r;
+    c.capacity = DAEMOON_ARCHIVE_MAX_ENTRIES;
+    c.count = 0;
+    c.err = DAEMOON_OK;
+    c.paths = calloc(c.capacity, DAEMOON_PATH_MAX);
+    if (c.paths == NULL) {
+        return DAEMOON_ERR_OUT_OF_MEMORY;
     }
-    return u.err;
+
+    r = walk(s, "", collect_cb, &c, &stopped, 0);
+    if (r == DAEMOON_OK) {
+        r = c.err;
+    }
+
+    for (i = 0; r == DAEMOON_OK && i < c.count; ++i) {
+        u16 utf16[TDS_UTF16_MAX];
+        FS_Path path;
+        Result res;
+
+        r = to_fs_path(c.paths[i], utf16, TDS_UTF16_MAX, &path);
+        if (r != DAEMOON_OK) {
+            break;
+        }
+        res = FSUSER_DeleteFile(s->archive, path);
+        if (R_FAILED(res) && R_DESCRIPTION(res) != RD_NOT_FOUND) {
+            r = from_result(res);
+        }
+    }
+
+    free(c.paths);
+    return r;
 }
 
 /* -------------------------------------------------------------------- titles */

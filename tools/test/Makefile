@@ -15,17 +15,26 @@ WARN := -Wall -Wextra -Wpedantic -Wshadow -Wstrict-prototypes -Wmissing-prototyp
 
 SAN ?= -fsanitize=address,undefined -fno-omit-frame-pointer
 
-INCLUDES := -I$(ROOT)/core/include -I$(ROOT)/vendor -I$(ROOT)/platform/posix -I$(ROOT)/tools/test
+# The libctru stub comes first: platform/3ds/source includes <3ds.h>, and on a
+# desktop the only one that exists is the one under ctru_stub.
+INCLUDES := -I$(ROOT)/tools/test/ctru_stub \
+            -I$(ROOT)/core/include -I$(ROOT)/vendor -I$(ROOT)/platform/posix \
+            -I$(ROOT)/tools/test -I$(ROOT)/platform/3ds/source
 
 CFLAGS := $(CSTD) $(WARN) $(SAN) -g -O1 $(INCLUDES)
 LDFLAGS := $(SAN)
 
 CORE_SRC := $(wildcard $(ROOT)/core/src/*.c) $(wildcard $(ROOT)/core/src/util/*.c)
 POSIX_SRC := $(wildcard $(ROOT)/platform/posix/*.c)
-TEST_SRC := $(wildcard $(ROOT)/tools/test/*.c)
+TEST_SRC := $(wildcard $(ROOT)/tools/test/*.c) $(ROOT)/tools/test/ctru_stub/ctru_stub.c
+
+# The 3DS backend, run here against the stub. Only the files that are free of
+# libctru's UI and service init: the rest of platform/3ds needs a console.
+TDS_SRC := $(ROOT)/platform/3ds/source/save_backend.c \
+           $(ROOT)/platform/3ds/source/title_id.c
 VENDOR_SRC := $(ROOT)/vendor/miniz/miniz.c
 
-SRC := $(CORE_SRC) $(POSIX_SRC) $(TEST_SRC) $(VENDOR_SRC)
+SRC := $(CORE_SRC) $(POSIX_SRC) $(TEST_SRC) $(TDS_SRC) $(VENDOR_SRC)
 OBJ := $(patsubst $(ROOT)/%.c,$(BUILD)/%.o,$(SRC))
 
 BIN := $(BUILD)/coretest

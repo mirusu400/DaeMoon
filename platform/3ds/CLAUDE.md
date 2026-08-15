@@ -35,6 +35,17 @@ treat it as corrupt and delete it. `FSUSER_SetSaveDataSecureValue` and friends.
 Verify the behaviour on hardware during Phase 1 and record the outcome: Phase 7
 sharing depends on the answer.
 
+## What is checked where
+
+`make core-test` runs this backend on a desktop against a libctru shaped stub in
+`tools/test/ctru_stub/`, under the address and undefined behaviour sanitizers. That
+covers the parts that are ours - path building, the tree walk, the truncation
+checks, whether `remove_all` clears everything, whether a read only handle refuses
+writes - and it is where two real bugs were found before any console saw them.
+
+It says nothing about whether the FS service behaves the way the stub does. Only
+hardware answers that, and the same conformance suite runs there.
+
 ## Proving the backend
 
 `tools/test/backend_conformance.c` is the contract, written against the interface

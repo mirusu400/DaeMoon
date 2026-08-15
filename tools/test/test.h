@@ -97,6 +97,7 @@ void test_hostile(void);
 void test_net(void);
 void test_fuzz(void);
 void test_backend(void);
+void test_3ds_backend(void);
 
 /* Repository root, so a test can read shared/fixtures/. Set from argv or the
  * DAEMOON_ROOT environment variable. */

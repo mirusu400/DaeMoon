@@ -94,7 +94,7 @@ ifeq ($(strip $(NO_SMDH)),)
     export _3DSXFLAGS += --smdh=$(CURDIR)/$(TARGET).smdh
 endif
 
-.PHONY: all cia clean
+.PHONY: all cia clean FORCE
 
 all: $(BUILD)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
@@ -130,7 +130,17 @@ cia: $(OUTPUT).cia
 # makerom and bannertool are third party and are not in the devkitPro repositories.
 # docker/3ds.Dockerfile installs them at pinned versions with checksums; a local
 # toolchain needs them on PATH.
-$(OUTPUT).cia: $(OUTPUT).elf $(OUTPUT).smdh $(RSF) \
+# The stamp carries the current SAVEDATA_SIZE. Without it, switching between a
+# shipped build and a test build left the previous CIA in place: make had no file
+# to notice had changed, and the console got a build that looked right and was
+# not. Same failure as the RSF not being a dependency, one variable further out.
+$(BUILD)/savedata.stamp: FORCE
+	@mkdir -p $(dir $@)
+	@echo "$(SAVEDATA_SIZE)" | cmp -s - $@ || echo "$(SAVEDATA_SIZE)" > $@
+
+FORCE:
+
+$(OUTPUT).cia: $(OUTPUT).elf $(OUTPUT).smdh $(RSF) $(BUILD)/savedata.stamp \
               $(TOPDIR)/assets/banner.png $(TOPDIR)/assets/audio.wav
 	@bannertool makebanner -i $(TOPDIR)/assets/banner.png -a $(TOPDIR)/assets/audio.wav \
 		-o $(OUTPUT).bnr >/dev/null

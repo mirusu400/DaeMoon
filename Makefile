@@ -122,8 +122,13 @@ docker-3ds:
 	@$(DOCKER_RUN) -w /work/platform/3ds daemoon-3ds:local make
 
 # The build that matters.
+#
+# SAVEDATA_SIZE is forwarded on purpose: without it a test build asked for on the
+# command line silently produced a shipped one, and the difference is whether the
+# unattended self test has an archive to run against.
+SAVEDATA_SIZE ?= 0K
 docker-cia:
-	@$(DOCKER_RUN) -w /work/platform/3ds daemoon-3ds:local make cia
+	@$(DOCKER_RUN) -w /work/platform/3ds daemoon-3ds:local make cia SAVEDATA_SIZE=$(SAVEDATA_SIZE)
 
 # Reads the CIA back rather than trusting that makerom did what app.rsf said. A
 # .3dsx cannot reach another title's save archive; the exheader is the difference,

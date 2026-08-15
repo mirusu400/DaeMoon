@@ -87,7 +87,19 @@ install)
 	ip, url = sys.argv[1], sys.argv[2]
 	payload = url.encode("ascii")
 
-	sock = socket.create_connection((ip, 5000), timeout=10)
+	try:
+	    sock = socket.create_connection((ip, 5000), timeout=10)
+	except ConnectionRefusedError:
+	    # FBI leaves the listener after each install, so this is what a second
+	    # install in a row looks like rather than anything being wrong.
+	    print("nothing is listening on %s:5000." % ip)
+	    print("On the console: FBI -> Remote Install -> Receive URLs over the network.")
+	    print("FBI leaves that screen after every install, so it needs re-entering.")
+	    raise SystemExit(1)
+	except OSError as err:
+	    print("cannot reach %s:5000: %s" % (ip, err))
+	    raise SystemExit(1)
+
 	try:
 	    # FBI expects the length as a big endian u32, then the URLs, newline
 	    # separated. It answers with a status byte once it has finished.

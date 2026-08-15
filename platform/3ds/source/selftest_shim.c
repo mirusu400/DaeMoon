@@ -7,6 +7,8 @@
  */
 #include "../../../tools/test/test.h"
 
+/* daemoon_test_last_failure and the recorder live in tools/test/test_failure.c,
+ * which this build compiles. */
 int daemoon_test_failures = 0;
 int daemoon_test_checks = 0;
 int daemoon_test_quiet = 0;

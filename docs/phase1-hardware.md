@@ -6,6 +6,30 @@ another title's save archive, and what the secure value does to a restored save.
 
 Read this before running anything. The app writes to save data.
 
+## What is already established, without a console
+
+Do these first. Each one removes a way for the hardware run to fail for a reason
+that has nothing to do with hardware.
+
+```bash
+make core-test      # the backend against a libctru stub, under the sanitizers
+make cia-verify     # the built CIA carries the rights app.rsf asks for
+make emu-selftest   # the conformance suite as a real ARM binary, in an emulator
+```
+
+The last one is worth being precise about. It runs the same suite this app carries
+to hardware, as an actual ARM binary, through actual libctru, against an actual
+save archive, with the CIA permissions applied - and it reports `failures=0`
+today. Emulators do not reproduce real save archive behaviour, so this is not the
+verification the roadmap asks for. It is the difference between arriving at a
+console with code that has been executed and code that has only been compiled.
+
+Between them these three have found five real bugs so far, every one of which
+would have looked like a hardware problem: a silently truncated path, a walk that
+deleted entries out from under itself, a missing `am:u`, a CIA that did not
+rebuild when its permissions changed, and a result code for "directory already
+exists" that is not the same in every implementation.
+
 ## Before you start
 
 1. **Custom firmware.** boot9strap plus Luma3DS. A stock console cannot install
@@ -62,6 +86,15 @@ finer grained mechanism for reaching another title's save data. Record whether i
 was needed.
 
 ### 2. The backend behaves the way core assumes
+
+There is an unattended form of this too: put an empty file at
+`sdmc:/DaeMoon/AUTOTEST` and launch the app. It runs the suite against **its own**
+save archive - never another title's - and writes the result to
+`sdmc:/DaeMoon/selftest.txt`, including the first failing check by name. That is
+worth doing if you would rather read a file than a screen. It needs a build made
+with `SAVEDATA_SIZE=128K`; the shipped app declares no save archive of its own.
+
+The menu form below is the one that tests a real game's archive.
 
 Menu: **Run the backend self test**. It asks twice, then backs up first, then runs
 the conformance suite from `tools/test/backend_conformance.c` against the title

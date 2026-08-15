@@ -81,7 +81,13 @@ typedef struct {
 typedef u64 FS_Archive;
 
 typedef enum {
-    ARCHIVE_USER_SAVEDATA = 0x00000001
+    /* The caller's own save, opened with an empty path. Only this one can be
+     * formatted, which is the service's rule and the reason the backend has a
+     * separate path for creating its own archive. */
+    ARCHIVE_SAVEDATA = 0x00000004,
+    /* Another title's save, opened with a binary path carrying the media type and
+     * title id. This is the one that needs the rights in app.rsf. */
+    ARCHIVE_USER_SAVEDATA = 0x567890B2
 } FS_ArchiveID;
 
 typedef enum {
@@ -135,7 +141,16 @@ typedef struct {
 
 /* ------------------------------------------------------------------ the api */
 
+FS_Path fsMakePath(FS_PathType type, const void *path);
+
 Result FSUSER_OpenArchive(FS_Archive *archive, FS_ArchiveID id, FS_Path path);
+Result FSUSER_FormatSaveData(FS_ArchiveID archiveId, FS_Path path, u32 blocks,
+                             u32 directories, u32 files, u32 directoryBuckets,
+                             u32 fileBuckets, bool duplicateData);
+Result APT_GetProgramID(u64 *pProgramID);
+
+/* The title the stub pretends to be, for APT_GetProgramID. */
+void daemoon_stub_set_own_title(u64 title_id);
 Result FSUSER_CloseArchive(FS_Archive archive);
 Result FSUSER_ControlArchive(FS_Archive archive, FS_ArchiveAction action, void *input,
                              u32 inputSize, void *output, u32 outputSize);

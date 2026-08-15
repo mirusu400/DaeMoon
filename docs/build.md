@@ -64,13 +64,29 @@ default, which is where most of their value is.
 | `make docker-cia` | `platform/3ds/daemoon.cia` | a 3DS with custom firmware |
 | `make docker-nx` | `platform/nx/daemoon.nro` | a Switch with Atmosphere |
 
-As of Phase 0 the two console builds compile and link the whole shared core, and
-their entry points do nothing beyond reporting that the backends are not written
-yet. Installing the CIA is safe and pointless in equal measure.
+The 3DS build is Phase 1: it carries the save, filesystem and UI backends, and the
+conformance suite. The Switch build is Phase 6 and its entry point still does
+nothing beyond saying so.
 
-That they build at all is worth something: it is the standing proof that `core/`
-is genuinely free of platform assumptions, checked by three compilers rather than
-by a grep.
+That both compile and link the whole shared core is worth something on its own: it
+is the standing proof that `core/` is free of platform assumptions, checked by
+three compilers rather than by a grep.
+
+## Checking the 3DS build without a console
+
+```bash
+make cia-verify     # reads the CIA back: are the rights actually in the exheader?
+make emu-selftest   # runs the conformance suite in an emulator, unattended
+```
+
+`cia-verify` separates "the permissions did not take" from "the permissions are
+not enough", which look identical from a console. It found a missing `am:u`.
+
+`emu-selftest` needs an emulator; point `AZAHAR` at one, or it skips. It is not in
+CI: the image is large and needs a display and a GL stack, and it is a convenience
+ahead of hardware rather than a gate.
+
+Neither replaces `docs/phase1-hardware.md`.
 
 ## Assets
 

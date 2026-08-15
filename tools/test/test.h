@@ -18,6 +18,14 @@ extern const char *daemoon_test_current;
  * the word FAIL. Failures are still counted; the caller checks the count. */
 extern int daemoon_test_quiet;
 
+/* The first failure of the current run, as "file:line in test: what". A console
+ * has no scrollback and an unattended run has no reader, so one line that can be
+ * written to a file is worth more than a screen of them that cannot. */
+extern char daemoon_test_last_failure[192];
+
+void daemoon_test_record_failure(const char *file, int line, const char *test,
+                                 const char *what);
+
 #define TEST_CASE(name) static void name(void)
 
 #define RUN(fn)                                  \
@@ -31,6 +39,8 @@ extern int daemoon_test_quiet;
         daemoon_test_checks++;                                                   \
         if (!(cond)) {                                                           \
             daemoon_test_failures++;                                             \
+            daemoon_test_record_failure(__FILE__, __LINE__,                      \
+                                        daemoon_test_current, #cond);            \
             if (!daemoon_test_quiet) {                                           \
                 printf("  FAIL %s:%d in %s: %s\n", __FILE__, __LINE__,           \
                        daemoon_test_current, #cond);                             \
@@ -45,6 +55,8 @@ extern int daemoon_test_quiet;
         daemoon_test_checks++;                                                   \
         if (got_ != want_) {                                                     \
             daemoon_test_failures++;                                             \
+            daemoon_test_record_failure(__FILE__, __LINE__,                      \
+                                        daemoon_test_current, #got);             \
             if (!daemoon_test_quiet) {                                           \
                 printf("  FAIL %s:%d in %s: %s == %lld, want %lld\n", __FILE__,  \
                        __LINE__, daemoon_test_current, #got, got_, want_);       \
@@ -61,6 +73,8 @@ extern int daemoon_test_quiet;
         daemoon_test_checks++;                                                   \
         if (got_ != want_) {                                                     \
             daemoon_test_failures++;                                             \
+            daemoon_test_record_failure(__FILE__, __LINE__,                      \
+                                        daemoon_test_current, #got);             \
             if (!daemoon_test_quiet) {                                           \
                 printf("  FAIL %s:%d in %s: %s == %s, want %s\n", __FILE__,      \
                        __LINE__, daemoon_test_current, #got,                     \
@@ -78,6 +92,8 @@ extern int daemoon_test_quiet;
         daemoon_test_checks++;                                                   \
         if (got_ == NULL || strcmp(got_, want_) != 0) {                          \
             daemoon_test_failures++;                                             \
+            daemoon_test_record_failure(__FILE__, __LINE__,                      \
+                                        daemoon_test_current, #got);             \
             if (!daemoon_test_quiet) {                                           \
                 printf("  FAIL %s:%d in %s: %s == \"%s\", want \"%s\"\n",       \
                        __FILE__, __LINE__, daemoon_test_current, #got,           \

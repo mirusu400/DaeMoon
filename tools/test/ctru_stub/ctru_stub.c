@@ -57,6 +57,7 @@ static struct {
     int  used;
 } g_titles[STUB_MAX_TITLES];
 
+static u64 g_own_title;
 static u64 g_secure_values[STUB_MAX_TITLES];
 static int g_secure_present[STUB_MAX_TITLES];
 
@@ -86,6 +87,7 @@ void daemoon_stub_reset(void)
     memset(g_secure_present, 0, sizeof(g_secure_present));
     g_commits = 0;
     g_fail_next_commit = 0;
+    g_own_title = 0;
 }
 
 void daemoon_stub_add_title(u64 title_id, const char *product_code)
@@ -190,6 +192,56 @@ static int path_to_host(FS_Archive archive, FS_Path path, char *out, size_t cap)
     archive_dir(archive, dir, sizeof(dir));
     (void)snprintf(out, cap, "%.*s%.*s", (int)(STUB_ROOT_MAX + 24), dir,
                    (int)STUB_NAME_MAX, rel);
+    return 0;
+}
+
+void daemoon_stub_set_own_title(u64 title_id) { g_own_title = title_id; }
+
+Result APT_GetProgramID(u64 *pProgramID)
+{
+    if (g_own_title == 0) {
+        return stub_error(RS_NOTFOUND, RD_NOT_FOUND);
+    }
+    *pProgramID = g_own_title;
+    return 0;
+}
+
+FS_Path fsMakePath(FS_PathType type, const void *path)
+{
+    FS_Path out;
+
+    out.type = type;
+    out.data = path;
+    out.size = (type == PATH_EMPTY) ? 1 : 0;
+    return out;
+}
+
+/* Only the caller's own save can be formatted, which is what the service
+ * enforces and what the backend depends on. */
+Result FSUSER_FormatSaveData(FS_ArchiveID archiveId, FS_Path path, u32 blocks,
+                             u32 directories, u32 files, u32 directoryBuckets,
+                             u32 fileBuckets, bool duplicateData)
+{
+    char dir[STUB_PATH_MAX];
+
+    (void)path;
+    (void)blocks;
+    (void)directories;
+    (void)files;
+    (void)directoryBuckets;
+    (void)fileBuckets;
+    (void)duplicateData;
+
+    if (archiveId != ARCHIVE_SAVEDATA) {
+        return stub_error(RS_INVALIDARG, RD_INVALID_ARGUMENT);
+    }
+    if (g_own_title == 0) {
+        return stub_error(RS_NOTFOUND, RD_NOT_FOUND);
+    }
+    archive_dir((FS_Archive)g_own_title, dir, sizeof(dir));
+    if (mkdir(dir, 0755) != 0 && errno != EEXIST) {
+        return stub_error(RS_NOTFOUND, RD_NOT_FOUND);
+    }
     return 0;
 }
 

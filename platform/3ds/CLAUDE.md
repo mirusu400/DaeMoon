@@ -43,8 +43,15 @@ covers the parts that are ours - path building, the tree walk, the truncation
 checks, whether `remove_all` clears everything, whether a read only handle refuses
 writes - and it is where two real bugs were found before any console saw them.
 
-It says nothing about whether the FS service behaves the way the stub does. Only
-hardware answers that, and the same conformance suite runs there.
+It says nothing about whether the FS service behaves the way the stub does.
+
+`make emu-selftest` closes some of that gap: it runs the same suite as a real ARM
+binary through real libctru against a real save archive, unattended, and reports
+`failures=0` today. That is not the verification the roadmap asks for - emulators
+do not reproduce real save archive behaviour - but it is where the "directory
+already exists" bug was found, and the stub could not have found it.
+
+Only hardware answers the rest, and the same conformance suite runs there.
 
 ## Proving the backend
 

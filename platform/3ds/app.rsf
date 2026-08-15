@@ -134,6 +134,10 @@ AccessControlInfo:
     - y2r:u
 
 SystemControlInfo:
-  SaveDataSize: 0K
+  # Substituted by the Makefile. The shipped app keeps its state on the SD card
+  # and needs no save archive of its own, so this is 0K. A test build asks for a
+  # small one, which gives the self test an archive it owns and can safely
+  # destroy - see docs/phase1-hardware.md.
+  SaveDataSize: $(SAVEDATA_SIZE)
   RemasterVersion: 0
   StackSize: 0x40000

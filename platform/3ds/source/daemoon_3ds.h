@@ -47,6 +47,10 @@ daemoon_result_t daemoon_3ds_read_secure_value(const daemoon_title_t *t,
 daemoon_result_t daemoon_3ds_write_secure_value(const daemoon_title_t *t,
                                                 const daemoon_3ds_secure_value_t *value);
 
+/* Creates this application's own save archive, and refuses any other title. A
+ * declared SaveDataSize does not create one; the title has to format it once. */
+daemoon_result_t daemoon_3ds_format_own_save(const daemoon_title_t *t, unsigned blocks);
+
 /* Lists the backups belonging to one title and lets the user choose. Returns
  * not_found when there are none, and user_cancelled when they back out. */
 daemoon_result_t daemoon_3ds_pick_backup(const char *dir, const daemoon_title_t *title,

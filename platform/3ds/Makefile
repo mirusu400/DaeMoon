@@ -20,6 +20,11 @@ APP_DESCRIPTION := Save data sync
 APP_AUTHOR  := DaeMoon
 RSF         := $(TOPDIR)/app.rsf
 
+# The shipped app keeps everything on the SD card and needs no save archive. A
+# test build asks for one so the self test has an archive it owns, which is the
+# only archive it may destroy without asking a person first.
+SAVEDATA_SIZE ?= 0K
+
 # Core is compiled straight into the app rather than linked as a library: one
 # compiler, one set of flags, and no stale archive to explain.
 SOURCES  := source source/ui \
@@ -42,6 +47,7 @@ LIBDIRS := $(PORTLIBS) $(CTRULIB)
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 
+export SAVEDATA_SIZE
 export OUTPUT  := $(CURDIR)/$(TARGET)
 export TOPDIR  := $(CURDIR)
 export VPATH   := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
@@ -52,7 +58,7 @@ export DEPSDIR := $(CURDIR)/$(BUILD)
 CFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 # The backend contract, checked on hardware rather than only on a desktop. One
 # file, not the directory: the rest of tools/test has a main() and wants fixtures.
-CFILES   += backend_conformance.c
+CFILES   += backend_conformance.c test_failure.c
 CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 
@@ -129,6 +135,7 @@ $(OUTPUT).cia: $(OUTPUT).elf $(OUTPUT).smdh $(RSF) \
 	@bannertool makebanner -i $(TOPDIR)/assets/banner.png -a $(TOPDIR)/assets/audio.wav \
 		-o $(OUTPUT).bnr >/dev/null
 	@makerom -f cia -o $@ -elf $(OUTPUT).elf -rsf $(RSF) \
+		-DSAVEDATA_SIZE=$(SAVEDATA_SIZE) \
 		-icon $(OUTPUT).smdh -banner $(OUTPUT).bnr -exefslogo -target t \
 		-major 1 -minor 0 -micro 0
 	@echo built ... $(notdir $@)

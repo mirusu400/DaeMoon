@@ -366,12 +366,20 @@ static daemoon_result_t make_parents(daemoon_save_t *s, const char *rel)
         }
         partial[i] = '\0';
         if (to_fs_path(partial, utf16, TDS_UTF16_MAX, &path) == DAEMOON_OK) {
+            /* Whatever this returns is ignored on purpose.
+             *
+             * The common case is that the directory is already there, and the
+             * result code for that is not the same everywhere: it differs between
+             * the service and an emulator, and keying on one description made a
+             * second write to an existing directory fail the whole operation.
+             * Comparing against a list of "acceptable" codes is the same bet with
+             * more steps.
+             *
+             * The open that follows is the honest test. If a directory really
+             * could not be made, the file cannot be created either, and that error
+             * is the one worth reporting. */
             res = FSUSER_CreateDirectory(s->archive, path, 0);
-            /* Already there is the common case and not an error. */
-            if (R_FAILED(res) && R_DESCRIPTION(res) != RD_ALREADY_EXISTS) {
-                partial[i] = '/';
-                return from_result(res);
-            }
+            (void)res;
         }
         partial[i] = '/';
     }
@@ -634,6 +642,47 @@ const daemoon_save_backend_t daemoon_3ds_save_backend = {
     close_save,
     NULL /* is_title_running: there is no reliable way to ask, so the UI warns */
 };
+
+/* --------------------------------------------------------- own archive only */
+
+/* Creates this application's own save archive.
+ *
+ * A declared SaveDataSize does not create anything: the archive appears the first
+ * time the title formats it. That is fine for the shipped app, which keeps
+ * everything on the SD card and declares 0K, and it is what the unattended self
+ * test needs, because the only archive it may destroy is one this title owns.
+ *
+ * It refuses any title id other than this one. Formatting somebody else's save is
+ * not a thing this project does, and an unattended run must not be one command
+ * away from it.
+ */
+daemoon_result_t daemoon_3ds_format_own_save(const daemoon_title_t *t, unsigned blocks)
+{
+    u64 title_id = 0;
+    u64 own_id = 0;
+    u32 path[3];
+    FS_Path binpath;
+
+    DAEMOON_TRY(daemoon_3ds_parse_title_id(t->id, &title_id));
+    if (R_FAILED(APT_GetProgramID(&own_id))) {
+        return DAEMOON_ERR_BACKEND_ERROR;
+    }
+    if (title_id != own_id) {
+        return DAEMOON_ERR_FORBIDDEN;
+    }
+
+    (void)path;
+    (void)binpath;
+
+    /* ARCHIVE_SAVEDATA with an empty path, not ARCHIVE_USER_SAVEDATA with a title
+     * id: the format call only ever applies to the caller's own save, which is
+     * also exactly the restriction this function wants. Asking to format anyone
+     * else's is refused by the service, and refused above by the id check as
+     * well, because relying on somebody else's error handling for that would be
+     * careless. */
+    return from_result(FSUSER_FormatSaveData(ARCHIVE_SAVEDATA, fsMakePath(PATH_EMPTY, ""),
+                                             blocks, 16, 16, 8, 8, false));
+}
 
 /* ------------------------------------------------------------ secure values */
 

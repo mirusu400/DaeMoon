@@ -9,7 +9,7 @@ ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 .PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check \
         core-isolation spec-check server 3ds nx run-server clean \
         docker-images docker-3ds docker-cia docker-nx docker-test docker-shell \
-        cia-verify
+        cia-verify emu-selftest
 
 all: help
 
@@ -22,6 +22,7 @@ help:
 	@echo "make run-server    build and run it on :8080 with a local database"
 	@echo "make docker-cia    3DS CIA in a container, no toolchain to install"
 	@echo "make cia-verify    read the built CIA back and check its permissions"
+	@echo "make emu-selftest  run the backend suite inside an emulator"
 	@echo "make docker-nx     Switch NRO in a container"
 	@echo "make docker-test   the desktop suites in a container"
 	@echo "make 3ds           devkitARM, needs a local toolchain"
@@ -127,6 +128,13 @@ docker-cia:
 # and a missing right there looks exactly like a code bug on hardware.
 cia-verify: docker-cia
 	@$(DOCKER_RUN) daemoon-ctrtool:local sh tools/verify-cia.sh platform/3ds/daemoon.cia
+
+# Runs the conformance suite as a real ARM binary through real libctru. Not a
+# substitute for hardware - emulators do not reproduce save archive behaviour -
+# but it is the difference between code that has been executed on the target
+# instruction set and code that has only been compiled for it.
+emu-selftest:
+	@sh $(ROOT)/tools/emu-selftest.sh
 
 docker-nx:
 	@$(DOCKER_RUN) -w /work/platform/nx daemoon-nx:local make

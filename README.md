@@ -8,9 +8,13 @@ game holds a save archive corrupts it.
 
 **Status: Phase 1, pending hardware.** The shared core, the desktop backend, the
 server and the internationalization pipeline are done and tested. The 3DS backend
-is written and the CIA builds; what remains is the part only a console can answer -
-whether the CIA's permissions reach another title's save archive, and what the
-secure value does to a restored save. The procedure is `docs/phase1-hardware.md`.
+is written, the CIA builds and carries the right permissions, and the backend
+conformance suite passes both on a desktop against a libctru stub and as a real
+ARM binary inside an emulator.
+
+What remains is the part only a console can answer: whether those permissions
+actually reach another title's save archive, and what the secure value does to a
+restored save. The procedure is `docs/phase1-hardware.md`.
 
 ## What works today
 

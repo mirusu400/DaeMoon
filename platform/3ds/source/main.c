@@ -326,6 +326,109 @@ static void action_self_test(void)
     pause_for_a();
 }
 
+/* ---------------------------------------------------------------- autotest */
+
+/* Runs the conformance suite unattended and writes the result to the SD card.
+ *
+ * It exists so the backend can be exercised somewhere other than a person's
+ * hands: an emulator, or a console left to run while someone else reads the
+ * result afterwards. Reading a pass or a fail off a file beats reading it off a
+ * photograph of a screen.
+ *
+ * It targets **this application's own save archive** and nothing else. The suite
+ * clears whatever it is pointed at, and an unattended run that could pick a title
+ * someone plays would be indefensible. A build with SAVEDATA_SIZE=0K has no such
+ * archive, so the run reports that and does nothing, which is the right answer
+ * for the shipped app.
+ */
+static void run_autotest(void)
+{
+    daemoon_backend_under_test_t ut;
+    daemoon_title_t self;
+    daemoon_stream_t *out = NULL;
+    char line[256];
+    daemoon_strbuf_t sb;
+    u64 program_id = 0;
+    int failures;
+
+    consoleClear();
+    printf("autotest: running unattended\n");
+
+    memset(&self, 0, sizeof(self));
+    if (R_FAILED(APT_GetProgramID(&program_id))) {
+        printf("autotest: cannot read this title's own id\n");
+        return;
+    }
+    daemoon_3ds_format_title_id(program_id, self.id, sizeof(self.id));
+    (void)daemoon_strlcpy(self.name, sizeof(self.name), "DaeMoon itself");
+    self.platform = DAEMOON_PLATFORM_3DS;
+    self.save_type = DAEMOON_SAVE_SAVEDATA;
+    self.size_hint = (unsigned long long)MEDIATYPE_SD;
+    self.has_save = 1;
+
+    printf("autotest: target %s\n", self.id);
+
+    /* The archive does not exist until this title formats it once. A build with
+     * SAVEDATA_SIZE=0K has none to format, and says so rather than pretending. */
+    {
+        daemoon_save_t *probe = NULL;
+        daemoon_result_t r = daemoon_3ds_save_backend.open_save(&g_save_ctx, &self, &probe);
+
+        if (r == DAEMOON_OK) {
+            (void)daemoon_3ds_save_backend.close_save(&g_save_ctx, probe);
+        } else {
+            printf("autotest: no archive yet, formatting this title's own\n");
+            r = daemoon_3ds_format_own_save(&self, 128);
+            report("autotest: format", r);
+            if (r != DAEMOON_OK) {
+                printf("autotest: build with SAVEDATA_SIZE=128K to run this\n");
+                (void)wait_keys(KEY_A | KEY_START);
+                return;
+            }
+        }
+    }
+
+    memset(&ut, 0, sizeof(ut));
+    ut.name = "3ds";
+    ut.backend = &daemoon_3ds_save_backend;
+    ut.ctx = &g_save_ctx;
+    ut.title = &self;
+    ut.other = NULL;
+    ut.scratch = g_scratch;
+    ut.scratch_len = sizeof(g_scratch);
+
+    failures = daemoon_test_failures;
+    daemoon_backend_conformance(&ut);
+    failures = daemoon_test_failures - failures;
+
+    daemoon_strbuf_init(&sb, line, sizeof(line));
+    daemoon_strbuf_add(&sb, "target=");
+    daemoon_strbuf_add(&sb, self.id);
+    daemoon_strbuf_add(&sb, " checks=");
+    daemoon_strbuf_add_uint(&sb, (unsigned long long)daemoon_test_checks);
+    daemoon_strbuf_add(&sb, " failures=");
+    daemoon_strbuf_add_uint(&sb, (unsigned long long)failures);
+    if (failures > 0 && daemoon_test_last_failure[0] != '\0') {
+        daemoon_strbuf_add(&sb, "\nfirst: ");
+        daemoon_strbuf_add(&sb, daemoon_test_last_failure);
+    }
+    daemoon_strbuf_addc(&sb, '\n');
+
+    printf("%s", line);
+
+    if (g_env.fs->open(g_env.fs_ctx, DAEMOON_3DS_WORK_DIR "/selftest.txt",
+                       DAEMOON_OPEN_WRITE, &out) == DAEMOON_OK) {
+        (void)daemoon_stream_write(out, line, sb.len);
+        (void)daemoon_stream_close(out);
+        printf("autotest: wrote %s\n", DAEMOON_3DS_WORK_DIR "/selftest.txt");
+    } else {
+        printf("autotest: could not write the result file\n");
+    }
+
+    /* Leave the screen up long enough to be photographed if anyone is watching. */
+    (void)wait_keys(KEY_A | KEY_START);
+}
+
 /* ---------------------------------------------------------------------- main */
 
 static void draw_menu(size_t selected)
@@ -384,6 +487,13 @@ int main(void)
     g_env.scratch_len = sizeof(g_scratch);
 
     report("titles", reload_titles());
+
+    /* A flag file rather than a menu entry, so an emulator or an unattended
+     * console can run the suite and leave the answer behind. */
+    if (g_env.fs->exists(g_env.fs_ctx, DAEMOON_3DS_WORK_DIR "/AUTOTEST")) {
+        run_autotest();
+        goto done;
+    }
 
     while (aptMainLoop()) {
         u32 down;

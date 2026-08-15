@@ -1,0 +1,10 @@
+# The build context is only ever used for the Dockerfiles themselves, which copy
+# nothing: the tree is bind mounted at run time instead, so a rebuild of the image
+# is not needed after every edit.
+build/
+.git/
+**/*.o
+**/*.elf
+**/*.3dsx
+**/*.cia
+**/*.nro

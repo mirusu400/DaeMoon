@@ -19,8 +19,9 @@ written yet. See the roadmap in `CLAUDE.md`.
 - `server/` — Go, SQLite, one static binary and one database file.
 - `tools/cli/` — `daemoonctl`, a desktop client that links the same core a console
   build links.
-- 1500 core checks and the Go suite, both green, with the address and undefined
-  behaviour sanitizers on for the C side.
+- 54,000 core checks and the Go suite, both green, with the address and undefined
+  behaviour sanitizers on for the C side, plus fuzzing on both sides' parsers.
+- Reproducible builds for all three targets in containers, including the 3DS CIA.
 
 ## Try it
 
@@ -48,14 +49,28 @@ switches the language.
 
 ## Build
 
+Containers, so there is no toolchain to install. See `docs/build.md`.
+
+```bash
+make docker-images   # once
+make docker-test     # core, server and end to end suites
+make docker-cia      # platform/3ds/daemoon.cia
+make docker-nx       # platform/nx/daemoon.nro
+```
+
+Or directly, on a machine that already has the tools:
+
 ```bash
 make test         # core tests plus go tests, no console required
 make core-test    # core only, the main development loop
 make check        # everything CI runs except the console builds
 make server
-make 3ds          # devkitARM, Phase 1
-make nx           # devkitA64, Phase 6
 ```
+
+Both console targets already compile and link the whole shared core. Their entry
+points do nothing yet, which is the point: it means `core/` is free of platform
+assumptions in a way three compilers agree on, rather than in a way a grep
+believes.
 
 ## Layout
 

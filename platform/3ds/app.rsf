@@ -1,6 +1,14 @@
-# CIA metadata. The filesystem access rights below are the entire reason this
-# project ships a CIA rather than a 3dsx: a 3dsx cannot reach another title's save
-# archive, and no amount of code works around that.
+# CIA metadata for makerom.
+#
+# The filesystem access rights below are the entire reason this project ships a
+# CIA rather than a 3dsx: a 3dsx cannot reach another title's save archive, and no
+# amount of code works around that.
+#
+# The exact set needed is a Phase 1 question that only hardware can answer. What is
+# here is the set save managers conventionally use, and it is deliberately no wider
+# than that: every extra right is one more thing an app that writes to save data
+# can get wrong. Narrow it if hardware shows something is unnecessary, and record
+# what was actually required.
 
 BasicInfo:
   Title                   : DaeMoon
@@ -21,15 +29,13 @@ Option:
 AccessControlInfo:
   CoreVersion             : 2
 
-  # Save data archives of other titles. Without these the app can see its own save
-  # and nothing else.
+  # Reaching other titles' save archives. CategorySystemApplication is what lets
+  # FSUSER_OpenArchive open a save that does not belong to this title;
+  # DirectSdmc and DirectSdmcWrite are for the backups, staging and state files.
   FileSystemAccess:
-    - DirectSdmc
-    - SdmcW
-    - Cardboard
-    - ExtSaveData
-    - SystemSaveData
     - CategorySystemApplication
+    - DirectSdmc
+    - DirectSdmcWrite
 
   IdealProcessor          : 0
   AffinityMask            : 1
@@ -48,10 +54,70 @@ AccessControlInfo:
   PermitMainFunctionArgument: true
   CanShareDeviceMemory    : true
   RunnableOnSleep         : false
-  SpecialMemoryArroc      : false
-  AccessCoreExceptionHandlers: false
+  SpecialMemoryArrange    : false
+  HandleTableSize         : 512
   ResourceLimitCategory   : Application
 
+  # The conventional homebrew syscall set. It is not tuned: trimming it would take
+  # measuring what libctru actually issues, and a missing syscall is a crash on
+  # hardware rather than a build failure here.
+  SystemCallAccess:
+    ArbitrateAddress: 34
+    Break: 60
+    CancelTimer: 28
+    ClearEvent: 25
+    ClearTimer: 29
+    CloseHandle: 35
+    ConnectToPort: 45
+    ControlMemory: 1
+    CreateAddressArbiter: 33
+    CreateEvent: 23
+    CreateMemoryBlock: 30
+    CreateMutex: 19
+    CreateSemaphore: 21
+    CreateThread: 8
+    CreateTimer: 26
+    DuplicateHandle: 39
+    ExitProcess: 3
+    ExitThread: 9
+    GetCurrentProcessorNumber: 17
+    GetHandleInfo: 41
+    GetProcessId: 53
+    GetProcessIdOfThread: 54
+    GetProcessIdealProcessor: 6
+    GetProcessInfo: 43
+    GetResourceLimit: 56
+    GetResourceLimitCurrentValues: 58
+    GetResourceLimitLimitValues: 57
+    GetSystemInfo: 42
+    GetSystemTick: 40
+    GetThreadContext: 59
+    GetThreadId: 55
+    GetThreadIdealProcessor: 15
+    GetThreadInfo: 44
+    GetThreadPriority: 11
+    MapMemoryBlock: 31
+    OutputDebugString: 61
+    QueryMemory: 2
+    ReleaseMutex: 20
+    ReleaseSemaphore: 22
+    SendSyncRequest1: 46
+    SendSyncRequest2: 47
+    SendSyncRequest3: 48
+    SendSyncRequest4: 49
+    SendSyncRequest: 50
+    SetThreadPriority: 12
+    SignalEvent: 24
+    SleepThread: 10
+    UnmapMemoryBlock: 32
+    WaitSynchronization1: 36
+    WaitSynchronizationN: 37
+
+  InterruptNumbers:
+  MemoryMapping:
+
+  # cam:u is here for Phase 4 QR pairing, and nothing uses it before then.
+  # soc:U and ssl:C are for Phase 2 onwards, when the client talks to a server.
   ServiceAccessControl:
     - cfg:u
     - fs:USER

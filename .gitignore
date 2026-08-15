@@ -9,3 +9,8 @@ build/
 *.db-wal
 *.db-shm
 daemoon-work/
+*.smdh
+*.nacp
+*.bnr
+*.icn
+*.map

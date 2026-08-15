@@ -8,6 +8,8 @@ on the 3DS side by then, so this is a backend implementation rather than a redes
 
 ## Non negotiable
 
+Build it with `make docker-nx` from the repository root.
+
 **Commit or lose it.** `fsdevCommitDevice()` after every write, result checked.
 Exactly the same failure mode as the 3DS: without it nothing is persisted.
 

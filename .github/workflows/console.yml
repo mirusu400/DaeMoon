@@ -25,19 +25,34 @@ jobs:
   3ds:
     name: 3ds (devkitARM)
     runs-on: ubuntu-latest
-    container: devkitpro/devkitarm:latest
     steps:
       - uses: actions/checkout@v4
+      # Built through docker/3ds.Dockerfile rather than the bare devkitPro image,
+      # because a CIA needs makerom and bannertool and neither is in the devkitPro
+      # repositories. The image pins both by checksum.
+      - name: toolchain image
+        run: docker build -f docker/3ds.Dockerfile -t daemoon-3ds:local .
       # A CIA is the build that matters: a 3dsx cannot reach another title's save
       # archive. See platform/3ds/CLAUDE.md.
-      - name: build
-        run: make 3ds
+      - name: build the cia
+        run: make docker-cia
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daemoon-3ds-cia
+          path: platform/3ds/daemoon.cia
+          if-no-files-found: error
 
   nx:
     name: switch (devkitA64)
     runs-on: ubuntu-latest
-    container: devkitpro/devkita64:latest
     steps:
       - uses: actions/checkout@v4
-      - name: build
-        run: make nx
+      - name: toolchain image
+        run: docker build -f docker/nx.Dockerfile -t daemoon-nx:local .
+      - name: build the nro
+        run: make docker-nx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daemoon-switch-nro
+          path: platform/nx/daemoon.nro
+          if-no-files-found: error

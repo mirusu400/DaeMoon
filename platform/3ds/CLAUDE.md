@@ -7,6 +7,10 @@ the backend implementations land with Phase 1, on hardware.
 
 ## Non negotiable
 
+Build it with `make docker-cia` from the repository root. The image pins makerom
+and bannertool by checksum, because neither is in the devkitPro repositories and
+one of the two lost its upstream.
+
 **Build and test as a CIA from day one.** A `.3dsx` cannot reach another title's
 save archive. The permissions come from the exheader in `app.rsf`, and discovering
 that at the end of Phase 1 means redoing Phase 1.

@@ -7,7 +7,8 @@
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 .PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check \
-        core-isolation spec-check server 3ds nx run-server clean
+        core-isolation spec-check server 3ds nx run-server clean \
+        docker-images docker-3ds docker-cia docker-nx docker-test docker-shell
 
 all: help
 
@@ -18,8 +19,11 @@ help:
 	@echo "make check         everything CI runs except the console builds"
 	@echo "make server        build the server binary into build/"
 	@echo "make run-server    build and run it on :8080 with a local database"
-	@echo "make 3ds           devkitARM CIA build"
-	@echo "make nx            devkitA64 NRO build"
+	@echo "make docker-cia    3DS CIA in a container, no toolchain to install"
+	@echo "make docker-nx     Switch NRO in a container"
+	@echo "make docker-test   the desktop suites in a container"
+	@echo "make 3ds           devkitARM, needs a local toolchain"
+	@echo "make nx            devkitA64, needs a local toolchain"
 	@echo "make gen           regenerate what shared/ feeds into core/ and server/"
 
 # ------------------------------------------------------------------ generated
@@ -87,6 +91,45 @@ run-server: server
 
 nx:
 	@$(MAKE) -C $(ROOT)/platform/nx
+
+# ------------------------------------------------------------------- docker
+#
+# devkitPro is a large install with a package manager of its own, and the version
+# it happens to be on decides whether a build works. Pinning it to an image means
+# a contributor with docker can build a CIA without any of that, and means CI and
+# a laptop are running the same toolchain.
+#
+# Every run maps the invoking user, or the tree fills up with root owned build
+# artifacts that then need root to delete.
+DOCKER_RUN := docker run --rm -u $(shell id -u):$(shell id -g) -e HOME=/tmp \
+              -v $(ROOT):/work -w /work
+
+docker-images:
+	@docker build -q -f $(ROOT)/docker/dev.Dockerfile  -t daemoon-dev:local  $(ROOT) >/dev/null
+	@docker build -q -f $(ROOT)/docker/3ds.Dockerfile  -t daemoon-3ds:local  $(ROOT) >/dev/null
+	@docker build -q -f $(ROOT)/docker/nx.Dockerfile   -t daemoon-nx:local   $(ROOT) >/dev/null
+	@echo "daemoon-dev:local daemoon-3ds:local daemoon-nx:local"
+
+# A .3dsx is for iterating on the UI. It cannot reach another title's save
+# archive, so it is never what a save path is tested with.
+docker-3ds:
+	@$(DOCKER_RUN) -w /work/platform/3ds daemoon-3ds:local make
+
+# The build that matters.
+docker-cia:
+	@$(DOCKER_RUN) -w /work/platform/3ds daemoon-3ds:local make cia
+
+docker-nx:
+	@$(DOCKER_RUN) -w /work/platform/nx daemoon-nx:local make
+
+docker-test:
+	@$(DOCKER_RUN) daemoon-dev:local make check
+
+# For poking at a toolchain by hand: make docker-shell IMAGE=daemoon-3ds:local
+IMAGE ?= daemoon-dev:local
+docker-shell:
+	@docker run --rm -it -u $(shell id -u):$(shell id -g) -e HOME=/tmp \
+		-v $(ROOT):/work -w /work $(IMAGE) bash
 
 clean:
 	@$(MAKE) -C $(ROOT)/tools/test clean

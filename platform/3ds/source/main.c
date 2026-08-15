@@ -395,6 +395,24 @@ static void action_survey(void)
                                                          real, sizeof(real));
             daemoon_strbuf_add(&sb, "\tname=");
             daemoon_strbuf_add(&sb, nr == DAEMOON_OK ? "smdh" : daemoon_result_code(nr));
+            if (nr != DAEMOON_OK) {
+                /* The raw Result: module, summary and description, which is what
+                 * a lookup table takes. "not supported" on its own does not say
+                 * which of several things said no. */
+                static const char hexd[] = "0123456789ABCDEF";
+                unsigned long raw = daemoon_3ds_last_name_result();
+                char hex[11];
+                int k;
+
+                hex[0] = '0';
+                hex[1] = 'x';
+                for (k = 0; k < 8; ++k) {
+                    hex[2 + k] = hexd[(raw >> ((7 - k) * 4)) & 0xf];
+                }
+                hex[10] = '\0';
+                daemoon_strbuf_addc(&sb, '/');
+                daemoon_strbuf_add(&sb, hex);
+            }
             /* The name as the console knows it, in whatever script that is. This
              * file is read on a machine with fonts. */
             daemoon_strbuf_add(&sb, "\t");

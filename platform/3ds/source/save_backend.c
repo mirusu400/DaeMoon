@@ -611,6 +611,13 @@ static int is_ascii_printable(const char *s)
     return 1;
 }
 
+static Result g_last_name_result;
+
+unsigned long daemoon_3ds_last_name_result(void)
+{
+    return (unsigned long)g_last_name_result;
+}
+
 daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
                                         int lang, unsigned flags, char *out, size_t cap)
 {
@@ -641,6 +648,7 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
 
     res = FSUSER_OpenFileDirectly(&handle, ARCHIVE_SAVEDATA_AND_CONTENT, archive, file,
                                   FS_OPEN_READ, 0);
+    g_last_name_result = res;
     if (R_FAILED(res)) {
         return from_result(res);
     }

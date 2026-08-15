@@ -68,6 +68,13 @@ daemoon_result_t daemoon_3ds_write_secure_value(const daemoon_title_t *t,
 daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
                                         int lang, unsigned flags, char *out, size_t cap);
 
+/* The last raw Result from a title name lookup.
+ *
+ * The wire codes this project uses are deliberately coarse, which is right for a
+ * user and useless for working out why a service said no. A 32 bit Result names
+ * the module, the summary and the description, and can be looked up. */
+unsigned long daemoon_3ds_last_name_result(void);
+
 /* Creates this application's own save archive, and refuses any other title. A
  * declared SaveDataSize does not create one; the title has to format it once. */
 daemoon_result_t daemoon_3ds_format_own_save(const daemoon_title_t *t, unsigned blocks);

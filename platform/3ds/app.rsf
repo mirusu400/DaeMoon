@@ -33,17 +33,42 @@ AccessControlInfo:
   # FSUSER_OpenArchive open a save that does not belong to this title;
   # DirectSdmc and DirectSdmcWrite are for the backups, staging and state files.
   #
-  # Core is for reading another title's SMDH, which is where the name a person
-  # recognises comes from. Hardware answered that question: with the three rights
-  # above, every save archive opened and every SMDH read came back "not
-  # supported", so the whole library showed up as product codes. It is the
-  # narrowest addition that was tried, and whether something narrower would do is
-  # worth one more experiment.
+  # The set above is wider than this project wants, and it is deliberate for now.
+  #
+  # Three rights - CategorySystemApplication, DirectSdmc, DirectSdmcWrite - are
+  # enough to open and rewrite every save archive on the console, which is the
+  # dangerous half. They are not enough to read another title's SMDH: hardware
+  # returned "not supported" for all sixteen titles, so the whole library showed
+  # up as product codes. Adding Core alone did not change it.
+  #
+  # This now matches Checkpoint, which is known to work. That is a starting point
+  # and not an answer: the survey records the raw Result for every failed lookup,
+  # so narrowing this back down is a measurable experiment rather than a guess,
+  # and it should be done. Every right here is one more thing an application that
+  # writes to save data can get wrong.
   FileSystemAccess:
     - CategorySystemApplication
+    - CategoryHardwareCheck
+    - CategoryFileSystemTool
+    - Debug
+    - TwlCardBackup
+    - TwlNandData
+    - Boss
     - DirectSdmc
-    - DirectSdmcWrite
     - Core
+    - CtrNandRo
+    - CtrNandRw
+    - CtrNandRoWrite
+    - CategorySystemSettings
+    - CardBoard
+    - ExportImportIvs
+    - DirectSdmcWrite
+    - SwitchCleanup
+    - SaveDataMove
+    - Shop
+    - Shell
+    - CategoryHomeMenu
+    - SeedDB
 
   IdealProcessor          : 0
   AffinityMask            : 1

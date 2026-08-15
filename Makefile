@@ -129,7 +129,10 @@ docker-3ds:
 SAVEDATA_SIZE ?= 0K
 
 # Worked out on the host: the container has no git identity and no reason to.
-BUILD_STAMP := $(shell date -u +%Y-%m-%d\ %H:%M)Z $(shell git -C $(ROOT) rev-parse --short HEAD 2>/dev/null || echo nogit)$(shell git -C $(ROOT) diff --quiet 2>/dev/null || echo +dirty)
+# A content hash of what actually goes into the build, not just the commit: two
+# builds from the same dirty tree were indistinguishable, which is the case the
+# stamp exists for.
+BUILD_STAMP := $(shell date -u +%Y-%m-%d\ %H:%M)Z $(shell git -C $(ROOT) rev-parse --short HEAD 2>/dev/null || echo nogit).$(shell cat $(ROOT)/platform/3ds/app.rsf $(ROOT)/platform/3ds/source/*.c $(ROOT)/platform/3ds/source/*.h $(ROOT)/core/src/*.c 2>/dev/null | sha256sum | cut -c1-6)
 
 docker-cia:
 	@$(DOCKER_RUN) -w /work/platform/3ds daemoon-3ds:local \

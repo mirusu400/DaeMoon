@@ -44,15 +44,22 @@ typedef u32      Handle;
 #define DAEMOON_STUB_RESULT(summary, description) \
     ((Result)(0x80000000u | ((u32)(summary) << 21) | ((u32)(description) & 0x3ff)))
 
+/* libctru's own numbering. The stub had its own, which meant the backend's
+ * mapping from a summary to a wire code was exercised against values the console
+ * never produces - a test that agreed with itself and with nothing else. */
 enum {
     RS_SUCCESS = 0,
-    RS_NOTFOUND = 5,
-    RS_INVALIDSTATE = 6,
-    RS_NOTSUPPORTED = 7,
-    RS_INVALIDARG = 8,
-    RS_WRONGARG = 9,
+    RS_NOP = 1,
+    RS_WOULDBLOCK = 2,
     RS_OUTOFRESOURCE = 3,
-    RS_STATUSCHANGED = 10
+    RS_NOTFOUND = 4,
+    RS_INVALIDSTATE = 5,
+    RS_NOTSUPPORTED = 6,
+    RS_INVALIDARG = 7,
+    RS_WRONGARG = 8,
+    RS_CANCELED = 9,
+    RS_STATUSCHANGED = 10,
+    RS_INTERNAL = 11
 };
 
 enum {

@@ -294,6 +294,14 @@ func Inspect(r io.ReaderAt, size int64) (*Manifest, error) {
 		return byPath[e.Path].Open()
 	})
 	if err != nil {
+		// Reading an entry can fail for reasons Digest has no opinion about: a
+		// corrupt deflate stream, a truncated local header, a size that disagrees
+		// with the central directory. All of them mean the same thing here, and
+		// leaving the error unclassified would make hostile input a 500 rather than
+		// a rejection.
+		if !errors.Is(err, ErrArchive) {
+			return nil, fmt.Errorf("%w: %v", ErrArchive, err)
+		}
 		return nil, err
 	}
 	if digest != m.SHA256 || total != m.Size {

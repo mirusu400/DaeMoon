@@ -56,6 +56,13 @@ jobs:
         run: cd server && go vet ./...
       - name: test
         run: cd server && go test -race ./...
+      # A short run on every push. The corpus in testdata carries the inputs that
+      # already found something, so those are checked by `go test` regardless.
+      - name: fuzz the package parsers
+        run: |
+          cd server
+          go test -run xxx -fuzz FuzzParseManifest -fuzztime 30s ./internal/pkgfmt/
+          go test -run xxx -fuzz FuzzInspect -fuzztime 30s ./internal/pkgfmt/
       - name: build
         run: make server
 

@@ -93,6 +93,7 @@ int main(int argc, char **argv)
     test_api();
     test_archive();
     test_sync();
+    test_hostile();
 
     printf("%d checks, %d failures\n", daemoon_test_checks, daemoon_test_failures);
     return daemoon_test_failures == 0 ? 0 : 1;

@@ -81,6 +81,7 @@ void test_manifest(void);
 void test_api(void);
 void test_archive(void);
 void test_sync(void);
+void test_hostile(void);
 
 /* Repository root, so a test can read shared/fixtures/. Set from argv or the
  * DAEMOON_ROOT environment variable. */

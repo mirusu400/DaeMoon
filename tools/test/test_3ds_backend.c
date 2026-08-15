@@ -24,6 +24,8 @@
 
 #include "../../platform/3ds/source/daemoon_3ds.h"
 
+#include <daemoon/archive.h>
+#include <daemoon/sync.h>
 #include <daemoon/util/strbuf.h>
 
 #include <stdio.h>
@@ -331,6 +333,191 @@ TEST_CASE(the_secure_value_round_trips)
     (void)daemoon_posix_rmtree(root);
 }
 
+/* ------------------------------------------------------- the Phase 1 feature */
+
+/* Backup and restore, driven through core, with the 3DS backends underneath.
+ *
+ * This is what Phase 1 is: no server, no network, a save copied to the SD card and
+ * put back. Running it here means the ordering rules - back up first, verify
+ * before writing, commit and check the result - are exercised against the console
+ * code paths rather than only against the desktop ones. */
+TEST_CASE(a_backup_and_restore_round_trip_through_the_3ds_backends)
+{
+    char root[256];
+    char work[320];
+    char backup[512];
+    daemoon_strbuf_t sb;
+    daemoon_title_t title;
+    daemoon_3ds_save_ctx_t save_ctx;
+    daemoon_posix_ui_ctx_t ui;
+    daemoon_archive_ctx_t actx;
+    daemoon_env_t env;
+    daemoon_save_t *save = NULL;
+    daemoon_stream_t *f = NULL;
+    static unsigned char scratch[64 * 1024];
+    char buf[64];
+    size_t got = 0;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-phase1"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_ID), 0);
+    title_for(&title, TEST_TITLE_ID);
+
+    daemoon_strbuf_init(&sb, work, sizeof(work));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/DaeMoon");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+
+    memset(&save_ctx, 0, sizeof(save_ctx));
+    save_ctx.media = MEDIATYPE_SD;
+    daemoon_posix_ui_init(&ui);
+    actx.count = 0;
+
+    memset(&env, 0, sizeof(env));
+    env.save = &daemoon_3ds_save_backend;
+    env.fs = &daemoon_3ds_fs_backend;   /* the SD card side, also console code */
+    env.ui = &daemoon_posix_ui_backend; /* a console UI needs a console */
+    env.save_ctx = &save_ctx;
+    env.ui_ctx = &ui;
+    env.device_label = "3DS";
+    env.work_dir = work;
+    env.scratch = scratch;
+    env.scratch_len = sizeof(scratch);
+    CHECK_OK(daemoon_env_validate(&env));
+
+    /* A save worth losing. */
+    CHECK_OK(env.save->open_save_write(env.save_ctx, &title, &save));
+    CHECK_OK(env.save->remove_all(env.save_ctx, save));
+    CHECK_OK(env.save->open_file(env.save_ctx, save, "main.sav", DAEMOON_OPEN_WRITE, &f));
+    CHECK_OK(daemoon_stream_write(f, "the original save", 17));
+    CHECK_OK(daemoon_stream_close(f));
+    CHECK_OK(env.save->open_file(env.save_ctx, save, "sub/extra.bin",
+                                 DAEMOON_OPEN_WRITE, &f));
+    CHECK_OK(daemoon_stream_write(f, "nested", 6));
+    CHECK_OK(daemoon_stream_close(f));
+    CHECK_OK(env.save->commit(env.save_ctx, save));
+    CHECK_OK(env.save->close_save(env.save_ctx, save));
+
+    CHECK_OK(daemoon_sync_backup_local(&env, &actx, &title, backup, sizeof(backup)));
+
+    /* Play on. */
+    CHECK_OK(env.save->open_save_write(env.save_ctx, &title, &save));
+    CHECK_OK(env.save->open_file(env.save_ctx, save, "main.sav", DAEMOON_OPEN_WRITE, &f));
+    CHECK_OK(daemoon_stream_write(f, "later progress", 14));
+    CHECK_OK(daemoon_stream_close(f));
+    /* And something the backup does not contain, which must not survive. */
+    CHECK_OK(env.save->open_file(env.save_ctx, save, "stray.bin", DAEMOON_OPEN_WRITE, &f));
+    CHECK_OK(daemoon_stream_write(f, "x", 1));
+    CHECK_OK(daemoon_stream_close(f));
+    CHECK_OK(env.save->commit(env.save_ctx, save));
+    CHECK_OK(env.save->close_save(env.save_ctx, save));
+
+    {
+        unsigned commits_before = daemoon_stub_commits();
+
+        CHECK_OK(daemoon_sync_restore_package(&env, &actx, &title, backup));
+        /* The restore committed. Without that the archive is unchanged at power
+         * off and the user finds out the next time they launch the game. */
+        CHECK(daemoon_stub_commits() > commits_before);
+    }
+    /* And it asked before overwriting. */
+    CHECK(ui.confirms > 0);
+
+    CHECK_OK(env.save->open_save(env.save_ctx, &title, &save));
+    CHECK_OK(env.save->open_file(env.save_ctx, save, "main.sav", DAEMOON_OPEN_READ, &f));
+    CHECK_OK(daemoon_stream_read(f, buf, sizeof(buf) - 1, &got));
+    CHECK_OK(daemoon_stream_close(f));
+    buf[got] = '\0';
+    CHECK_STR(buf, "the original save");
+
+    CHECK_OK(env.save->open_file(env.save_ctx, save, "sub/extra.bin",
+                                 DAEMOON_OPEN_READ, &f));
+    CHECK_OK(daemoon_stream_read(f, buf, sizeof(buf) - 1, &got));
+    CHECK_OK(daemoon_stream_close(f));
+    buf[got] = '\0';
+    CHECK_STR(buf, "nested");
+
+    /* The file the backup never had is gone. */
+    CHECK_RESULT(env.save->open_file(env.save_ctx, save, "stray.bin",
+                                     DAEMOON_OPEN_READ, &f),
+                 DAEMOON_ERR_NOT_FOUND);
+    CHECK_OK(env.save->close_save(env.save_ctx, save));
+
+    /* Nothing left open on either side. */
+    CHECK_EQ_INT(daemoon_stub_open_handles(), 0);
+
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
+/* The SD card side: backups, staging and the state file all go through this, and
+ * rule one of the project is that a restore does not happen without a backup. */
+TEST_CASE(the_sd_backend_handles_nested_paths_and_replacement)
+{
+    char root[256];
+    char nested[512];
+    char other[512];
+    daemoon_strbuf_t sb;
+    daemoon_stream_t *f = NULL;
+    char buf[64];
+    size_t got = 0;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-sd"), 0);
+
+    daemoon_strbuf_init(&sb, nested, sizeof(nested));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/DaeMoon/backups/deep/file.zip");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+
+    /* Opening for writing creates the directories the path needs. core never
+     * creates one, so if this does not, every backup fails on a fresh card. */
+    CHECK_OK(daemoon_3ds_fs_backend.open(NULL, nested, DAEMOON_OPEN_WRITE, &f));
+    CHECK_OK(daemoon_stream_write(f, "package", 7));
+    CHECK_OK(daemoon_stream_close(f));
+    CHECK(daemoon_3ds_fs_backend.exists(NULL, nested));
+
+    CHECK_OK(daemoon_3ds_fs_backend.open(NULL, nested, DAEMOON_OPEN_READ, &f));
+    CHECK_OK(daemoon_stream_read(f, buf, sizeof(buf) - 1, &got));
+    CHECK_OK(daemoon_stream_close(f));
+    buf[got] = '\0';
+    CHECK_STR(buf, "package");
+
+    /* Rename replaces. FAT will not overwrite, which is the "write to a temp path
+     * then swap" step, and a state file that failed to swap is a wrong base
+     * version on the next run. */
+    daemoon_strbuf_init(&sb, other, sizeof(other));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/DaeMoon/state/x.json");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+
+    CHECK_OK(daemoon_3ds_fs_backend.open(NULL, other, DAEMOON_OPEN_WRITE, &f));
+    CHECK_OK(daemoon_stream_write(f, "old", 3));
+    CHECK_OK(daemoon_stream_close(f));
+
+    CHECK_OK(daemoon_3ds_fs_backend.rename(NULL, nested, other));
+    CHECK(!daemoon_3ds_fs_backend.exists(NULL, nested));
+
+    CHECK_OK(daemoon_3ds_fs_backend.open(NULL, other, DAEMOON_OPEN_READ, &f));
+    CHECK_OK(daemoon_stream_read(f, buf, sizeof(buf) - 1, &got));
+    CHECK_OK(daemoon_stream_close(f));
+    buf[got] = '\0';
+    CHECK_STR(buf, "package");
+
+    /* Removing something that is not there is not a failure: the cleanup paths
+     * call this after a failure that may or may not have created the file. */
+    CHECK_OK(daemoon_3ds_fs_backend.remove(NULL, nested));
+    CHECK_OK(daemoon_3ds_fs_backend.remove(NULL, other));
+    CHECK(!daemoon_3ds_fs_backend.exists(NULL, other));
+
+    /* A missing file reads as not_found, which is how the state file being absent
+     * is told apart from the card being unreadable. */
+    CHECK_RESULT(daemoon_3ds_fs_backend.open(NULL, other, DAEMOON_OPEN_READ, &f),
+                 DAEMOON_ERR_NOT_FOUND);
+
+    (void)daemoon_posix_rmtree(root);
+}
+
 void test_3ds_backend(void)
 {
     printf("3ds backend (stubbed libctru)\n");
@@ -341,4 +528,6 @@ void test_3ds_backend(void)
     RUN(remove_all_clears_a_nested_tree);
     RUN(title_enumeration_reports_what_core_needs);
     RUN(the_secure_value_round_trips);
+    RUN(the_sd_backend_handles_nested_paths_and_replacement);
+    RUN(a_backup_and_restore_round_trip_through_the_3ds_backends);
 }

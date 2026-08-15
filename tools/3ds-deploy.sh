@@ -18,6 +18,7 @@
 #
 # Usage:
 #   tools/3ds-deploy.sh install  <ip>
+#   tools/3ds-deploy.sh push-cia <ip>
 #   tools/3ds-deploy.sh push     <ip> <local file> <remote path under sdmc>
 #   tools/3ds-deploy.sh pull     <ip> <remote path under sdmc> [local file]
 #   tools/3ds-deploy.sh selftest <ip>
@@ -127,6 +128,16 @@ install)
 		sed 's/^/  /' "$dir/http.log" 2>/dev/null || echo "  nothing"
 		exit 1
 	fi
+	;;
+
+push-cia)
+	# When ftpd is the thing that is running, the CIA goes onto the card and FBI
+	# installs it from there. Same result, one screen switch fewer.
+	cia="$root/platform/3ds/daemoon.cia"
+	[ -f "$cia" ] || { echo "no CIA yet: run make docker-cia"; exit 1; }
+	curl -sS --ftp-create-dirs -T "$cia" "$(ftp_url "cias/daemoon.cia")"
+	echo "put daemoon.cia in /cias on the card"
+	echo "on the console: FBI -> SD -> cias -> daemoon.cia -> install"
 	;;
 
 push)

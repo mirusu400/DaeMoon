@@ -95,6 +95,7 @@ int main(int argc, char **argv)
     test_sync();
     test_hostile();
     test_net();
+    test_fuzz();
 
     printf("%d checks, %d failures\n", daemoon_test_checks, daemoon_test_failures);
     return daemoon_test_failures == 0 ? 0 : 1;

@@ -42,6 +42,13 @@ jobs:
       # pointer produces a readable report instead of a console hang.
       - name: core tests
         run: make core-test CC=${{ matrix.cc }}
+      # A longer mutation run than the default. The corpus and the seed are fixed,
+      # so this is deterministic: raising the count reaches further into the same
+      # sequence rather than making the job flaky.
+      - name: mutation, longer
+        run: make core-test CC=${{ matrix.cc }}
+        env:
+          DAEMOON_FUZZ_ITERS: 50000
 
   server:
     name: server

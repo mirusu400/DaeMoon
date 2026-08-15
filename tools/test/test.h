@@ -83,6 +83,7 @@ void test_archive(void);
 void test_sync(void);
 void test_hostile(void);
 void test_net(void);
+void test_fuzz(void);
 
 /* Repository root, so a test can read shared/fixtures/. Set from argv or the
  * DAEMOON_ROOT environment variable. */

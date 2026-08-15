@@ -663,6 +663,70 @@ TEST_CASE(a_name_missing_in_the_console_language_falls_back)
     (void)daemoon_posix_rmtree(root);
 }
 
+/* The console draws the list with an 8x8 ASCII font. A name it cannot draw is a
+ * blank line, which tells the user nothing about the save they are about to
+ * overwrite - so the list prefers one it can draw, and the survey file keeps the
+ * real one for reading somewhere with fonts. */
+TEST_CASE(the_list_prefers_a_name_the_console_can_draw)
+{
+    char root[256];
+    char name[DAEMOON_NAME_MAX];
+    daemoon_3ds_save_ctx_t ctx;
+    daemoon_title_t *titles = NULL;
+    size_t count = 0;
+    size_t i;
+    int checked = 0;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-ascii"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_ID), 0);
+
+    /* Korean console, and the game has both a Korean and an English name. */
+    daemoon_stub_set_title_name(TEST_TITLE_ID, 7, "요괴워치");
+    daemoon_stub_set_title_name(TEST_TITLE_ID, 1, "Yo-kai Watch");
+
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.media = MEDIATYPE_SD;
+    ctx.only_with_saves = 1;
+    ctx.smdh_language = 7;
+    ctx.ascii_names = 1;
+
+    CHECK_OK(daemoon_3ds_save_backend.list_titles(&ctx, &titles, &count));
+    for (i = 0; i < count; ++i) {
+        if (strcmp(titles[i].id, "0004000000055D00") == 0) {
+            CHECK_STR(titles[i].name, "Yo-kai Watch");
+            checked = 1;
+        }
+    }
+    CHECK(checked);
+    daemoon_3ds_save_backend.free_titles(&ctx, titles, count);
+
+    /* Without the flag the console's own language still wins, which is what the
+     * survey records and what a Phase 3 font would let the list show. */
+    CHECK_OK(daemoon_3ds_title_name((int)MEDIATYPE_SD, TEST_TITLE_ID, 7, 0, name, sizeof(name)));
+    CHECK_STR(name, "요괴워치");
+
+    /* A title with only a name it cannot draw falls back to something it can. */
+    daemoon_stub_reset();
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_OTHER, "CTR-P-DUM2");
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_OTHER), 0);
+    daemoon_stub_set_title_name(TEST_TITLE_OTHER, 0, "ゲーム");
+
+    ctx.smdh_language = 7;
+    CHECK_OK(daemoon_3ds_save_backend.list_titles(&ctx, &titles, &count));
+    for (i = 0; i < count; ++i) {
+        if (strcmp(titles[i].id, "0004000000030800") == 0) {
+            CHECK_STR(titles[i].name, "CTR-P-DUM2");
+        }
+    }
+    daemoon_3ds_save_backend.free_titles(&ctx, titles, count);
+
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
 void test_3ds_backend(void)
 {
     printf("3ds backend (stubbed libctru)\n");
@@ -678,4 +742,5 @@ void test_3ds_backend(void)
     RUN(an_empty_archive_is_not_backed_up);
     RUN(titles_are_named_from_their_smdh);
     RUN(a_name_missing_in_the_console_language_falls_back);
+    RUN(the_list_prefers_a_name_the_console_can_draw);
 }

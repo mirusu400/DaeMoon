@@ -594,8 +594,25 @@ static daemoon_result_t read_smdh_slot(Handle handle, int lang, char *out, size_
     return DAEMOON_OK;
 }
 
+/* Whether the console's text renderer can draw this at all.
+ *
+ * consoleInit gives an 8x8 bitmap font with no CJK in it, so a Korean or Japanese
+ * name renders as blanks. The name is being read correctly and cannot be shown,
+ * which from the other side of the screen looks identical to not reading it. */
+static int is_ascii_printable(const char *s)
+{
+    const unsigned char *p = (const unsigned char *)s;
+
+    for (; *p != '\0'; ++p) {
+        if (*p < 0x20 || *p > 0x7e) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
-                                        int lang, char *out, size_t cap)
+                                        int lang, unsigned flags, char *out, size_t cap)
 {
     /* Binary paths, as the service wants them. */
     u32 archive_path[4];
@@ -636,17 +653,33 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
      * in Korea leaves that slot blank. The fallback is not a nicety - without it
      * most of a library shows up as a product code. */
     r = read_smdh_slot(handle, lang, out, cap);
+    if (r == DAEMOON_OK && (flags & DAEMOON_3DS_NAME_ASCII) && !is_ascii_printable(out)) {
+        r = DAEMOON_ERR_UNSUPPORTED;
+    }
+
     if (r != DAEMOON_OK && lang != SMDH_LANG_ENGLISH) {
         r = read_smdh_slot(handle, SMDH_LANG_ENGLISH, out, cap);
+        if (r == DAEMOON_OK && (flags & DAEMOON_3DS_NAME_ASCII) && !is_ascii_printable(out)) {
+            r = DAEMOON_ERR_UNSUPPORTED;
+        }
     }
     if (r != DAEMOON_OK && lang != SMDH_LANG_JAPANESE) {
         r = read_smdh_slot(handle, SMDH_LANG_JAPANESE, out, cap);
+        if (r == DAEMOON_OK && (flags & DAEMOON_3DS_NAME_ASCII) && !is_ascii_printable(out)) {
+            r = DAEMOON_ERR_UNSUPPORTED;
+        }
     }
     for (i = 0; r != DAEMOON_OK && i < SMDH_LANG_COUNT; ++i) {
         r = read_smdh_slot(handle, i, out, cap);
+        if (r == DAEMOON_OK && (flags & DAEMOON_3DS_NAME_ASCII) && !is_ascii_printable(out)) {
+            r = DAEMOON_ERR_UNSUPPORTED;
+        }
     }
 
     (void)FSFILE_Close(handle);
+    if (r != DAEMOON_OK) {
+        out[0] = '\0';
+    }
     return r;
 }
 
@@ -711,8 +744,13 @@ static daemoon_result_t list_titles(void *ctx, daemoon_title_t **out, size_t *co
 
         /* The name the HOME menu shows, then the product code, then the id. Each
          * fallback is less useful than the last and none of them is a failure. */
-        if (daemoon_3ds_title_name(c->media, ids[i], c->smdh_language, t->name,
-                                   sizeof(t->name)) != DAEMOON_OK) {
+        /* The list is drawn by the console's text renderer, so a name it cannot
+         * draw is worse than a product code: a blank line tells the user nothing
+         * about which game they are about to overwrite. The real name is still
+         * recorded in the survey file, which is read somewhere with fonts. */
+        if (daemoon_3ds_title_name(c->media, ids[i], c->smdh_language,
+                                   c->ascii_names ? DAEMOON_3DS_NAME_ASCII : 0,
+                                   t->name, sizeof(t->name)) != DAEMOON_OK) {
             memset(product, 0, sizeof(product));
             if (R_SUCCEEDED(AM_GetTitleProductCode(c->media, ids[i], product))) {
                 product[sizeof(product) - 1] = '\0';

@@ -367,15 +367,21 @@ static void action_survey(void)
          * with nowhere to go: this says whether the SMDH was unreadable, or
          * readable and empty, without another trip to the console. */
         {
-            char probe[DAEMOON_NAME_MAX];
+            char real[DAEMOON_NAME_MAX];
             daemoon_result_t nr = daemoon_3ds_title_name(g_save_ctx.media, tid_of(t),
-                                                         g_save_ctx.smdh_language,
-                                                         probe, sizeof(probe));
+                                                         g_save_ctx.smdh_language, 0,
+                                                         real, sizeof(real));
             daemoon_strbuf_add(&sb, "\tname=");
             daemoon_strbuf_add(&sb, nr == DAEMOON_OK ? "smdh" : daemoon_result_code(nr));
+            /* The name as the console knows it, in whatever script that is. This
+             * file is read on a machine with fonts. */
+            daemoon_strbuf_add(&sb, "\t");
+            daemoon_strbuf_add(&sb, nr == DAEMOON_OK ? real : t->name);
         }
 
-        daemoon_strbuf_add(&sb, "\t");
+        /* And what the console showed, which may be a different language or a
+         * product code, because the list has to be drawable. */
+        daemoon_strbuf_add(&sb, "\tshown=");
         daemoon_strbuf_add(&sb, t->name);
         daemoon_strbuf_addc(&sb, '\n');
 
@@ -602,6 +608,7 @@ int main(void)
     g_save_ctx.media = 1; /* MEDIATYPE_SD */
     g_save_ctx.only_with_saves = 1;
     g_save_ctx.smdh_language = 1; /* English, until the console says otherwise */
+    g_save_ctx.ascii_names = 1;   /* the text console cannot draw anything else */
     daemoon_3ds_ui_init(&g_ui_ctx);
     g_archive.count = 0;
 

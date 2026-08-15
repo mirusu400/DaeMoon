@@ -21,6 +21,9 @@ typedef struct {
     /* Which language to read a title's name in, as an SMDH index: 1 is English,
      * which is also the fallback the console itself uses. */
     int smdh_language;
+    /* Restrict listed names to what the console can draw. The survey writes the
+     * real ones to a file regardless. */
+    int ascii_names;
     /* Skip titles with no save archive when listing. The menu wants that; a
      * conformance run does not. */
     int only_with_saves;
@@ -56,8 +59,14 @@ daemoon_result_t daemoon_3ds_write_secure_value(const daemoon_title_t *t,
  * game sold in one region leaves the other slots blank, so this falls back to
  * English, then Japanese, then whatever the game does carry. Returns not_found
  * when it carries nothing at all. */
+/* Only accept a name the console's text renderer can actually draw. Its font is
+ * 8x8 ASCII with no CJK, so without this a Korean or Japanese title shows up as a
+ * blank line - read correctly, and indistinguishable from not read at all.
+ * Dropping this flag is part of the Phase 3 font decision. */
+#define DAEMOON_3DS_NAME_ASCII 1u
+
 daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
-                                        int lang, char *out, size_t cap);
+                                        int lang, unsigned flags, char *out, size_t cap);
 
 /* Creates this application's own save archive, and refuses any other title. A
  * declared SaveDataSize does not create one; the title has to format it once. */

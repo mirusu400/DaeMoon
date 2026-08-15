@@ -9,7 +9,7 @@ ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 .PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check \
         core-isolation spec-check server 3ds nx run-server clean \
         docker-images docker-3ds docker-cia docker-nx docker-test docker-shell \
-        cia-verify emu-selftest
+        cia-verify emu-selftest 3ds-install 3ds-selftest
 
 all: help
 
@@ -23,6 +23,8 @@ help:
 	@echo "make docker-cia    3DS CIA in a container, no toolchain to install"
 	@echo "make cia-verify    read the built CIA back and check its permissions"
 	@echo "make emu-selftest  run the backend suite inside an emulator"
+	@echo "make 3ds-install HOST=<ip>   install the CIA over wifi, no SD card"
+	@echo "make 3ds-selftest HOST=<ip>  install, run the suite, collect the result"
 	@echo "make docker-nx     Switch NRO in a container"
 	@echo "make docker-test   the desktop suites in a container"
 	@echo "make 3ds           devkitARM, needs a local toolchain"
@@ -135,6 +137,19 @@ cia-verify: docker-cia
 # instruction set and code that has only been compiled for it.
 emu-selftest:
 	@sh $(ROOT)/tools/emu-selftest.sh
+
+# Over wifi, so the SD card stays in the console. Taking it out for every build
+# is a minute of fiddling per iteration, and the thing being iterated on writes to
+# save data - so the temptation to skip a step is the wrong one to have.
+#
+# Needs FBI on the console, in Remote Install -> Receive URLs over the network.
+3ds-install: docker-cia
+	@sh $(ROOT)/tools/3ds-deploy.sh install $(or $(HOST),$(error set HOST=<console ip>))
+
+# The whole hardware loop except the button press that launches the app, which
+# nothing can do remotely. Needs ftpd for the file transfers.
+3ds-selftest: docker-cia
+	@sh $(ROOT)/tools/3ds-deploy.sh selftest $(or $(HOST),$(error set HOST=<console ip>))
 
 docker-nx:
 	@$(DOCKER_RUN) -w /work/platform/nx daemoon-nx:local make

@@ -73,6 +73,9 @@ make check        # everything CI runs except the console builds
 make server
 ```
 
+Working on the 3DS itself goes over wifi rather than by moving the SD card - see
+`docs/3ds-workflow.md`.
+
 Both console targets already compile and link the whole shared core. Their entry
 points do nothing yet, which is the point: it means `core/` is free of platform
 assumptions in a way three compilers agree on, rather than in a way a grep

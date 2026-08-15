@@ -45,13 +45,15 @@ exists" that is not the same in every implementation.
 
 ## Install
 
+Over wifi, so the card stays in the console. See `docs/3ds-workflow.md`.
+
 ```bash
-make docker-images     # once
-make docker-cia        # platform/3ds/daemoon.cia
+make docker-images                    # once
+make 3ds-install HOST=<console ip>    # FBI: Remote Install -> Receive URLs
 ```
 
-Copy `daemoon.cia` to the SD card and install it with FBI. It appears on the HOME
-menu as DaeMoon.
+Or the manual way: `make docker-cia`, then copy `platform/3ds/daemoon.cia` to the
+SD card and install it with FBI. It appears on the HOME menu as DaeMoon.
 
 A `.3dsx` build exists (`make docker-3ds`) and is useless for this: it cannot open
 another title's save archive at all. If the CIA behaves like the 3dsx, the
@@ -87,8 +89,9 @@ was needed.
 
 ### 2. The backend behaves the way core assumes
 
-There is an unattended form of this too: put an empty file at
-`sdmc:/DaeMoon/AUTOTEST` and launch the app. It runs the suite against **its own**
+There is an unattended form of this, and `make 3ds-selftest HOST=<ip>` drives the
+whole thing: it installs, arms the flag, waits for you to launch the app, and
+pulls the result back. By hand it is an empty file at `sdmc:/DaeMoon/AUTOTEST`. It runs the suite against **its own**
 save archive - never another title's - and writes the result to
 `sdmc:/DaeMoon/selftest.txt`, including the first failing check by name. That is
 worth doing if you would rather read a file than a screen. It needs a build made

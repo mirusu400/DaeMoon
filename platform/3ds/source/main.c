@@ -269,6 +269,111 @@ static void action_secure_value(void)
     pause_for_a();
 }
 
+/* Reads every title once and writes what it found to the SD card.
+ *
+ * Read only: it opens save archives, counts what is in them, and asks for each
+ * title's secure value. Nothing is written to any archive.
+ *
+ * It exists because the two open questions of this phase are answered by data
+ * about a whole console, and reading that off a screen one title at a time is how
+ * a survey turns into three titles and a guess. The file can be pulled off the
+ * card with tools/3ds-deploy.sh and read on a desktop. */
+static int survey_count_cb(void *user, const char *path, unsigned long long size)
+{
+    unsigned long long *total = (unsigned long long *)user;
+
+    (void)path;
+    *total += size;
+    return 0;
+}
+
+static void action_survey(void)
+{
+    daemoon_stream_t *out = NULL;
+    daemoon_result_t r;
+    size_t i;
+
+    consoleClear();
+    printf("Survey\n\n");
+    printf("Reads every title: save size and secure value.\n");
+    printf("Nothing is written to any save.\n\n");
+    printf("  (A) run   (B) back\n");
+    if (!(wait_keys(KEY_A | KEY_B) & KEY_A)) {
+        return;
+    }
+
+    consoleClear();
+    printf("surveying %u titles...\n", (unsigned)g_title_count);
+
+    r = g_env.fs->open(g_env.fs_ctx, DAEMOON_3DS_WORK_DIR "/survey.txt",
+                       DAEMOON_OPEN_WRITE, &out);
+    if (r != DAEMOON_OK) {
+        report("survey", r);
+        pause_for_a();
+        return;
+    }
+
+    for (i = 0; i < g_title_count; ++i) {
+        daemoon_title_t *t = &g_titles[i];
+        daemoon_3ds_secure_value_t secure;
+        daemoon_save_t *save = NULL;
+        unsigned long long bytes = 0;
+        char line[320];
+        daemoon_strbuf_t sb;
+        daemoon_result_t sr;
+        daemoon_result_t or_;
+
+        memset(&secure, 0, sizeof(secure));
+        sr = daemoon_3ds_read_secure_value(t, &secure);
+
+        or_ = g_env.save->open_save(g_env.save_ctx, t, &save);
+        if (or_ == DAEMOON_OK) {
+            (void)g_env.save->list_entries(g_env.save_ctx, save, survey_count_cb, &bytes);
+            (void)g_env.save->close_save(g_env.save_ctx, save);
+        }
+
+        daemoon_strbuf_init(&sb, line, sizeof(line));
+        daemoon_strbuf_add(&sb, t->id);
+        daemoon_strbuf_add(&sb, "\tsave=");
+        daemoon_strbuf_add(&sb, or_ == DAEMOON_OK ? "yes" : daemoon_result_code(or_));
+        daemoon_strbuf_add(&sb, "\tbytes=");
+        daemoon_strbuf_add_uint(&sb, bytes);
+        daemoon_strbuf_add(&sb, "\tsecure=");
+        if (sr != DAEMOON_OK) {
+            daemoon_strbuf_add(&sb, daemoon_result_code(sr));
+        } else if (secure.exists) {
+            /* The value itself, because whether two titles share one and whether
+             * it survives a restore are both questions about the number. */
+            char hex[17];
+            int k;
+            static const char digits[] = "0123456789ABCDEF";
+            for (k = 0; k < 16; ++k) {
+                hex[k] = digits[(secure.value >> ((15 - k) * 4)) & 0xf];
+            }
+            hex[16] = '\0';
+            daemoon_strbuf_add(&sb, hex);
+        } else {
+            daemoon_strbuf_add(&sb, "none");
+        }
+        daemoon_strbuf_add(&sb, "\t");
+        daemoon_strbuf_add(&sb, t->name);
+        daemoon_strbuf_addc(&sb, '\n');
+
+        (void)daemoon_stream_write(out, line, sb.len);
+
+        printf("%u/%u\r", (unsigned)(i + 1), (unsigned)g_title_count);
+        gfxFlushBuffers();
+        gfxSwapBuffers();
+        gspWaitForVBlank();
+    }
+
+    r = daemoon_stream_close(out);
+    printf("\n");
+    report("survey", r);
+    printf("  %s\n", DAEMOON_3DS_WORK_DIR "/survey.txt");
+    pause_for_a();
+}
+
 /* The conformance suite writes, clears and commits a real save archive. It exists
  * to prove this backend behaves the way core is entitled to assume, and running it
  * on a title someone plays would be indefensible. */
@@ -441,6 +546,7 @@ static void draw_menu(size_t selected)
         "Back up a save",
         "Restore a save from a backup",
         "Show a title's secure value",
+        "Survey every title, write it to the SD card",
         "Run the backend self test (destroys a save)",
         "Exit"
     };
@@ -512,7 +618,7 @@ int main(void)
         if ((down & KEY_UP) && selected > 0) {
             --selected;
         }
-        if ((down & KEY_DOWN) && selected < 4) {
+        if ((down & KEY_DOWN) && selected < 5) {
             ++selected;
         }
         if (!(down & KEY_A)) {
@@ -523,7 +629,8 @@ int main(void)
         case 0: action_backup(); break;
         case 1: action_restore(); break;
         case 2: action_secure_value(); break;
-        case 3: action_self_test(); (void)reload_titles(); break;
+        case 3: action_survey(); break;
+        case 4: action_self_test(); (void)reload_titles(); break;
         default:
             aptSetChainloader(0, 0);
             goto done;

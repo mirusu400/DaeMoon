@@ -1,0 +1,43 @@
+name: console
+
+# devkitPro builds. Split out and filtered: they need a container image and they
+# have nothing to say about a server change.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'core/**'
+      - 'platform/3ds/**'
+      - 'platform/nx/**'
+      - 'vendor/**'
+      - 'shared/lang/**'
+      - '.github/workflows/console.yml'
+  pull_request:
+    paths:
+      - 'core/**'
+      - 'platform/3ds/**'
+      - 'platform/nx/**'
+      - 'vendor/**'
+      - 'shared/lang/**'
+      - '.github/workflows/console.yml'
+
+jobs:
+  3ds:
+    name: 3ds (devkitARM)
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+      - uses: actions/checkout@v4
+      # A CIA is the build that matters: a 3dsx cannot reach another title's save
+      # archive. See platform/3ds/CLAUDE.md.
+      - name: build
+        run: make 3ds
+
+  nx:
+    name: switch (devkitA64)
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build
+        run: make nx

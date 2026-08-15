@@ -1,0 +1,68 @@
+{
+  "app.title": "DaeMoon",
+  "lang.name": "繁體中文",
+
+  "btn.yes": "是",
+  "btn.no": "否",
+  "btn.ok": "確定",
+  "btn.cancel": "取消",
+
+  "sync.action_none": "已是最新",
+  "sync.action_upload": "上傳",
+  "sync.action_download": "下載",
+  "sync.action_conflict": "衝突",
+  "sync.up_to_date": "{0} 已是最新。",
+  "sync.done": "同步完成。已更新 {0} 個，略過 {1} 個。",
+
+  "progress.packing": "正在封裝存檔",
+  "progress.unpacking": "正在解開存檔",
+  "progress.uploading": "正在上傳",
+  "progress.downloading": "正在下載",
+  "progress.verifying": "正在驗證",
+
+  "backup.creating": "正在備份目前的存檔",
+  "backup.failed": "本機備份失敗，未做任何變更。",
+
+  "confirm.upload": "要將 {0} 的存檔上傳到伺服器嗎？",
+  "confirm.restore": "要將 {0} 還原到本機嗎？會先建立本機備份。",
+
+  "conflict.title": "存檔衝突",
+  "conflict.explain": "{0} 在另一台裝置上也被修改過。兩個版本都會保留。請選擇現在要使用哪一個。",
+  "conflict.keep_local": "使用本機存檔（{0}，儲存於 {1}）",
+  "conflict.keep_server": "使用伺服器存檔（{0}，來自 {1}）",
+  "conflict.keep_both": "都保留，稍後再決定",
+
+  "verify.failed": "校驗值不符。已中止還原，未做任何變更。",
+  "commit.failed": "存檔未能提交。問題解決前請勿啟動遊戲。",
+
+  "warn.game_running": "同步前請先關閉遊戲。遊戲執行中同步會損壞存檔。",
+  "warn.applet_mode": "目前為記憶體受限的小程式模式。請在遊戲之上啟動本程式以使用完整功能。",
+  "warn.secure_value": "{0} 會將存檔綁定到本機。來自其他主機的存檔可能被遊戲刪除。",
+
+  "err.invalid_request": "伺服器拒絕了該請求。",
+  "err.invalid_manifest": "無法讀取存檔包。",
+  "err.unsupported_platform": "伺服器不支援這台主機。",
+  "err.unauthorized": "本機尚未登入，請重新配對。",
+  "err.device_revoked": "本機的存取權限已被撤銷，請重新配對。",
+  "err.forbidden": "該存檔不屬於此帳號。",
+  "err.not_found": "伺服器上找不到。",
+  "err.version_conflict": "伺服器上有較新的存檔，請選擇要保留的版本。",
+  "err.share_expired": "此分享碼已過期。",
+  "err.pairing_expired": "配對碼已過期，請重新開始。",
+  "err.pairing_pending": "正在等待核准。",
+  "err.save_too_large": "存檔超過伺服器允許的大小。",
+  "err.checksum_mismatch": "下載的存檔已損壞。",
+  "err.rate_limited": "請求過於頻繁，請稍後再試。",
+  "err.internal_error": "伺服器發生問題。",
+  "err.io_error": "無法讀取或寫入存檔。",
+  "err.out_of_memory": "記憶體不足。",
+  "err.parse_error": "無法讀取資料。",
+  "err.network_error": "無法連線到伺服器。",
+  "err.timeout": "伺服器未在時間內回應。",
+  "err.backend_error": "主機拒絕了該存檔操作。",
+  "err.user_cancelled": "已取消。",
+  "err.no_space": "SD 卡空間不足。",
+  "err.unsupported": "不支援此操作。",
+  "err.archive_error": "存檔包已損壞。",
+  "err.buffer_too_small": "內部緩衝區過小。"
+}

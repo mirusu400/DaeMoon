@@ -1,0 +1,68 @@
+name: ci
+
+# paths filters so a server change does not rebuild the console targets and a
+# language file change does not run everything twice.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  contracts:
+    name: contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: server/go.sum
+      # The generator is the language parity check: it refuses to emit a table when
+      # a key is missing from any language, is empty, or uses a different
+      # placeholder set than English.
+      - name: generated files are current
+        run: make gen-check
+      - name: core includes no platform headers
+        run: make core-isolation
+      - name: handlers match shared/openapi.yaml
+        run: make spec-check
+      - name: tools
+        run: make tools-test
+
+  core:
+    name: core (${{ matrix.cc }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      # Sanitizers on: this is the only place the sync path runs where a bad
+      # pointer produces a readable report instead of a console hang.
+      - name: core tests
+        run: make core-test CC=${{ matrix.cc }}
+
+  server:
+    name: server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: server/go.sum
+      - name: vet
+        run: cd server && go vet ./...
+      - name: test
+        run: cd server && go test -race ./...
+      - name: build
+        run: make server
+
+  cli:
+    name: daemoonctl
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build
+        run: make -C tools/cli ROOT=$PWD

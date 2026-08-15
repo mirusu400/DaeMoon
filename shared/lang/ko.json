@@ -1,0 +1,68 @@
+{
+  "app.title": "DaeMoon",
+  "lang.name": "한국어",
+
+  "btn.yes": "예",
+  "btn.no": "아니오",
+  "btn.ok": "확인",
+  "btn.cancel": "취소",
+
+  "sync.action_none": "최신 상태",
+  "sync.action_upload": "업로드",
+  "sync.action_download": "다운로드",
+  "sync.action_conflict": "충돌",
+  "sync.up_to_date": "{0}은(는) 이미 최신 상태입니다.",
+  "sync.done": "동기화를 마쳤습니다. {0}개 갱신, {1}개 건너뜀.",
+
+  "progress.packing": "세이브 데이터 압축 중",
+  "progress.unpacking": "세이브 데이터 푸는 중",
+  "progress.uploading": "업로드 중",
+  "progress.downloading": "다운로드 중",
+  "progress.verifying": "검증 중",
+
+  "backup.creating": "현재 세이브를 백업하는 중",
+  "backup.failed": "로컬 백업에 실패했습니다. 변경된 내용은 없습니다.",
+
+  "confirm.upload": "{0}의 세이브를 서버에 업로드할까요?",
+  "confirm.restore": "{0}을(를) 이 본체에 복원할까요? 먼저 로컬 백업을 만듭니다.",
+
+  "conflict.title": "세이브 충돌",
+  "conflict.explain": "{0}은(는) 다른 기기에서도 변경되었습니다. 두 버전 모두 보관합니다. 지금 사용할 쪽을 선택하세요.",
+  "conflict.keep_local": "이 본체의 세이브 사용 ({0}, {1} 저장)",
+  "conflict.keep_server": "서버의 세이브 사용 ({0}, {1})",
+  "conflict.keep_both": "둘 다 보관하고 나중에 결정",
+
+  "verify.failed": "체크섬이 일치하지 않습니다. 복원을 중단했으며 변경된 내용은 없습니다.",
+  "commit.failed": "세이브를 확정하지 못했습니다. 해결하기 전에는 게임을 실행하지 마세요.",
+
+  "warn.game_running": "동기화 전에 게임을 종료하세요. 게임 실행 중 동기화하면 세이브가 손상됩니다.",
+  "warn.applet_mode": "메모리가 제한된 애플릿 모드입니다. 모든 기능을 쓰려면 게임 위에서 실행하세요.",
+  "warn.secure_value": "{0}은(는) 세이브를 이 본체에 묶습니다. 다른 본체의 세이브는 게임이 삭제할 수 있습니다.",
+
+  "err.invalid_request": "서버가 요청을 거부했습니다.",
+  "err.invalid_manifest": "세이브 패키지를 읽을 수 없습니다.",
+  "err.unsupported_platform": "서버가 이 본체를 지원하지 않습니다.",
+  "err.unauthorized": "이 본체가 로그인되어 있지 않습니다. 다시 연결하세요.",
+  "err.device_revoked": "이 본체의 접근 권한이 해제되었습니다. 다시 연결하세요.",
+  "err.forbidden": "이 세이브는 이 계정의 것이 아닙니다.",
+  "err.not_found": "서버에서 찾을 수 없습니다.",
+  "err.version_conflict": "서버에 더 새로운 세이브가 있습니다. 사용할 버전을 선택하세요.",
+  "err.share_expired": "이 공유 코드는 만료되었습니다.",
+  "err.pairing_expired": "연결 코드가 만료되었습니다. 다시 시작하세요.",
+  "err.pairing_pending": "승인을 기다리는 중입니다.",
+  "err.save_too_large": "세이브가 서버 허용 크기보다 큽니다.",
+  "err.checksum_mismatch": "내려받은 세이브가 손상되었습니다.",
+  "err.rate_limited": "요청이 너무 많습니다. 잠시 후 다시 시도하세요.",
+  "err.internal_error": "서버에 문제가 발생했습니다.",
+  "err.io_error": "세이브를 읽거나 쓰지 못했습니다.",
+  "err.out_of_memory": "메모리가 부족합니다.",
+  "err.parse_error": "데이터를 읽지 못했습니다.",
+  "err.network_error": "서버에 연결하지 못했습니다.",
+  "err.timeout": "서버가 제때 응답하지 않았습니다.",
+  "err.backend_error": "본체가 세이브 작업을 거부했습니다.",
+  "err.user_cancelled": "취소되었습니다.",
+  "err.no_space": "SD 카드 공간이 부족합니다.",
+  "err.unsupported": "지원하지 않는 기능입니다.",
+  "err.archive_error": "세이브 패키지가 손상되었습니다.",
+  "err.buffer_too_small": "내부 버퍼가 너무 작습니다."
+}

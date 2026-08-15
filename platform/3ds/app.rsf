@@ -1,0 +1,72 @@
+# CIA metadata. The filesystem access rights below are the entire reason this
+# project ships a CIA rather than a 3dsx: a 3dsx cannot reach another title's save
+# archive, and no amount of code works around that.
+
+BasicInfo:
+  Title                   : DaeMoon
+  ProductCode             : CTR-P-DAEM
+  Logo                    : Nintendo
+
+TitleInfo:
+  Category                : Application
+  UniqueId                : 0xDAE00
+
+Option:
+  UseOnSD                 : true
+  FreeProductCode         : true
+  MediaFootPadding        : false
+  EnableCompress          : true
+  EnableCrypt             : false
+
+AccessControlInfo:
+  CoreVersion             : 2
+
+  # Save data archives of other titles. Without these the app can see its own save
+  # and nothing else.
+  FileSystemAccess:
+    - DirectSdmc
+    - SdmcW
+    - Cardboard
+    - ExtSaveData
+    - SystemSaveData
+    - CategorySystemApplication
+
+  IdealProcessor          : 0
+  AffinityMask            : 1
+  Priority                : 16
+  MaxCpu                  : 0
+
+  MemoryType              : Application
+  SystemMode              : 64MB
+  SystemModeExt           : Legacy
+
+  DisableDebug            : false
+  EnableForceDebug        : false
+  CanWriteSharedPage      : true
+  CanUsePrivilegedPriority: false
+  CanUseNonAlphabetAndNumber: true
+  PermitMainFunctionArgument: true
+  CanShareDeviceMemory    : true
+  RunnableOnSleep         : false
+  SpecialMemoryArroc      : false
+  AccessCoreExceptionHandlers: false
+  ResourceLimitCategory   : Application
+
+  ServiceAccessControl:
+    - cfg:u
+    - fs:USER
+    - hid:USER
+    - ndm:u
+    - ptm:u
+    - gsp::Gpu
+    - APT:U
+    - ac:u
+    - soc:U
+    - ssl:C
+    - cam:u
+    - y2r:u
+
+SystemControlInfo:
+  SaveDataSize: 0K
+  RemasterVersion: 0
+  StackSize: 0x40000

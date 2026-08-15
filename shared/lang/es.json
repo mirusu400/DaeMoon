@@ -1,0 +1,68 @@
+{
+  "app.title": "DaeMoon",
+  "lang.name": "Español",
+
+  "btn.yes": "Sí",
+  "btn.no": "No",
+  "btn.ok": "Aceptar",
+  "btn.cancel": "Cancelar",
+
+  "sync.action_none": "Al día",
+  "sync.action_upload": "Subir",
+  "sync.action_download": "Descargar",
+  "sync.action_conflict": "Conflicto",
+  "sync.up_to_date": "{0} ya está al día.",
+  "sync.done": "Sincronización terminada. {0} actualizados, {1} omitidos.",
+
+  "progress.packing": "Empaquetando la partida",
+  "progress.unpacking": "Extrayendo la partida",
+  "progress.uploading": "Subiendo",
+  "progress.downloading": "Descargando",
+  "progress.verifying": "Verificando",
+
+  "backup.creating": "Creando copia de seguridad de la partida actual",
+  "backup.failed": "La copia de seguridad local ha fallado. No se ha cambiado nada.",
+
+  "confirm.upload": "¿Subir la partida de {0} al servidor?",
+  "confirm.restore": "¿Restaurar {0} en esta consola? Primero se crea una copia de seguridad local.",
+
+  "conflict.title": "Partidas en conflicto",
+  "conflict.explain": "{0} también se ha modificado en otro dispositivo. Se conservan ambas versiones. Elige cuál usar ahora.",
+  "conflict.keep_local": "Usar la partida de esta consola ({0}, guardada el {1})",
+  "conflict.keep_server": "Usar la partida del servidor ({0}, del {1})",
+  "conflict.keep_both": "Conservar ambas y decidir más tarde",
+
+  "verify.failed": "La suma de verificación no coincide. La restauración se ha cancelado y no se ha cambiado nada.",
+  "commit.failed": "No se ha podido confirmar la partida. No inicies el juego hasta resolverlo.",
+
+  "warn.game_running": "Cierra el juego antes de sincronizar. Sincronizar con el juego abierto daña la partida.",
+  "warn.applet_mode": "En modo applet con memoria limitada. Abre la aplicación desde un juego para tener todas las funciones.",
+  "warn.secure_value": "{0} vincula su partida a esta consola. El juego puede borrar una partida de otra consola.",
+
+  "err.invalid_request": "El servidor ha rechazado la petición.",
+  "err.invalid_manifest": "No se puede leer el paquete de la partida.",
+  "err.unsupported_platform": "El servidor no admite esta consola.",
+  "err.unauthorized": "Esta consola no ha iniciado sesión. Vuelve a vincularla.",
+  "err.device_revoked": "Se ha revocado el acceso de esta consola. Vuelve a vincularla.",
+  "err.forbidden": "Esta partida no pertenece a esta cuenta.",
+  "err.not_found": "No se ha encontrado en el servidor.",
+  "err.version_conflict": "El servidor tiene una partida más reciente. Elige qué versión conservar.",
+  "err.share_expired": "Este código de compartición ha caducado.",
+  "err.pairing_expired": "El código de vinculación ha caducado. Empieza de nuevo.",
+  "err.pairing_pending": "Esperando la aprobación.",
+  "err.save_too_large": "La partida supera el tamaño permitido por el servidor.",
+  "err.checksum_mismatch": "La partida descargada está dañada.",
+  "err.rate_limited": "Demasiadas peticiones. Inténtalo de nuevo en un momento.",
+  "err.internal_error": "El servidor ha tenido un problema.",
+  "err.io_error": "No se ha podido leer o escribir la partida.",
+  "err.out_of_memory": "Memoria insuficiente.",
+  "err.parse_error": "No se han podido leer los datos.",
+  "err.network_error": "No se ha podido conectar con el servidor.",
+  "err.timeout": "El servidor no ha respondido a tiempo.",
+  "err.backend_error": "La consola ha rechazado la operación sobre la partida.",
+  "err.user_cancelled": "Cancelado.",
+  "err.no_space": "No hay espacio suficiente en la tarjeta SD.",
+  "err.unsupported": "No es compatible.",
+  "err.archive_error": "El paquete de la partida está dañado.",
+  "err.buffer_too_small": "Búfer interno demasiado pequeño."
+}

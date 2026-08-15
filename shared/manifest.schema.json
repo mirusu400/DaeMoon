@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://daemoon.invalid/schemas/manifest.schema.json",
+  "title": "DaeMoon save package manifest",
+  "description": "manifest.json at the root of a save package (.zip, miniz). Read by core/src/manifest.c and server/internal/api.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format_version",
+    "platform",
+    "title_id",
+    "save_type",
+    "version",
+    "sha256",
+    "size",
+    "device_label",
+    "created_at"
+  ],
+  "properties": {
+    "format_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bumped only on an incompatible layout change. A client rejects anything it does not know."
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["3ds", "nx", "nds"]
+    },
+    "title_id": {
+      "type": "string",
+      "description": "3ds/nx: 16 uppercase hex digits. nds: game code plus internal name, uppercase.",
+      "pattern": "^[0-9A-Z_-]{4,32}$"
+    },
+    "save_type": {
+      "type": "string",
+      "enum": ["savedata", "extdata", "nds"]
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Server issued. Monotonically increasing per title. 0 means never uploaded."
+    },
+    "parent_version": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "default": null,
+      "description": "The version this package was derived from. null for a first upload."
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Digest of the payload entries, not of the zip container. See docs/manifest.md."
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total uncompressed byte count of the payload entries."
+    },
+    "device_label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "User set. Shown in the conflict dialog. Never used for any decision."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601. INFORMATIONAL ONLY. Never used for ordering: the console RTC is user settable."
+    },
+    "entries": {
+      "type": "array",
+      "description": "Payload entries in the order they are hashed. Paths are relative to the save root, forward slashes only.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "size", "sha256"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "^(?!/)(?!.*\\.\\.)[^\\\\:*?\"<>|]+$"
+          },
+          "size": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    }
+  }
+}

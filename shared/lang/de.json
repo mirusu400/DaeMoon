@@ -1,0 +1,68 @@
+{
+  "app.title": "DaeMoon",
+  "lang.name": "Deutsch",
+
+  "btn.yes": "Ja",
+  "btn.no": "Nein",
+  "btn.ok": "OK",
+  "btn.cancel": "Abbrechen",
+
+  "sync.action_none": "Aktuell",
+  "sync.action_upload": "Hochladen",
+  "sync.action_download": "Herunterladen",
+  "sync.action_conflict": "Konflikt",
+  "sync.up_to_date": "{0} ist bereits aktuell.",
+  "sync.done": "Abgleich beendet. {0} aktualisiert, {1} übersprungen.",
+
+  "progress.packing": "Spielstand wird gepackt",
+  "progress.unpacking": "Spielstand wird entpackt",
+  "progress.uploading": "Wird hochgeladen",
+  "progress.downloading": "Wird heruntergeladen",
+  "progress.verifying": "Wird geprüft",
+
+  "backup.creating": "Sicherung des aktuellen Spielstands wird erstellt",
+  "backup.failed": "Lokale Sicherung fehlgeschlagen. Es wurde nichts geändert.",
+
+  "confirm.upload": "Spielstand von {0} auf den Server hochladen?",
+  "confirm.restore": "{0} auf dieser Konsole wiederherstellen? Zuvor wird eine lokale Sicherung erstellt.",
+
+  "conflict.title": "Widersprüchliche Spielstände",
+  "conflict.explain": "{0} wurde auch auf einem anderen Gerät geändert. Beide Fassungen bleiben erhalten. Wähle, welche jetzt verwendet wird.",
+  "conflict.keep_local": "Spielstand dieser Konsole verwenden ({0}, gespeichert am {1})",
+  "conflict.keep_server": "Spielstand vom Server verwenden ({0}, vom {1})",
+  "conflict.keep_both": "Beide behalten und später entscheiden",
+
+  "verify.failed": "Die Prüfsumme stimmt nicht. Die Wiederherstellung wurde abgebrochen, es wurde nichts geändert.",
+  "commit.failed": "Der Spielstand konnte nicht festgeschrieben werden. Starte das Spiel erst, wenn das behoben ist.",
+
+  "warn.game_running": "Beende das Spiel vor dem Abgleich. Ein Abgleich bei laufendem Spiel beschädigt den Spielstand.",
+  "warn.applet_mode": "Applet-Modus mit stark begrenztem Speicher. Starte die Anwendung über ein Spiel, um alle Funktionen zu nutzen.",
+  "warn.secure_value": "{0} bindet seinen Spielstand an diese Konsole. Ein Spielstand von einer anderen Konsole kann vom Spiel gelöscht werden.",
+
+  "err.invalid_request": "Der Server hat die Anfrage abgelehnt.",
+  "err.invalid_manifest": "Das Spielstandpaket ist nicht lesbar.",
+  "err.unsupported_platform": "Diese Konsole wird vom Server nicht unterstützt.",
+  "err.unauthorized": "Diese Konsole ist nicht angemeldet. Koppel sie erneut.",
+  "err.device_revoked": "Der Zugriff dieser Konsole wurde entzogen. Koppel sie erneut.",
+  "err.forbidden": "Dieser Spielstand gehört nicht zu diesem Konto.",
+  "err.not_found": "Auf dem Server nicht gefunden.",
+  "err.version_conflict": "Der Server hat einen neueren Spielstand. Wähle, welche Fassung bleibt.",
+  "err.share_expired": "Dieser Freigabecode ist abgelaufen.",
+  "err.pairing_expired": "Der Kopplungscode ist abgelaufen. Beginne von vorn.",
+  "err.pairing_pending": "Warten auf Bestätigung.",
+  "err.save_too_large": "Der Spielstand ist größer als der Server erlaubt.",
+  "err.checksum_mismatch": "Der heruntergeladene Spielstand ist beschädigt.",
+  "err.rate_limited": "Zu viele Anfragen. Versuche es gleich noch einmal.",
+  "err.internal_error": "Auf dem Server ist ein Problem aufgetreten.",
+  "err.io_error": "Der Spielstand konnte nicht gelesen oder geschrieben werden.",
+  "err.out_of_memory": "Nicht genug Speicher.",
+  "err.parse_error": "Die Daten konnten nicht gelesen werden.",
+  "err.network_error": "Der Server ist nicht erreichbar.",
+  "err.timeout": "Der Server hat nicht rechtzeitig geantwortet.",
+  "err.backend_error": "Die Konsole hat den Zugriff auf den Spielstand abgelehnt.",
+  "err.user_cancelled": "Abgebrochen.",
+  "err.no_space": "Nicht genug Platz auf der SD-Karte.",
+  "err.unsupported": "Wird nicht unterstützt.",
+  "err.archive_error": "Das Spielstandpaket ist beschädigt.",
+  "err.buffer_too_small": "Interner Puffer zu klein."
+}

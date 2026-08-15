@@ -1,0 +1,11 @@
+build/
+*.o
+*.elf
+*.3dsx
+*.cia
+*.nro
+*.nacp
+*.db
+*.db-wal
+*.db-shm
+daemoon-work/

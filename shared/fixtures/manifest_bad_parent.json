@@ -1,0 +1,12 @@
+{
+  "format_version": 1,
+  "platform": "3ds",
+  "title_id": "0004000000055D00",
+  "save_type": "savedata",
+  "version": 7,
+  "parent_version": 7,
+  "sha256": "0f9a4d1942f23aab4418d5d3720b10fbdd25f91e51082abacbff3dd1a6318242",
+  "size": 11,
+  "device_label": "broken",
+  "created_at": "2026-01-02T03:04:05Z"
+}

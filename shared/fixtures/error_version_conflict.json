@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "version_conflict",
+    "detail": {
+      "server_version": 43,
+      "parent_version": 41,
+      "server_size": 32768,
+      "server_device_label": "New 2DS",
+      "server_received_at": "2026-02-03T04:05:06Z"
+    }
+  }
+}

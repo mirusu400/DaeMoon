@@ -1,0 +1,89 @@
+{
+  "_comment": [
+    "Payload digest vectors. Read by the C tests (tools/test) and the Go tests",
+    "(server/internal/pkgfmt), so both sides prove they hash a save identically.",
+    "The expected values were produced by a third implementation, not by either",
+    "of the two under test.",
+    "Rule: entries sorted by raw path bytes, then for each entry",
+    "  sha256_update(path) ; sha256_update(0x00) ; sha256_update(size, 8 bytes BE) ; sha256_update(content)"
+  ],
+  "cases": [
+    {
+      "name": "empty",
+      "entries": [],
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "name": "single_file",
+      "entries": [
+        {
+          "path": "main.sav",
+          "content_utf8": "hello world"
+        }
+      ],
+      "sha256": "0f9a4d1942f23aab4418d5d3720b10fbdd25f91e51082abacbff3dd1a6318242",
+      "size": 11
+    },
+    {
+      "name": "two_files_unsorted_input",
+      "entries": [
+        {
+          "path": "zz.bin",
+          "content_utf8": "Z"
+        },
+        {
+          "path": "aa.bin",
+          "content_utf8": "A"
+        }
+      ],
+      "sha256": "1559df61ff69503d9afbb60a31616ebe729b95a0d487816392959e702d66db93",
+      "size": 2
+    },
+    {
+      "name": "nested_paths",
+      "entries": [
+        {
+          "path": "b/2.bin",
+          "content_utf8": "BB"
+        },
+        {
+          "path": "a.bin",
+          "content_utf8": "A"
+        },
+        {
+          "path": "b/1.bin",
+          "content_utf8": "B"
+        }
+      ],
+      "sha256": "78c2cf49bc9f54151ffa9bcd4cf9ef70428c47bc1dd5e5eafe1bd3f6ae4e35be",
+      "size": 4
+    },
+    {
+      "name": "empty_file",
+      "entries": [
+        {
+          "path": "empty.bin",
+          "content_utf8": ""
+        },
+        {
+          "path": "x.bin",
+          "content_utf8": "x"
+        }
+      ],
+      "sha256": "66436dd17214df48638ce46d0518596eb46f51b6b20058a12aa3aed59e0a6fc7",
+      "size": 1
+    },
+    {
+      "name": "utf8_path",
+      "entries": [
+        {
+          "path": "セーブ/データ.bin",
+          "content_utf8": "こんにちは"
+        }
+      ],
+      "sha256": "deb3413ac86c4f2fb6411037a68cf4b529bfc63271ab6feb870e18f55f834f59",
+      "size": 15
+    }
+  ]
+}

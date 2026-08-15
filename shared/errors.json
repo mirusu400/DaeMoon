@@ -1,0 +1,43 @@
+{
+  "format_version": 1,
+  "_comment": [
+    "Canonical error codes. Single source of truth for both sides.",
+    "Consumed by tools/gen, which generates:",
+    "  core/include/daemoon/error_codes.h   (daemoon_result_t values)",
+    "  core/src/error_table.c               (code string <-> enum, enum -> str id)",
+    "  server/internal/apierr/codes_gen.go  (Go constants and HTTP status mapping)",
+    "Adding a code means adding err.<code> to every file in shared/lang/.",
+    "CI fails if a language file is missing a key.",
+    "'http' is null for codes the server never emits (client-local failures).",
+    "'value' is frozen: never renumber, never reuse. Append only."
+  ],
+  "errors": [
+    { "code": "invalid_request",      "value": 1,  "http": 400, "retryable": false, "detail": ["field"] },
+    { "code": "invalid_manifest",     "value": 2,  "http": 400, "retryable": false, "detail": ["field"] },
+    { "code": "unsupported_platform", "value": 3,  "http": 400, "retryable": false, "detail": ["platform"] },
+    { "code": "unauthorized",         "value": 4,  "http": 401, "retryable": false, "detail": [] },
+    { "code": "device_revoked",       "value": 5,  "http": 401, "retryable": false, "detail": ["device_id"] },
+    { "code": "forbidden",            "value": 6,  "http": 403, "retryable": false, "detail": [] },
+    { "code": "not_found",            "value": 7,  "http": 404, "retryable": false, "detail": [] },
+    { "code": "version_conflict",     "value": 8,  "http": 409, "retryable": false, "detail": ["server_version", "parent_version", "server_size", "server_device_label", "server_received_at"] },
+    { "code": "share_expired",        "value": 9,  "http": 410, "retryable": false, "detail": ["expires_at"] },
+    { "code": "pairing_expired",      "value": 10, "http": 410, "retryable": false, "detail": [] },
+    { "code": "pairing_pending",      "value": 11, "http": 400, "retryable": true,  "detail": ["interval"] },
+    { "code": "save_too_large",       "value": 12, "http": 413, "retryable": false, "detail": ["size", "max_size"] },
+    { "code": "checksum_mismatch",    "value": 13, "http": 422, "retryable": false, "detail": ["expected", "actual"] },
+    { "code": "rate_limited",         "value": 14, "http": 429, "retryable": true,  "detail": ["retry_after"] },
+    { "code": "internal_error",       "value": 15, "http": 500, "retryable": true,  "detail": [] },
+
+    { "code": "io_error",             "value": 16, "http": null, "retryable": false, "detail": ["path"] },
+    { "code": "out_of_memory",        "value": 17, "http": null, "retryable": false, "detail": ["size"] },
+    { "code": "parse_error",          "value": 18, "http": null, "retryable": false, "detail": ["offset"] },
+    { "code": "network_error",        "value": 19, "http": null, "retryable": true,  "detail": [] },
+    { "code": "timeout",              "value": 20, "http": null, "retryable": true,  "detail": [] },
+    { "code": "backend_error",        "value": 21, "http": null, "retryable": false, "detail": ["result"] },
+    { "code": "user_cancelled",       "value": 22, "http": null, "retryable": false, "detail": [] },
+    { "code": "no_space",             "value": 23, "http": null, "retryable": false, "detail": ["needed", "free"] },
+    { "code": "unsupported",          "value": 24, "http": null, "retryable": false, "detail": ["what"] },
+    { "code": "archive_error",        "value": 25, "http": null, "retryable": false, "detail": ["entry"] },
+    { "code": "buffer_too_small",     "value": 26, "http": null, "retryable": false, "detail": ["needed"] }
+  ]
+}

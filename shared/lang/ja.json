@@ -1,0 +1,68 @@
+{
+  "app.title": "DaeMoon",
+  "lang.name": "日本語",
+
+  "btn.yes": "はい",
+  "btn.no": "いいえ",
+  "btn.ok": "OK",
+  "btn.cancel": "キャンセル",
+
+  "sync.action_none": "最新",
+  "sync.action_upload": "アップロード",
+  "sync.action_download": "ダウンロード",
+  "sync.action_conflict": "競合",
+  "sync.up_to_date": "{0} はすでに最新です。",
+  "sync.done": "同期が終わりました。{0} 件更新、{1} 件スキップ。",
+
+  "progress.packing": "セーブデータを圧縮中",
+  "progress.unpacking": "セーブデータを展開中",
+  "progress.uploading": "アップロード中",
+  "progress.downloading": "ダウンロード中",
+  "progress.verifying": "検証中",
+
+  "backup.creating": "現在のセーブをバックアップ中",
+  "backup.failed": "ローカルバックアップに失敗しました。変更はありません。",
+
+  "confirm.upload": "{0} のセーブをサーバーにアップロードしますか？",
+  "confirm.restore": "{0} をこの本体に復元しますか？先にローカルバックアップを作成します。",
+
+  "conflict.title": "セーブの競合",
+  "conflict.explain": "{0} は別の端末でも変更されています。両方のバージョンを保持します。今使う方を選んでください。",
+  "conflict.keep_local": "この本体のセーブを使う（{0}、{1} 保存）",
+  "conflict.keep_server": "サーバーのセーブを使う（{0}、{1}）",
+  "conflict.keep_both": "両方残して後で決める",
+
+  "verify.failed": "チェックサムが一致しません。復元を中止し、変更はありません。",
+  "commit.failed": "セーブを確定できませんでした。解決するまでゲームを起動しないでください。",
+
+  "warn.game_running": "同期の前にゲームを終了してください。ゲーム実行中の同期はセーブを壊します。",
+  "warn.applet_mode": "メモリが制限されたアプレットモードです。すべての機能を使うにはゲーム上から起動してください。",
+  "warn.secure_value": "{0} はセーブをこの本体に紐付けます。他の本体のセーブはゲームに削除されることがあります。",
+
+  "err.invalid_request": "サーバーがリクエストを拒否しました。",
+  "err.invalid_manifest": "セーブパッケージを読み取れません。",
+  "err.unsupported_platform": "この本体はサーバーに対応していません。",
+  "err.unauthorized": "この本体はサインインしていません。もう一度ペアリングしてください。",
+  "err.device_revoked": "この本体のアクセスは取り消されました。もう一度ペアリングしてください。",
+  "err.forbidden": "このセーブはこのアカウントのものではありません。",
+  "err.not_found": "サーバー上に見つかりません。",
+  "err.version_conflict": "サーバーに新しいセーブがあります。使うバージョンを選んでください。",
+  "err.share_expired": "この共有コードは期限切れです。",
+  "err.pairing_expired": "ペアリングコードの期限が切れました。最初からやり直してください。",
+  "err.pairing_pending": "承認を待っています。",
+  "err.save_too_large": "セーブがサーバーの上限を超えています。",
+  "err.checksum_mismatch": "ダウンロードしたセーブが壊れています。",
+  "err.rate_limited": "リクエストが多すぎます。しばらくして再試行してください。",
+  "err.internal_error": "サーバーで問題が発生しました。",
+  "err.io_error": "セーブの読み書きができませんでした。",
+  "err.out_of_memory": "メモリが足りません。",
+  "err.parse_error": "データを読み取れませんでした。",
+  "err.network_error": "サーバーに接続できませんでした。",
+  "err.timeout": "サーバーが時間内に応答しませんでした。",
+  "err.backend_error": "本体がセーブ操作を拒否しました。",
+  "err.user_cancelled": "キャンセルしました。",
+  "err.no_space": "SD カードの空き容量が足りません。",
+  "err.unsupported": "対応していません。",
+  "err.archive_error": "セーブパッケージが壊れています。",
+  "err.buffer_too_small": "内部バッファが小さすぎます。"
+}

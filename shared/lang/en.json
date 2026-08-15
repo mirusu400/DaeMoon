@@ -1,0 +1,68 @@
+{
+  "app.title": "DaeMoon",
+  "lang.name": "English",
+
+  "btn.yes": "Yes",
+  "btn.no": "No",
+  "btn.ok": "OK",
+  "btn.cancel": "Cancel",
+
+  "sync.action_none": "Up to date",
+  "sync.action_upload": "Upload",
+  "sync.action_download": "Download",
+  "sync.action_conflict": "Conflict",
+  "sync.up_to_date": "{0} is already up to date.",
+  "sync.done": "Sync finished. {0} updated, {1} skipped.",
+
+  "progress.packing": "Packing save data",
+  "progress.unpacking": "Unpacking save data",
+  "progress.uploading": "Uploading",
+  "progress.downloading": "Downloading",
+  "progress.verifying": "Verifying",
+
+  "backup.creating": "Backing up the current save",
+  "backup.failed": "Local backup failed. Nothing was changed.",
+
+  "confirm.upload": "Upload the save for {0} to the server?",
+  "confirm.restore": "Restore {0} to this console? A local backup is made first.",
+
+  "conflict.title": "Conflicting saves",
+  "conflict.explain": "{0} was also changed on another device. Both versions are kept. Choose which one to use now.",
+  "conflict.keep_local": "Keep this console's save ({0}, saved on {1})",
+  "conflict.keep_server": "Keep the server save ({0}, from {1})",
+  "conflict.keep_both": "Keep both and decide later",
+
+  "verify.failed": "Checksum does not match. The restore was aborted and nothing was changed.",
+  "commit.failed": "The save could not be committed. Do not launch the game until this is resolved.",
+
+  "warn.game_running": "Close the game before syncing. Syncing while a game is running corrupts the save.",
+  "warn.applet_mode": "Running in applet mode with limited memory. Launch the app over a game to enable every feature.",
+  "warn.secure_value": "{0} ties its save to this console. A save from another console may be deleted by the game.",
+
+  "err.invalid_request": "The server rejected the request.",
+  "err.invalid_manifest": "The save package is not readable.",
+  "err.unsupported_platform": "This console is not supported by the server.",
+  "err.unauthorized": "This console is not signed in. Pair it again.",
+  "err.device_revoked": "Access for this console was revoked. Pair it again.",
+  "err.forbidden": "This save does not belong to this account.",
+  "err.not_found": "Not found on the server.",
+  "err.version_conflict": "The server has a newer save. Choose which version to keep.",
+  "err.share_expired": "This share code has expired.",
+  "err.pairing_expired": "The pairing code has expired. Start again.",
+  "err.pairing_pending": "Waiting for approval.",
+  "err.save_too_large": "The save is larger than the server allows.",
+  "err.checksum_mismatch": "The downloaded save is damaged.",
+  "err.rate_limited": "Too many requests. Try again shortly.",
+  "err.internal_error": "The server ran into a problem.",
+  "err.io_error": "Could not read or write the save.",
+  "err.out_of_memory": "Not enough memory.",
+  "err.parse_error": "The data could not be read.",
+  "err.network_error": "Could not reach the server.",
+  "err.timeout": "The server did not answer in time.",
+  "err.backend_error": "The console refused the save operation.",
+  "err.user_cancelled": "Cancelled.",
+  "err.no_space": "Not enough space on the SD card.",
+  "err.unsupported": "This is not supported.",
+  "err.archive_error": "The save package is damaged.",
+  "err.buffer_too_small": "Internal buffer too small."
+}

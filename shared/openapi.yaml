@@ -1,0 +1,357 @@
+openapi: 3.1.0
+
+# AUTHORITATIVE. Changing a handler means changing this file in the same commit.
+# CI (make spec-check) fails when a route in server/internal/api has no entry here.
+
+info:
+  title: DaeMoon
+  version: "1.0.0"
+  summary: Save data sync for 3DS, Switch and nds-bootstrap.
+  description: |
+    The server never localizes. Every failure is a machine readable code from
+    `shared/errors.json`; the client renders the text. See the `Error` schema.
+
+    Freshness is decided by the server issued `version` only. Timestamps in this
+    API are informational: the console RTC is user settable.
+
+servers:
+  - url: "{scheme}://{host}/"
+    variables:
+      scheme: { default: https, enum: [https, http] }
+      host: { default: "localhost:8080" }
+
+security:
+  - deviceToken: []
+
+tags:
+  - name: devices
+  - name: titles
+  - name: shares
+  - name: meta
+
+paths:
+  /healthz:
+    get:
+      tags: [meta]
+      summary: Liveness probe.
+      security: []
+      responses:
+        "200":
+          description: Alive.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, version]
+                properties:
+                  status: { type: string, const: ok }
+                  version: { type: string }
+
+  /v1/devices/pair:
+    post:
+      tags: [devices]
+      summary: Exchange a pairing code for a device token.
+      description: |
+        Console software keyboards are painful, so the code never comes from the
+        console keyboard: it is scanned by camera (3DS, `quirc`) or approved from a
+        phone or PC (device code flow, the Switch path).
+
+        While the user has not approved yet the server answers `400 pairing_pending`
+        with `detail.interval`, the minimum seconds before polling again.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [grant, code, label, platform]
+              properties:
+                grant:
+                  type: string
+                  enum: [qr, device_code]
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 128
+                label:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: User set console name, shown in conflict dialogs.
+                platform:
+                  $ref: "#/components/schemas/Platform"
+      responses:
+        "200":
+          description: Paired. The token is stored on the SD card and can be revoked per device.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [device_id, token]
+                properties:
+                  device_id: { type: string }
+                  token:
+                    type: string
+                    description: Shown once. The server keeps only `token_hash`.
+        "400": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /v1/devices/{id}:
+    delete:
+      tags: [devices]
+      summary: Revoke a device token.
+      description: SD cards are removable, so per device revocation is mandatory.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Revoked. Revoking twice is not an error. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /v1/titles:
+    get:
+      tags: [titles]
+      summary: List synced titles for the calling account.
+      parameters:
+        - name: platform
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/Platform" }
+      responses:
+        "200":
+          description: Titles.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [titles]
+                properties:
+                  titles:
+                    type: array
+                    items: { $ref: "#/components/schemas/TitleSummary" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /v1/titles/{tid}/latest:
+    get:
+      tags: [titles]
+      summary: Metadata of the newest version. No blob body.
+      parameters:
+        - $ref: "#/components/parameters/Tid"
+        - $ref: "#/components/parameters/PlatformQuery"
+      responses:
+        "200":
+          description: Latest version metadata.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VersionMeta" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /v1/titles/{tid}/blob/{v}:
+    get:
+      tags: [titles]
+      summary: Download one version as a save package.
+      description: Streamed chunk by chunk. The server never assembles a blob in memory.
+      parameters:
+        - $ref: "#/components/parameters/Tid"
+        - { name: v, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - $ref: "#/components/parameters/PlatformQuery"
+      responses:
+        "200":
+          description: The save package.
+          headers:
+            X-DaeMoon-SHA256:
+              schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+              description: Payload digest from the manifest. The client verifies before restoring.
+            X-DaeMoon-Version:
+              schema: { type: integer }
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /v1/titles/{tid}/blob:
+    post:
+      tags: [titles]
+      summary: Upload a new version.
+      description: |
+        The body is the save package itself, not JSON. `parent_version`, `sha256`,
+        `size` and `device_label` are read from the `manifest.json` inside it, so the
+        client never has to buffer and re-encode a multi megabyte save. `parent_version`
+        is repeated as a query parameter so the conflict check can run before the body
+        is read.
+
+        `parent_version == latest` accepts and issues `latest + 1`.
+        Anything else is `409 version_conflict`; **both versions are retained** and the
+        409 body carries what the client needs for `ui->choose()`.
+      parameters:
+        - $ref: "#/components/parameters/Tid"
+        - name: parent_version
+          in: query
+          required: true
+          schema: { type: integer, minimum: 0 }
+          description: 0 for a first upload.
+      requestBody:
+        required: true
+        content:
+          application/zip:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: Accepted. A new version was issued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VersionMeta" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "409":
+          description: |
+            `version_conflict`. Nothing was discarded. `detail` describes the server
+            side so the user can choose.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Error"
+                  - type: object
+                    properties:
+                      error:
+                        type: object
+                        properties:
+                          detail:
+                            type: object
+                            required: [server_version, parent_version]
+                            properties:
+                              server_version: { type: integer }
+                              parent_version: { type: integer }
+                              server_size: { type: integer }
+                              server_device_label: { type: string }
+                              server_received_at: { type: string, format: date-time }
+        "413": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /v1/shares:
+    post:
+      tags: [shares]
+      summary: Create a share code for one version.
+      responses:
+        "201":
+          description: Share created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, expires_at]
+                properties:
+                  code: { type: string }
+                  expires_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title_id, platform, version]
+              properties:
+                title_id: { type: string }
+                platform: { $ref: "#/components/schemas/Platform" }
+                version: { type: integer, minimum: 1 }
+                ttl_seconds: { type: integer, minimum: 60, default: 86400 }
+
+  /v1/shares/{code}:
+    get:
+      tags: [shares]
+      summary: Download a shared save package. No authentication.
+      security: []
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The save package.
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    deviceToken:
+      type: http
+      scheme: bearer
+      description: The token issued by `/v1/devices/pair`. Stored on the SD card, revocable per device.
+
+  parameters:
+    Tid:
+      name: tid
+      in: path
+      required: true
+      schema: { type: string }
+      description: Title id as written in the manifest.
+    PlatformQuery:
+      name: platform
+      in: query
+      required: true
+      schema: { $ref: "#/components/schemas/Platform" }
+      description: A title id is only unique together with its platform.
+
+  responses:
+    Error:
+      description: Machine readable failure. The client renders the text.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Platform:
+      type: string
+      enum: ["3ds", "nx", "nds"]
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code]
+          properties:
+            code:
+              type: string
+              description: A code from `shared/errors.json`. That file is the single source of truth.
+            detail:
+              type: object
+              additionalProperties: true
+
+    TitleSummary:
+      type: object
+      required: [title_id, platform, save_type, latest_version]
+      properties:
+        title_id: { type: string }
+        platform: { $ref: "#/components/schemas/Platform" }
+        save_type: { type: string, enum: [savedata, extdata, nds] }
+        latest_version: { type: integer }
+        updated_at: { type: string, format: date-time }
+
+    VersionMeta:
+      type: object
+      required: [title_id, platform, version, sha256, size]
+      properties:
+        title_id: { type: string }
+        platform: { $ref: "#/components/schemas/Platform" }
+        version: { type: integer }
+        parent_version: { type: ["integer", "null"] }
+        sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+        size: { type: integer }
+        device_label: { type: string }
+        received_at:
+          type: string
+          format: date-time
+          description: Server clock. Informational, never used for ordering.

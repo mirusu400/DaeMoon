@@ -35,6 +35,7 @@ echo "filesystem rights"
 require_line ' > Category System Application'
 require_line ' > Direct SDMC'
 require_line ' > Direct SDMC (Write Only)'
+require_line ' > Core'      # reading another title's SMDH for its name
 
 echo "services"
 require_service 'fs:USER'    # the save archives

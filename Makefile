@@ -127,8 +127,13 @@ docker-3ds:
 # command line silently produced a shipped one, and the difference is whether the
 # unattended self test has an archive to run against.
 SAVEDATA_SIZE ?= 0K
+
+# Worked out on the host: the container has no git identity and no reason to.
+BUILD_STAMP := $(shell date -u +%Y-%m-%d\ %H:%M)Z $(shell git -C $(ROOT) rev-parse --short HEAD 2>/dev/null || echo nogit)$(shell git -C $(ROOT) diff --quiet 2>/dev/null || echo +dirty)
+
 docker-cia:
-	@$(DOCKER_RUN) -w /work/platform/3ds daemoon-3ds:local make cia SAVEDATA_SIZE=$(SAVEDATA_SIZE)
+	@$(DOCKER_RUN) -w /work/platform/3ds daemoon-3ds:local \
+		make cia SAVEDATA_SIZE=$(SAVEDATA_SIZE) BUILD_STAMP="$(BUILD_STAMP)"
 
 # Reads the CIA back rather than trusting that makerom did what app.rsf said. A
 # .3dsx cannot reach another title's save archive; the exheader is the difference,

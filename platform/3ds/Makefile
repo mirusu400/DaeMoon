@@ -25,6 +25,14 @@ RSF         := $(TOPDIR)/app.rsf
 # only archive it may destroy without asking a person first.
 SAVEDATA_SIZE ?= 0K
 
+# Stamped into the app so the console can say which build it is running. Without
+# it, "did that install take?" is answered by squinting at behaviour.
+#
+# It costs reproducibility, which is a real thing to give up: two builds of the
+# same tree no longer produce the same file. Only main.c includes the generated
+# header, so a new stamp does not rebuild the world.
+BUILD_STAMP ?= unknown
+
 # Core is compiled straight into the app rather than linked as a library: one
 # compiler, one set of flags, and no stale archive to explain.
 SOURCES  := source source/ui \
@@ -94,15 +102,23 @@ ifeq ($(strip $(NO_SMDH)),)
     export _3DSXFLAGS += --smdh=$(CURDIR)/$(TARGET).smdh
 endif
 
-.PHONY: all cia clean FORCE
+.PHONY: all cia clean stamp FORCE
 
-all: $(BUILD)
+all: $(BUILD) stamp
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 # What actually gets tested. A .3dsx has no permission to reach another title's
 # save archive, so the CIA is not an afterthought for release day.
-cia: $(BUILD)
+cia: $(BUILD) stamp
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile cia
+
+# Rewritten only when it changes, so main.c is not rebuilt for a stamp that is
+# the same as last time.
+stamp: $(BUILD)
+	@printf '#define DAEMOON_BUILD_STAMP "%s"\n' '$(BUILD_STAMP)' > $(BUILD)/build_stamp.h.new
+	@cmp -s $(BUILD)/build_stamp.h.new $(BUILD)/build_stamp.h \
+		|| mv $(BUILD)/build_stamp.h.new $(BUILD)/build_stamp.h
+	@rm -f $(BUILD)/build_stamp.h.new
 
 $(BUILD):
 	@mkdir -p $@

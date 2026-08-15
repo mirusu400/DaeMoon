@@ -136,10 +136,18 @@ whether Phase 7 sharing is possible at all.
 
 Menu: **Show a title's secure value**, on several titles. Record for each:
 
+The Survey action writes all of this to `sdmc:/DaeMoon/survey.txt` in one pass,
+which is easier to reason about than reading a screen sixteen times.
+
+One console has been surveyed so far. Of sixteen titles, exactly one had a secure
+value, and it sat directly next to another title from the same series that did
+not. So the question is per title, and a sample of one console is a sample of one
+console.
+
 | Title | Has a secure value | Notes |
 |---|---|---|
 | your dummy title | | |
-| a Pokemon game, if you have one | | expected to have one |
+| a Pokemon game, if you have one | | one of two had one on the surveyed console |
 | something first party and older | | |
 
 Then, on the dummy title only:

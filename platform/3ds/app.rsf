@@ -32,10 +32,18 @@ AccessControlInfo:
   # Reaching other titles' save archives. CategorySystemApplication is what lets
   # FSUSER_OpenArchive open a save that does not belong to this title;
   # DirectSdmc and DirectSdmcWrite are for the backups, staging and state files.
+  #
+  # Core is for reading another title's SMDH, which is where the name a person
+  # recognises comes from. Hardware answered that question: with the three rights
+  # above, every save archive opened and every SMDH read came back "not
+  # supported", so the whole library showed up as product codes. It is the
+  # narrowest addition that was tried, and whether something narrower would do is
+  # worth one more experiment.
   FileSystemAccess:
     - CategorySystemApplication
     - DirectSdmc
     - DirectSdmcWrite
+    - Core
 
   IdealProcessor          : 0
   AffinityMask            : 1

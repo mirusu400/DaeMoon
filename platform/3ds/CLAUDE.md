@@ -53,6 +53,25 @@ already exists" bug was found, and the stub could not have found it.
 
 Only hardware answers the rest, and the same conformance suite runs there.
 
+## What hardware has answered so far
+
+From a survey of 16 titles on one console (`sdmc:/DaeMoon/survey.txt`, produced by
+the app's own Survey action):
+
+- **Every save archive opened.** `CategorySystemApplication`, `DirectSdmc` and
+  `DirectSdmcWrite` are enough for the save work itself.
+- **No SMDH could be read** with only those three: every title came back
+  `not supported`, so every name fell back to a product code. `Core` was added for
+  that and nothing else. Whether something narrower would do is worth one more
+  experiment; every right is one more thing an app that writes to save data can
+  get wrong.
+- **Secure values are rare.** One title out of sixteen had one. Two Pokemon titles
+  sat next to each other in the list and only one of them did. That is the first
+  real evidence on the question Phase 7 depends on, and it says the answer is per
+  title rather than per publisher or per genre.
+- **Three titles had an archive with nothing in it.** Backing one of those up is
+  now refused rather than producing a package whose restore would clear a save.
+
 ## Proving the backend
 
 `tools/test/backend_conformance.c` is the contract, written against the interface

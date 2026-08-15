@@ -392,6 +392,18 @@ daemoon_result_t daemoon_sync_backup_local(const daemoon_env_t *env, daemoon_arc
     (void)env->save->close_save(env->save_ctx, save);
     DAEMOON_TRY(r);
 
+    /* An archive with nothing in it does not get backed up.
+     *
+     * The resulting package would be a manifest and no payload, and restoring one
+     * clears the archive and writes nothing back - so a backup that looks like it
+     * worked would be the thing that wipes the save. Whether the archive is
+     * genuinely empty or the enumeration failed, neither is a backup, and both are
+     * worth stopping for. Found on hardware, where a real title produced exactly
+     * that file. */
+    if (actx->count == 0) {
+        return DAEMOON_ERR_EMPTY_SAVE;
+    }
+
     DAEMOON_TRY(title_key(key, sizeof(key), title->platform, title->id));
     daemoon_strbuf_init(&sb, leaf, sizeof(leaf));
     daemoon_strbuf_add(&sb, key);

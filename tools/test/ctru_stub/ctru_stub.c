@@ -58,6 +58,14 @@ static struct {
 } g_titles[STUB_MAX_TITLES];
 
 static u64 g_own_title;
+/* One SMDH per title, in the layout the real one uses: an 8 byte header then a
+ * 0x200 byte block per language, each starting with a UTF-16 short description. */
+#define STUB_SMDH_SIZE (8 + 12 * 0x200)
+static struct {
+    u64 id;
+    int used;
+    u8  data[STUB_SMDH_SIZE];
+} g_smdh[STUB_MAX_TITLES];
 static u64 g_secure_values[STUB_MAX_TITLES];
 static int g_secure_present[STUB_MAX_TITLES];
 
@@ -85,6 +93,7 @@ void daemoon_stub_reset(void)
     memset(g_titles, 0, sizeof(g_titles));
     memset(g_secure_values, 0, sizeof(g_secure_values));
     memset(g_secure_present, 0, sizeof(g_secure_present));
+    memset(g_smdh, 0, sizeof(g_smdh));
     g_commits = 0;
     g_fail_next_commit = 0;
     g_own_title = 0;
@@ -196,6 +205,98 @@ static int path_to_host(FS_Archive archive, FS_Path path, char *out, size_t cap)
 }
 
 void daemoon_stub_set_own_title(u64 title_id) { g_own_title = title_id; }
+
+void daemoon_stub_set_title_name(u64 title_id, int lang, const char *name)
+{
+    size_t i;
+
+    for (i = 0; i < STUB_MAX_TITLES; ++i) {
+        if (g_smdh[i].used && g_smdh[i].id != title_id) {
+            continue;
+        }
+        if (!g_smdh[i].used) {
+            g_smdh[i].used = 1;
+            g_smdh[i].id = title_id;
+            memset(g_smdh[i].data, 0, sizeof(g_smdh[i].data));
+            memcpy(g_smdh[i].data, "SMDH", 4);
+        }
+        {
+            u16 utf16[0x40];
+            ssize_t units = utf8_to_utf16(utf16, (const u8 *)name, 0x40 - 1);
+            size_t off = 8 + (size_t)lang * 0x200;
+
+            if (units < 0) {
+                return;
+            }
+            utf16[units] = 0;
+            memcpy(g_smdh[i].data + off, utf16, (size_t)(units + 1) * sizeof(u16));
+        }
+        return;
+    }
+}
+
+/* The SMDH is read through ARCHIVE_SAVEDATA_AND_CONTENT with a binary path for
+ * the archive and another for "icon" inside the ExeFS. Both shapes are checked
+ * here, because getting either wrong on hardware is a name that never appears. */
+Result FSUSER_OpenFileDirectly(Handle *out, FS_ArchiveID archiveId, FS_Path archivePath,
+                               FS_Path filePath, u32 openFlags, u32 attributes)
+{
+    const u32 *ap;
+    const u32 *fp;
+    u64 title_id;
+    stub_handle_t *h;
+    Handle handle;
+    size_t i;
+    FILE *fp_file;
+    char path[STUB_PATH_MAX];
+
+    (void)openFlags;
+    (void)attributes;
+
+    if (archiveId != ARCHIVE_SAVEDATA_AND_CONTENT) {
+        return stub_error(RS_NOTSUPPORTED, RD_INVALID_ARGUMENT);
+    }
+    if (archivePath.type != PATH_BINARY || archivePath.size != 16 ||
+        filePath.type != PATH_BINARY || filePath.size != 20) {
+        return stub_error(RS_INVALIDARG, RD_INVALID_ARGUMENT);
+    }
+
+    ap = (const u32 *)archivePath.data;
+    fp = (const u32 *)filePath.data;
+    if (fp[2] != 2u || fp[3] != 0x6E6F6369u) {
+        return stub_error(RS_NOTFOUND, RD_NOT_FOUND);
+    }
+    title_id = ((u64)ap[1] << 32) | (u64)ap[0];
+
+    for (i = 0; i < STUB_MAX_TITLES; ++i) {
+        if (g_smdh[i].used && g_smdh[i].id == title_id) {
+            break;
+        }
+    }
+    if (i == STUB_MAX_TITLES) {
+        return stub_error(RS_NOTFOUND, RD_NOT_FOUND);
+    }
+
+    /* Backed by a real file so the same read path serves it. */
+    (void)snprintf(path, sizeof(path), "%.*s/smdh-%016llX.bin",
+                   (int)sizeof(g_root) - 1, g_root, (unsigned long long)title_id);
+    fp_file = fopen(path, "w+b");
+    if (fp_file == NULL) {
+        return stub_error(RS_NOTFOUND, RD_NOT_FOUND);
+    }
+    fwrite(g_smdh[i].data, 1, sizeof(g_smdh[i].data), fp_file);
+    fflush(fp_file);
+
+    handle = handle_alloc(&h);
+    if (handle == 0) {
+        fclose(fp_file);
+        return stub_error(RS_OUTOFRESOURCE, RD_OUT_OF_MEMORY);
+    }
+    h->fp = fp_file;
+    h->writable = 0;
+    *out = handle;
+    return 0;
+}
 
 Result APT_GetProgramID(u64 *pProgramID)
 {

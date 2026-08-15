@@ -54,6 +54,10 @@ static void select_language(void)
     default:              lang = DAEMOON_LANG_EN; break;
     }
     daemoon_i18n_set_language(lang);
+
+    /* The SMDH title index happens to be the console's own language numbering, so
+     * a title's name comes back in the language the HOME menu shows it in. */
+    g_save_ctx.smdh_language = (int)code;
 }
 
 /* -------------------------------------------------------------------- input */
@@ -460,6 +464,7 @@ int main(void)
     gfxInitDefault();
     consoleInit(GFX_TOP, NULL);
 
+    g_save_ctx.smdh_language = 1;
     if (R_SUCCEEDED(cfguInit())) {
         select_language();
     }
@@ -470,6 +475,7 @@ int main(void)
 
     g_save_ctx.media = 1; /* MEDIATYPE_SD */
     g_save_ctx.only_with_saves = 1;
+    g_save_ctx.smdh_language = 1; /* English, until the console says otherwise */
     daemoon_3ds_ui_init(&g_ui_ctx);
     g_archive.count = 0;
 

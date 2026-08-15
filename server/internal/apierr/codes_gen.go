@@ -35,6 +35,7 @@ const (
 	Unsupported         Code = "unsupported"
 	ArchiveError        Code = "archive_error"
 	BufferTooSmall      Code = "buffer_too_small"
+	EmptySave           Code = "empty_save"
 )
 
 // statusOf maps a code to its HTTP status. Codes that only ever happen on the
@@ -100,6 +101,7 @@ var detailKeys = map[Code][]string{
 	Unsupported:         {"what"},
 	ArchiveError:        {"entry"},
 	BufferTooSmall:      {"needed"},
+	EmptySave:           {"title"},
 }
 
 // DetailKeys returns the declared detail fields for c.
@@ -134,5 +136,6 @@ func All() []Code {
 		Unsupported,
 		ArchiveError,
 		BufferTooSmall,
+		EmptySave,
 	}
 }

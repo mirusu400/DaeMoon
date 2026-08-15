@@ -43,6 +43,7 @@ static const daemoon_error_row_t k_errors[] = {
     { DAEMOON_ERR_UNSUPPORTED, "unsupported", DAEMOON_STR_ERR_UNSUPPORTED, 0, 0 },
     { DAEMOON_ERR_ARCHIVE_ERROR, "archive_error", DAEMOON_STR_ERR_ARCHIVE_ERROR, 0, 0 },
     { DAEMOON_ERR_BUFFER_TOO_SMALL, "buffer_too_small", DAEMOON_STR_ERR_BUFFER_TOO_SMALL, 0, 0 },
+    { DAEMOON_ERR_EMPTY_SAVE, "empty_save", DAEMOON_STR_ERR_EMPTY_SAVE, 0, 0 },
 };
 
 static const size_t k_error_count = sizeof(k_errors) / sizeof(k_errors[0]);

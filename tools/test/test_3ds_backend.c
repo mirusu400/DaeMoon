@@ -518,6 +518,102 @@ TEST_CASE(the_sd_backend_handles_nested_paths_and_replacement)
     (void)daemoon_posix_rmtree(root);
 }
 
+/* The bug this catches was found on hardware: a real title produced a backup
+ * containing a manifest and no payload, because a failed directory read looked
+ * exactly like the end of the directory. Restoring that file clears the archive
+ * and writes nothing back, so the backup that looked like it worked is the thing
+ * that wipes the save. */
+TEST_CASE(an_empty_archive_is_not_backed_up)
+{
+    char root[256];
+    char work[320];
+    daemoon_strbuf_t sb;
+    daemoon_title_t title;
+    daemoon_3ds_save_ctx_t save_ctx;
+    daemoon_posix_ui_ctx_t ui;
+    daemoon_archive_ctx_t actx;
+    daemoon_env_t env;
+    static unsigned char scratch[64 * 1024];
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-empty"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_ID), 0);
+    title_for(&title, TEST_TITLE_ID);
+
+    daemoon_strbuf_init(&sb, work, sizeof(work));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/DaeMoon");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+
+    memset(&save_ctx, 0, sizeof(save_ctx));
+    save_ctx.media = MEDIATYPE_SD;
+    daemoon_posix_ui_init(&ui);
+    actx.count = 0;
+
+    memset(&env, 0, sizeof(env));
+    env.save = &daemoon_3ds_save_backend;
+    env.fs = &daemoon_3ds_fs_backend;
+    env.ui = &daemoon_posix_ui_backend;
+    env.save_ctx = &save_ctx;
+    env.ui_ctx = &ui;
+    env.device_label = "3DS";
+    env.work_dir = work;
+    env.scratch = scratch;
+    env.scratch_len = sizeof(scratch);
+
+    /* The archive exists and has nothing in it. */
+    CHECK_RESULT(daemoon_sync_backup_local(&env, &actx, &title, NULL, 0),
+                 DAEMOON_ERR_EMPTY_SAVE);
+
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
+/* A name a person recognises, rather than a product code nobody can map to a
+ * game. */
+TEST_CASE(titles_are_named_from_their_smdh)
+{
+    char root[256];
+    daemoon_3ds_save_ctx_t ctx;
+    daemoon_title_t *titles = NULL;
+    size_t count = 0;
+    size_t i;
+    int checked = 0;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-smdh"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    daemoon_stub_add_title(TEST_TITLE_OTHER, "CTR-P-DUM2");
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_ID), 0);
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_OTHER), 0);
+
+    /* One title has a name in the console's language, the other has none. */
+    daemoon_stub_set_title_name(TEST_TITLE_ID, 7, "포켓몬스터");
+
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.media = MEDIATYPE_SD;
+    ctx.only_with_saves = 1;
+    ctx.smdh_language = 7; /* Korean */
+
+    CHECK_OK(daemoon_3ds_save_backend.list_titles(&ctx, &titles, &count));
+    for (i = 0; i < count; ++i) {
+        if (strcmp(titles[i].id, "0004000000055D00") == 0) {
+            CHECK_STR(titles[i].name, "포켓몬스터");
+            checked = 1;
+        }
+        if (strcmp(titles[i].id, "0004000000030800") == 0) {
+            /* No SMDH: the product code, which is still better than the id. */
+            CHECK_STR(titles[i].name, "CTR-P-DUM2");
+        }
+    }
+    CHECK(checked);
+
+    daemoon_3ds_save_backend.free_titles(&ctx, titles, count);
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
 void test_3ds_backend(void)
 {
     printf("3ds backend (stubbed libctru)\n");
@@ -530,4 +626,6 @@ void test_3ds_backend(void)
     RUN(the_secure_value_round_trips);
     RUN(the_sd_backend_handles_nested_paths_and_replacement);
     RUN(a_backup_and_restore_round_trip_through_the_3ds_backends);
+    RUN(an_empty_archive_is_not_backed_up);
+    RUN(titles_are_named_from_their_smdh);
 }

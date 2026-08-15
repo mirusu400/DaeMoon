@@ -64,5 +64,6 @@
   "err.no_space": "SD カードの空き容量が足りません。",
   "err.unsupported": "対応していません。",
   "err.archive_error": "セーブパッケージが壊れています。",
-  "err.buffer_too_small": "内部バッファが小さすぎます。"
+  "err.buffer_too_small": "内部バッファが小さすぎます。",
+  "err.empty_save": "このタイトルにはバックアップするセーブデータがありません。"
 }

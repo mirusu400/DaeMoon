@@ -287,7 +287,20 @@ static daemoon_result_t walk(daemoon_save_t *s, const char *rel, daemoon_entry_c
         u32 read = 0;
         ssize_t bytes;
 
-        if (R_FAILED(FSDIR_Read(dir, &read, 1, entries)) || read == 0) {
+        Result res = FSDIR_Read(dir, &read, 1, entries);
+
+        if (R_FAILED(res)) {
+            /* Not the end of the directory: a failure to read one.
+             *
+             * This used to break out of the loop, which made a read error look
+             * exactly like an empty archive - and an empty archive packs into a
+             * backup that contains nothing, reports success, and wipes the save
+             * when it is restored. Found on hardware, where the backup of a real
+             * title came back with a manifest and no payload. */
+            r = from_result(res);
+            break;
+        }
+        if (read == 0) {
             break;
         }
 
@@ -527,6 +540,73 @@ static daemoon_result_t remove_all(void *ctx, daemoon_save_t *s)
     return r;
 }
 
+/* --------------------------------------------------------------- title names */
+
+/* The title as the HOME menu shows it, read from the SMDH in the title's ExeFS.
+ *
+ * A product code is a fine thing for a log line and useless for choosing which
+ * game to restore, which is a decision nobody should make from CTR-P-XXXX.
+ *
+ * The SMDH lives at "icon" in the ExeFS, reachable through
+ * ARCHIVE_SAVEDATA_AND_CONTENT. Only the one short description for the chosen
+ * language is read: the whole structure is fourteen kilobytes and this runs once
+ * per title on a console with a small heap.
+ */
+#define SMDH_TITLE_OFFSET(lang) (8u + (u32)(lang) * 0x200u)
+#define SMDH_SHORT_DESC_UNITS   0x40
+
+static daemoon_result_t read_smdh_name(FS_MediaType media, u64 title_id, int lang,
+                                       char *out, size_t cap)
+{
+    /* Binary paths, as the service wants them. */
+    u32 archive_path[4];
+    static const u32 file_path[5] = {
+        0x00000000u, 0x00000000u, 0x00000002u, 0x6E6F6369u /* "icon" */, 0x00000000u
+    };
+    FS_Path archive;
+    FS_Path file;
+    Handle handle = 0;
+    u16 utf16[SMDH_SHORT_DESC_UNITS + 1];
+    u32 got = 0;
+    ssize_t bytes;
+    Result res;
+
+    archive_path[0] = (u32)(title_id & 0xffffffffull);
+    archive_path[1] = (u32)(title_id >> 32);
+    archive_path[2] = (u32)media;
+    archive_path[3] = 0;
+
+    archive.type = PATH_BINARY;
+    archive.size = sizeof(archive_path);
+    archive.data = archive_path;
+
+    file.type = PATH_BINARY;
+    file.size = sizeof(file_path);
+    file.data = file_path;
+
+    res = FSUSER_OpenFileDirectly(&handle, ARCHIVE_SAVEDATA_AND_CONTENT, archive, file,
+                                  FS_OPEN_READ, 0);
+    if (R_FAILED(res)) {
+        return from_result(res);
+    }
+
+    res = FSFILE_Read(handle, &got, SMDH_TITLE_OFFSET(lang), utf16,
+                      SMDH_SHORT_DESC_UNITS * sizeof(u16));
+    (void)FSFILE_Close(handle);
+
+    if (R_FAILED(res) || got < sizeof(u16)) {
+        return from_result(res);
+    }
+    utf16[SMDH_SHORT_DESC_UNITS] = 0;
+
+    bytes = utf16_to_utf8((uint8_t *)out, utf16, cap - 1);
+    if (bytes < 0 || (size_t)bytes > cap - 1) {
+        return DAEMOON_ERR_BUFFER_TOO_SMALL;
+    }
+    out[bytes] = '\0';
+    return out[0] != '\0' ? DAEMOON_OK : DAEMOON_ERR_NOT_FOUND;
+}
+
 /* -------------------------------------------------------------------- titles */
 
 static daemoon_result_t list_titles(void *ctx, daemoon_title_t **out, size_t *count)
@@ -586,14 +666,16 @@ static daemoon_result_t list_titles(void *ctx, daemoon_title_t **out, size_t *co
          * archive later without another lookup. */
         t->size_hint = (unsigned long long)c->media;
 
-        memset(product, 0, sizeof(product));
-        if (R_SUCCEEDED(AM_GetTitleProductCode(c->media, ids[i], product))) {
-            product[sizeof(product) - 1] = '\0';
-        }
-        if (product[0] != '\0') {
-            (void)daemoon_strlcpy(t->name, sizeof(t->name), product);
-        } else {
-            (void)daemoon_strlcpy(t->name, sizeof(t->name), t->id);
+        /* The name the HOME menu shows, then the product code, then the id. Each
+         * fallback is less useful than the last and none of them is a failure. */
+        if (read_smdh_name(c->media, ids[i], c->smdh_language, t->name,
+                           sizeof(t->name)) != DAEMOON_OK) {
+            memset(product, 0, sizeof(product));
+            if (R_SUCCEEDED(AM_GetTitleProductCode(c->media, ids[i], product))) {
+                product[sizeof(product) - 1] = '\0';
+            }
+            (void)daemoon_strlcpy(t->name, sizeof(t->name),
+                                  product[0] != '\0' ? product : t->id);
         }
 
         /* Whether a save exists is answered by opening it, because that is the

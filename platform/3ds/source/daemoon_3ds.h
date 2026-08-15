@@ -18,6 +18,9 @@ typedef struct {
      * work the same way through AM, but a card being pulled mid write is a failure
      * mode nothing else here has. */
     int media;
+    /* Which language to read a title's name in, as an SMDH index: 1 is English,
+     * which is also the fallback the console itself uses. */
+    int smdh_language;
     /* Skip titles with no save archive when listing. The menu wants that; a
      * conformance run does not. */
     int only_with_saves;

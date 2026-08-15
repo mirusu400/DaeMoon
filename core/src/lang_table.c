@@ -29,6 +29,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Internal buffer too small.", /* err.buffer_too_small */
         "The downloaded save is damaged.", /* err.checksum_mismatch */
         "Access for this console was revoked. Pair it again.", /* err.device_revoked */
+        "This title has no save data to back up.", /* err.empty_save */
         "This save does not belong to this account.", /* err.forbidden */
         "The server ran into a problem.", /* err.internal_error */
         "The save package is not readable.", /* err.invalid_manifest */
@@ -88,6 +89,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "내부 버퍼가 너무 작습니다.", /* err.buffer_too_small */
         "내려받은 세이브가 손상되었습니다.", /* err.checksum_mismatch */
         "이 본체의 접근 권한이 해제되었습니다. 다시 연결하세요.", /* err.device_revoked */
+        "이 타이틀에는 백업할 세이브 데이터가 없습니다.", /* err.empty_save */
         "이 세이브는 이 계정의 것이 아닙니다.", /* err.forbidden */
         "서버에 문제가 발생했습니다.", /* err.internal_error */
         "세이브 패키지를 읽을 수 없습니다.", /* err.invalid_manifest */
@@ -147,6 +149,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "内部バッファが小さすぎます。", /* err.buffer_too_small */
         "ダウンロードしたセーブが壊れています。", /* err.checksum_mismatch */
         "この本体のアクセスは取り消されました。もう一度ペアリングしてください。", /* err.device_revoked */
+        "このタイトルにはバックアップするセーブデータがありません。", /* err.empty_save */
         "このセーブはこのアカウントのものではありません。", /* err.forbidden */
         "サーバーで問題が発生しました。", /* err.internal_error */
         "セーブパッケージを読み取れません。", /* err.invalid_manifest */
@@ -206,6 +209,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "内部缓冲区过小。", /* err.buffer_too_small */
         "下载的存档已损坏。", /* err.checksum_mismatch */
         "本机的访问权限已被撤销，请重新配对。", /* err.device_revoked */
+        "该标题没有可备份的存档。", /* err.empty_save */
         "该存档不属于此账号。", /* err.forbidden */
         "服务器出现问题。", /* err.internal_error */
         "无法读取存档包。", /* err.invalid_manifest */
@@ -265,6 +269,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "內部緩衝區過小。", /* err.buffer_too_small */
         "下載的存檔已損壞。", /* err.checksum_mismatch */
         "本機的存取權限已被撤銷，請重新配對。", /* err.device_revoked */
+        "此標題沒有可備份的存檔。", /* err.empty_save */
         "該存檔不屬於此帳號。", /* err.forbidden */
         "伺服器發生問題。", /* err.internal_error */
         "無法讀取存檔包。", /* err.invalid_manifest */
@@ -324,6 +329,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Búfer interno demasiado pequeño.", /* err.buffer_too_small */
         "La partida descargada está dañada.", /* err.checksum_mismatch */
         "Se ha revocado el acceso de esta consola. Vuelve a vincularla.", /* err.device_revoked */
+        "Este título no tiene partida que copiar.", /* err.empty_save */
         "Esta partida no pertenece a esta cuenta.", /* err.forbidden */
         "El servidor ha tenido un problema.", /* err.internal_error */
         "No se puede leer el paquete de la partida.", /* err.invalid_manifest */
@@ -383,6 +389,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Tampon interne trop petit.", /* err.buffer_too_small */
         "La sauvegarde téléchargée est endommagée.", /* err.checksum_mismatch */
         "L'accès de cette console a été révoqué. Associez-la de nouveau.", /* err.device_revoked */
+        "Ce titre n'a aucune sauvegarde à copier.", /* err.empty_save */
         "Cette sauvegarde n'appartient pas à ce compte.", /* err.forbidden */
         "Le serveur a rencontré un problème.", /* err.internal_error */
         "Le paquet de sauvegarde est illisible.", /* err.invalid_manifest */
@@ -442,6 +449,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Interner Puffer zu klein.", /* err.buffer_too_small */
         "Der heruntergeladene Spielstand ist beschädigt.", /* err.checksum_mismatch */
         "Der Zugriff dieser Konsole wurde entzogen. Koppel sie erneut.", /* err.device_revoked */
+        "Dieser Titel hat keinen Spielstand zum Sichern.", /* err.empty_save */
         "Dieser Spielstand gehört nicht zu diesem Konto.", /* err.forbidden */
         "Auf dem Server ist ein Problem aufgetreten.", /* err.internal_error */
         "Das Spielstandpaket ist nicht lesbar.", /* err.invalid_manifest */

@@ -64,5 +64,6 @@
   "err.no_space": "Not enough space on the SD card.",
   "err.unsupported": "This is not supported.",
   "err.archive_error": "The save package is damaged.",
-  "err.buffer_too_small": "Internal buffer too small."
+  "err.buffer_too_small": "Internal buffer too small.",
+  "err.empty_save": "This title has no save data to back up."
 }

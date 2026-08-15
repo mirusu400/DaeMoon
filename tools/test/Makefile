@@ -21,7 +21,7 @@ INCLUDES := -I$(ROOT)/tools/test/ctru_stub \
             -I$(ROOT)/core/include -I$(ROOT)/vendor -I$(ROOT)/platform/posix \
             -I$(ROOT)/tools/test -I$(ROOT)/platform/3ds/source
 
-CFLAGS := $(CSTD) $(WARN) $(SAN) -g -O1 $(INCLUDES)
+CFLAGS := $(CSTD) $(WARN) $(SAN) -g -O1 -MMD -MP $(INCLUDES)
 LDFLAGS := $(SAN)
 
 CORE_SRC := $(wildcard $(ROOT)/core/src/*.c) $(wildcard $(ROOT)/core/src/util/*.c)
@@ -37,6 +37,8 @@ VENDOR_SRC := $(ROOT)/vendor/miniz/miniz.c
 
 SRC := $(CORE_SRC) $(POSIX_SRC) $(TEST_SRC) $(TDS_SRC) $(VENDOR_SRC)
 OBJ := $(patsubst $(ROOT)/%.c,$(BUILD)/%.o,$(SRC))
+
+DEPS := $(OBJ:.o=.d)
 
 BIN := $(BUILD)/coretest
 
@@ -63,3 +65,6 @@ run: $(BIN)
 
 clean:
 	@rm -rf $(BUILD)
+
+# Header dependencies, so a change to a generated header rebuilds what uses it.
+-include $(DEPS)

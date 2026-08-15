@@ -12,12 +12,14 @@ WARN := -Wall -Wextra -Wpedantic -Wshadow -Wstrict-prototypes -Wmissing-prototyp
         -Wno-unused-parameter
 
 INCLUDES := -I$(ROOT)/core/include -I$(ROOT)/vendor -I$(ROOT)/platform/posix
-CFLAGS := $(CSTD) $(WARN) -O2 -g $(INCLUDES)
+CFLAGS := $(CSTD) $(WARN) -O2 -g -MMD -MP $(INCLUDES)
 
 CORE_SRC := $(wildcard $(ROOT)/core/src/*.c) $(wildcard $(ROOT)/core/src/util/*.c)
 POSIX_SRC := $(wildcard $(ROOT)/platform/posix/*.c)
 SRC := $(CORE_SRC) $(POSIX_SRC) $(ROOT)/vendor/miniz/miniz.c $(ROOT)/tools/cli/main.c
 OBJ := $(patsubst $(ROOT)/%.c,$(BUILD)/%.o,$(SRC))
+
+DEPS := $(OBJ:.o=.d)
 
 BIN := $(ROOT)/build/daemoonctl
 
@@ -42,3 +44,6 @@ $(BUILD)/%.o: $(ROOT)/%.c
 
 clean:
 	@rm -rf $(BUILD) $(BIN)
+
+# Header dependencies, so a change to a generated header rebuilds what uses it.
+-include $(DEPS)

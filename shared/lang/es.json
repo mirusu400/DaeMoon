@@ -64,5 +64,6 @@
   "err.no_space": "No hay espacio suficiente en la tarjeta SD.",
   "err.unsupported": "No es compatible.",
   "err.archive_error": "El paquete de la partida está dañado.",
-  "err.buffer_too_small": "Búfer interno demasiado pequeño."
+  "err.buffer_too_small": "Búfer interno demasiado pequeño.",
+  "err.empty_save": "Este título no tiene partida que copiar."
 }

@@ -87,7 +87,10 @@ typedef enum {
     ARCHIVE_SAVEDATA = 0x00000004,
     /* Another title's save, opened with a binary path carrying the media type and
      * title id. This is the one that needs the rights in app.rsf. */
-    ARCHIVE_USER_SAVEDATA = 0x567890B2
+    ARCHIVE_USER_SAVEDATA = 0x567890B2,
+    /* The title's own content as well as its save, which is where the SMDH with
+     * the name the HOME menu shows lives. */
+    ARCHIVE_SAVEDATA_AND_CONTENT = 0x2345678A
 } FS_ArchiveID;
 
 typedef enum {
@@ -157,6 +160,12 @@ Result FSUSER_ControlArchive(FS_Archive archive, FS_ArchiveAction action, void *
 Result FSUSER_OpenFile(Handle *out, FS_Archive archive, FS_Path path, u32 openFlags,
                        u32 attributes);
 Result FSUSER_OpenDirectory(Handle *out, FS_Archive archive, FS_Path path);
+Result FSUSER_OpenFileDirectly(Handle *out, FS_ArchiveID archiveId, FS_Path archivePath,
+                               FS_Path filePath, u32 openFlags, u32 attributes);
+
+/* Gives a title an SMDH the stub will serve, so the name lookup is exercised
+ * rather than only compiled. */
+void daemoon_stub_set_title_name(u64 title_id, int lang, const char *name);
 Result FSUSER_DeleteFile(FS_Archive archive, FS_Path path);
 Result FSUSER_CreateDirectory(FS_Archive archive, FS_Path path, u32 attributes);
 Result FSUSER_GetArchiveResource(FS_ArchiveResource *out, FS_SystemMediaType mediaType);

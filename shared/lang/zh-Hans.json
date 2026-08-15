@@ -64,5 +64,6 @@
   "err.no_space": "SD 卡空间不足。",
   "err.unsupported": "不支持该操作。",
   "err.archive_error": "存档包已损坏。",
-  "err.buffer_too_small": "内部缓冲区过小。"
+  "err.buffer_too_small": "内部缓冲区过小。",
+  "err.empty_save": "该标题没有可备份的存档。"
 }

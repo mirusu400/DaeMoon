@@ -24,13 +24,19 @@
 
 #define ICON_TEX_DIM 64
 
-/* The subtexture that maps the 48x48 corner of a 64x64 texture. The v
- * coordinates are flipped because the icon is copied into the bottom of the
- * texture, which is where a 3DS texture's first row lives. */
+/* Where the 48x48 icon sits inside the 64x64 texture.
+ *
+ * A 3DS texture is stored in 8x8 tiles and its first row is the bottom one, so
+ * "the corner" is not the arithmetic anyone would guess. These two constants -
+ * the destination offset below and this rectangle - have to agree, and they are
+ * taken from Checkpoint, which has been drawing these icons correctly for years.
+ * They are a hardware layout, not a design. */
 static const Tex3DS_SubTexture k_subtexture = {
-    SMDH_LARGE_ICON_DIM, SMDH_LARGE_ICON_DIM, 0.0f, 1.0f,
+    SMDH_LARGE_ICON_DIM, SMDH_LARGE_ICON_DIM,
+    0.0f,
     (float)SMDH_LARGE_ICON_DIM / (float)ICON_TEX_DIM,
-    1.0f - (float)SMDH_LARGE_ICON_DIM / (float)ICON_TEX_DIM
+    (float)SMDH_LARGE_ICON_DIM / (float)ICON_TEX_DIM,
+    0.0f
 };
 
 daemoon_result_t daemoon_3ds_icon_load(int media, unsigned long long title_id,
@@ -90,7 +96,8 @@ daemoon_result_t daemoon_3ds_icon_load(int media, unsigned long long title_id,
      * copy rather than a conversion - but the rows have different strides, 48
      * against 64, so it goes one band of eight rows at a time. */
     {
-        u16 *dst = (u16 *)tex->data;
+        /* Offset so the icon lands where k_subtexture says it is. */
+        u16 *dst = (u16 *)tex->data + (ICON_TEX_DIM - SMDH_LARGE_ICON_DIM) * ICON_TEX_DIM;
         const u16 *src = (const u16 *)(const void *)pixels;
 
         for (row = 0; row < SMDH_LARGE_ICON_DIM; row += 8) {

@@ -29,63 +29,6 @@ void daemoon_3ds_ui_init(daemoon_3ds_ui_ctx_t *ctx)
 /* Wraps a rendered string across a width, drawing it line by line. A translated
  * sentence is often half again as long as the English, so a dialog that assumes
  * one line is a dialog that loses its second half in German. */
-static float draw_wrapped(float x, float y, float w, float scale, u32 colour,
-                          const char *text)
-{
-    char line[256];
-    const char *p = text;
-
-    while (*p != '\0') {
-        size_t take = 0;
-        size_t i = 0;
-
-        /* Word by word, measuring once per word rather than once per character.
-         * The per character version parsed text hundreds of times a frame and
-         * exhausted the citro2d text buffer, which shows up as a crash somewhere
-         * else entirely. */
-        while (p[i] != '\0' && i < sizeof(line) - 1) {
-            size_t word = i;
-
-            while (p[word] != '\0' && p[word] != ' ') {
-                size_t step = daemoon_utf8_truncate(p + word, strlen(p + word), 1);
-                word += (step == 0) ? 1 : step;
-            }
-            while (p[word] == ' ') {
-                ++word;
-            }
-            if (word >= sizeof(line) - 1) {
-                word = sizeof(line) - 2;
-            }
-
-            memcpy(line, p, word);
-            line[word] = '\0';
-            if (daemoon_gfx_text_width(scale, line) > w && take > 0) {
-                break;
-            }
-            take = word;
-            i = word;
-            if (p[i] == '\0') {
-                break;
-            }
-        }
-
-        if (take == 0) {
-            take = i > 0 ? i : 1;
-        }
-
-        memcpy(line, p, take);
-        line[take] = '\0';
-        daemoon_gfx_text(x, y, scale, colour, line);
-        y += 18.0f;
-
-        p += take;
-        while (*p == ' ') {
-            ++p;
-        }
-    }
-    return y;
-}
-
 static void render(const daemoon_str_ref_t *ref, char *out, size_t cap)
 {
     (void)daemoon_strf(out, cap, ref->id, ref->args, ref->nargs);
@@ -112,7 +55,7 @@ static int modal(const char *title, const char *body, const char *const *options
         daemoon_gfx_top();
         daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, accent);
         daemoon_gfx_text(12.0f, 6.0f, 0.6f, GFX_TEXT, title);
-        (void)draw_wrapped(12.0f, 48.0f, GFX_TOP_W - 24.0f, 0.5f, GFX_TEXT, body);
+        (void)daemoon_gfx_text_wrapped(12.0f, 48.0f, GFX_TOP_W - 24.0f, 0.5f, GFX_TEXT, body);
 
         daemoon_gfx_bottom();
         y = 24.0f;

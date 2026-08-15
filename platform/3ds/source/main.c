@@ -111,6 +111,40 @@ static void free_icons(void)
     }
 }
 
+/* One frame of the loading screen. Reading the list opens every save archive on
+ * the console, so this runs for as long as that takes and a still screen would
+ * look like a hang. */
+static void draw_loading(const char *what, unsigned done, unsigned total)
+{
+    char line[96];
+
+    daemoon_gfx_frame_begin();
+    daemoon_gfx_top();
+    daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
+    daemoon_gfx_text(12.0f, 6.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_APP_TITLE));
+
+    if (total > 0) {
+        (void)snprintf(line, sizeof(line), "%s  %u/%u", what, done, total);
+    } else {
+        (void)snprintf(line, sizeof(line), "%s", what);
+    }
+    daemoon_gfx_text(12.0f, 100.0f, 0.5f, GFX_TEXT_DIM, line);
+
+    if (total > 0) {
+        float w = (GFX_TOP_W - 24.0f) * (float)done / (float)total;
+
+        daemoon_gfx_rect(12.0f, 126.0f, GFX_TOP_W - 24.0f, 6.0f, GFX_PANEL);
+        daemoon_gfx_rect(12.0f, 126.0f, w, 6.0f, GFX_ACCENT);
+    }
+    daemoon_gfx_frame_end();
+}
+
+static void loading_progress(void *user, unsigned done, unsigned total)
+{
+    (void)user;
+    draw_loading("reading titles", done, total);
+}
+
 static daemoon_result_t reload_titles(void)
 {
     daemoon_result_t r;
@@ -129,6 +163,7 @@ static daemoon_result_t reload_titles(void)
     }
 
     for (i = 0; i < g_title_count && i < MAX_ICONS; ++i) {
+        draw_loading("reading icons", (unsigned)i, (unsigned)g_title_count);
         (void)daemoon_3ds_icon_load(g_save_ctx.media, tid_of(&g_titles[i]), &g_icons[i]);
     }
     if (g_selected >= (int)g_title_count) {
@@ -150,8 +185,13 @@ static void draw_grid(void)
     daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
     daemoon_gfx_text(10.0f, 5.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_APP_TITLE));
 
-    (void)snprintf(right, sizeof(right), "%u saves   %s", (unsigned)g_title_count,
-                   DAEMOON_BUILD_STAMP);
+    if (g_title_count > GRID_PAGE) {
+        (void)snprintf(right, sizeof(right), "%d/%u   %s", g_selected + 1,
+                       (unsigned)g_title_count, DAEMOON_BUILD_STAMP);
+    } else {
+        (void)snprintf(right, sizeof(right), "%u saves   %s", (unsigned)g_title_count,
+                       DAEMOON_BUILD_STAMP);
+    }
     w = daemoon_gfx_text_width(0.36f, right);
     daemoon_gfx_text(GFX_TOP_W - w - 8.0f, 10.0f, 0.36f, GFX_TEXT_DIM, right);
 
@@ -243,7 +283,7 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
     }
 
     daemoon_gfx_text(8.0f, GFX_SCREEN_H - 16.0f, 0.34f, GFX_TEXT_DIM,
-                     "A back up   X survey   START exit");
+                     "A back up   Y restore   X survey   START exit");
 }
 
 /* ------------------------------------------------------------------ actions */
@@ -260,7 +300,8 @@ static void message(const char *title, const char *body, u32 accent)
         daemoon_gfx_top();
         daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, accent);
         daemoon_gfx_text(12.0f, 6.0f, 0.6f, GFX_TEXT, title);
-        daemoon_gfx_text(12.0f, 60.0f, 0.5f, GFX_TEXT, body);
+        (void)daemoon_gfx_text_wrapped(12.0f, 56.0f, GFX_TOP_W - 24.0f, 0.5f, GFX_TEXT,
+                                       body);
         daemoon_gfx_bottom();
         daemoon_gfx_text(12.0f, 100.0f, 0.5f, GFX_TEXT_DIM, "A continue");
         daemoon_gfx_frame_end();
@@ -634,14 +675,7 @@ int main(void)
     g_env.scratch = g_scratch;
     g_env.scratch_len = sizeof(g_scratch);
 
-    /* Drawn before the list is read, because reading it opens every save archive
-     * on the console and that is not instant. */
-    daemoon_gfx_frame_begin();
-    daemoon_gfx_top();
-    daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
-    daemoon_gfx_text(12.0f, 6.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_APP_TITLE));
-    daemoon_gfx_text(12.0f, 100.0f, 0.5f, GFX_TEXT_DIM, "reading titles...");
-    daemoon_gfx_frame_end();
+    g_save_ctx.progress = loading_progress;
 
     if (reload_titles() != DAEMOON_OK) {
         message(daemoon_str(DAEMOON_STR_APP_TITLE), "Could not read the title list.",
@@ -679,10 +713,13 @@ int main(void)
                 g_selected -= GRID_COLS;
             }
             if (down & KEY_A) {
-                action = 0;
+                action = 0; /* back up */
+            }
+            if (down & KEY_Y) {
+                action = 1; /* restore */
             }
             if (down & KEY_X) {
-                action = 2;
+                action = 2; /* survey */
             }
 
             /* Keep the selection on screen. */

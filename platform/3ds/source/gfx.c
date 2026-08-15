@@ -203,6 +203,63 @@ void daemoon_gfx_text_fit(float x, float y, float w, float scale, u32 colour,
     }
 }
 
+float daemoon_gfx_text_wrapped(float x, float y, float w, float scale, u32 colour,
+                          const char *text)
+{
+    char line[256];
+    const char *p = text;
+
+    while (*p != '\0') {
+        size_t take = 0;
+        size_t i = 0;
+
+        /* Word by word, measuring once per word rather than once per character.
+         * The per character version parsed text hundreds of times a frame and
+         * exhausted the citro2d text buffer, which shows up as a crash somewhere
+         * else entirely. */
+        while (p[i] != '\0' && i < sizeof(line) - 1) {
+            size_t word = i;
+
+            while (p[word] != '\0' && p[word] != ' ') {
+                size_t step = daemoon_utf8_truncate(p + word, strlen(p + word), 1);
+                word += (step == 0) ? 1 : step;
+            }
+            while (p[word] == ' ') {
+                ++word;
+            }
+            if (word >= sizeof(line) - 1) {
+                word = sizeof(line) - 2;
+            }
+
+            memcpy(line, p, word);
+            line[word] = '\0';
+            if (daemoon_gfx_text_width(scale, line) > w && take > 0) {
+                break;
+            }
+            take = word;
+            i = word;
+            if (p[i] == '\0') {
+                break;
+            }
+        }
+
+        if (take == 0) {
+            take = i > 0 ? i : 1;
+        }
+
+        memcpy(line, p, take);
+        line[take] = '\0';
+        daemoon_gfx_text(x, y, scale, colour, line);
+        y += 18.0f;
+
+        p += take;
+        while (*p == ' ') {
+            ++p;
+        }
+    }
+    return y;
+}
+
 int daemoon_gfx_button(float x, float y, float w, float h, const char *label,
                        int selected, u32 keys_down, u32 touch_x, u32 touch_y,
                        int touched)
@@ -211,7 +268,7 @@ int daemoon_gfx_button(float x, float y, float w, float h, const char *label,
 
     (void)keys_down;
 
-    daemoon_gfx_rect(x, y, w, h, selected ? GFX_ACCENT : GFX_PANEL);
+    daemoon_gfx_rect(x, y, w, h, selected ? GFX_ACCENT : GFX_ACCENT_D);
     daemoon_gfx_rect(x + 1.0f, y + 1.0f, w - 2.0f, h - 2.0f,
                      selected ? GFX_ACCENT : GFX_PANEL);
     daemoon_gfx_text_fit(x + 4.0f, y + (h - 14.0f) / 2.0f, w - 8.0f, 0.5f,

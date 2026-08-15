@@ -13,6 +13,12 @@
  * save being cleared. */
 #define DAEMOON_3DS_WORK_DIR "sdmc:/DaeMoon"
 
+/* Called as the list is read, so the screen can say how far along it is. Reading
+ * the list opens every save archive on the console and, for the ones that have
+ * one, decrypts a little of the title's content; a still screen through all of
+ * that is indistinguishable from a hang. */
+typedef void (*daemoon_3ds_progress_fn)(void *user, unsigned done, unsigned total);
+
 typedef struct {
     /* MEDIATYPE_SD for installed titles. Cartridges are a Phase 1 question: they
      * work the same way through AM, but a card being pulled mid write is a failure
@@ -21,6 +27,9 @@ typedef struct {
     /* Which language to read a title's name in, as an SMDH index: 1 is English,
      * which is also the fallback the console itself uses. */
     int smdh_language;
+    daemoon_3ds_progress_fn progress;
+    void                   *progress_user;
+
     /* Restrict listed names to what the console can draw. The survey writes the
      * real ones to a file regardless. */
     int ascii_names;

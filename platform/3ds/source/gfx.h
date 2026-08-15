@@ -55,6 +55,12 @@ void  daemoon_gfx_text_fit(float x, float y, float w, float scale, u32 colour,
                            const char *text);
 float daemoon_gfx_text_width(float scale, const char *text);
 
+/* Draws across several lines, breaking on words. A translated sentence runs half
+ * again as long as the English, so anything that assumes one line loses its
+ * second half in German. Returns the y below the last line. */
+float daemoon_gfx_text_wrapped(float x, float y, float w, float scale, u32 colour,
+                               const char *text);
+
 /* A rectangle the user can press. Returns 1 when it was, by touch or by the
  * button it is labelled with being pressed. */
 int daemoon_gfx_button(float x, float y, float w, float h, const char *label,

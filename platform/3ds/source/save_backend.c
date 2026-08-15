@@ -748,6 +748,10 @@ static daemoon_result_t list_titles(void *ctx, daemoon_title_t **out, size_t *co
         daemoon_title_t *t = &titles[n];
         char product[24];
 
+        if (c->progress != NULL) {
+            c->progress(c->progress_user, i, read);
+        }
+
         /* Applications only. System titles, DLC and updates have no save of their
          * own worth touching, and reaching into them is how a console stops
          * booting. */

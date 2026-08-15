@@ -29,6 +29,13 @@ Option:
 AccessControlInfo:
   CoreVersion             : 2
 
+  # The exheader format and the kernel this build expects. makerom picks an
+  # access descriptor template from these, and the template is what caps the
+  # rights actually granted at runtime.
+  DescVersion             : 2
+  ReleaseKernelMajor      : "02"
+  ReleaseKernelMinor      : "46"
+
   # Reaching other titles' save archives. CategorySystemApplication is what lets
   # FSUSER_OpenArchive open a save that does not belong to this title;
   # DirectSdmc and DirectSdmcWrite are for the backups, staging and state files.
@@ -90,6 +97,26 @@ AccessControlInfo:
   SpecialMemoryArrange    : false
   HandleTableSize         : 512
   ResourceLimitCategory   : Application
+
+  # ARM9 access.
+  #
+  # Reading another title's content is not purely an ARM11 filesystem operation:
+  # the NCCH is decrypted by the ARM9, and without these the request comes back
+  # as fs/not_supported (0xE0C046F8) no matter how many FileSystemAccess bits are
+  # set. That is what sixteen titles' worth of product codes turned out to mean.
+  #
+  # As with the filesystem list above, this matches a reference that works and is
+  # wider than this project wants to end up. Narrowing both is one experiment,
+  # and the survey records the raw Result that makes it measurable.
+  IoAccessControl:
+    - FsMountNand
+    - FsMountNandRoWrite
+    - FsMountTwln
+    - FsMountWnand
+    - FsMountCardSpi
+    - UseSdif3
+    - CreateSeed
+    - UseCardSpi
 
   # The conventional homebrew syscall set. It is not tuned: trimming it would take
   # measuring what libctru actually issues, and a missing syscall is a crash on

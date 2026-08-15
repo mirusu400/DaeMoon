@@ -46,6 +46,13 @@ require_service 'ssl:C'      # Phase 2 onwards
 require_service 'soc:U'
 require_service 'cam:u'      # Phase 4 QR pairing
 
+echo "arm9"
+# Reading another title's content needs the ARM9 side as well: the NCCH is
+# decrypted there, and without this the filesystem answers not_supported however
+# many FS bits are set.
+require_line ' > UseSdif3'
+require_line ' > FsMountNand'
+
 echo "kernel"
 # Spacing inside the kernel flags block is ctrtool's, so this one is matched as a
 # pattern rather than a literal line.

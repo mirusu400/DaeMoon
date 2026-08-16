@@ -55,6 +55,21 @@ else
 	fail=1
 fi
 
+# VRAM, mapped read only into the process.
+#
+# The GPU reaches VRAM physically, so everything draws without this and an
+# application that never opens an applet would never miss it. What needs it is the
+# one path where the CPU reads the framebuffer - handing a screenshot to a library
+# applet - which is the software keyboard, and the HOME button. Without it both
+# are a data abort inside libctru.
+if printf '%s' "$info" | grep -qE '^StaticMapping: +0x1F000000-0x1F5FFFFF:r$'; then
+	printf '  ok        StaticMapping: VRAM read only\n'
+else
+	printf '  MISSING   StaticMapping: 0x1F000000-0x1F5FFFFF:r\n'
+	printf '            the software keyboard and the HOME button both need it\n'
+	fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
 	echo
 	echo "The CIA does not carry what app.rsf asks for."

@@ -145,7 +145,20 @@ AccessControlInfo:
     WaitSynchronizationN: 37
 
   InterruptNumbers:
+
+  # VRAM, read only.
+  #
+  # The GPU reaches VRAM physically and does not care about this, so everything
+  # draws without it. What needs it is the one path where the *CPU* reads the
+  # framebuffer: handing a screenshot to a library applet. Without the mapping,
+  # opening the software keyboard - or pressing HOME - is a data abort inside
+  # libctru's aptConvertScreenForCapture, reading an address in VRAM that this
+  # process has no mapping for.
+  #
+  # An application that never opens an applet and never leaves would never find
+  # out, which is why this is checked by make cia-verify rather than remembered.
   MemoryMapping:
+    - 1f000000-1f5fffff:r
 
   # cam:u is here for Phase 4 QR pairing, and nothing uses it before then.
   # soc:U and ssl:C are for Phase 2 onwards, when the client talks to a server.

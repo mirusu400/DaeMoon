@@ -272,6 +272,27 @@ with - so there was never a reason to refuse them. The survey records the real n
 either way, so a title whose glyphs are genuinely missing stays a fact rather than
 a guess.
 
+## VRAM has to be mapped, and nothing about drawing says so
+
+Opening the software keyboard was a data abort inside libctru's
+`aptConvertScreenForCapture`, reading an address in VRAM. `app.rsf` had an empty
+`MemoryMapping`.
+
+The GPU reaches VRAM physically and does not go through the process's MMU, so
+**everything drew perfectly without the mapping** - icons, text, six months of UI
+work. The one path that needs it is the one where the *CPU* reads the framebuffer:
+handing a screenshot to a library applet. That is the software keyboard, and it is
+also the HOME button, which is why HOME used to take the console down and was
+blamed on a text buffer.
+
+```
+MemoryMapping:
+  - 1f000000-1f5fffff:r
+```
+
+`make cia-verify` checks it, because an application that never opens an applet
+would never find out, and this one went months without opening one.
+
 ## Proving the backend
 
 `tools/test/backend_conformance.c` is the contract, written against the interface

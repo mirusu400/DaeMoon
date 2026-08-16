@@ -23,6 +23,8 @@ static C2D_TextBuf       g_text_buf;
 static C2D_TextBuf       g_measure_buf;
 static C2D_Font          g_font;
 static int               g_have_font;
+/* 0 built in, 1 the selected language's region, 2 the console's own region. */
+static int               g_font_source;
 
 /* Which system font can draw a given language.
  *
@@ -58,9 +60,26 @@ int daemoon_gfx_init(daemoon_lang_t lang)
     g_text_buf = C2D_TextBufNew(TEXT_BUF_GLYPHS);
     g_measure_buf = C2D_TextBufNew(MEASURE_BUF_GLYPHS);
 
-    /* The console's own font for the selected language, and the default one when
-     * it has none. The default draws Latin and nothing else. */
+    /* The font for the selected language, then the one for the console's own
+     * region, then the built in one.
+     *
+     * The middle step matters: a Korean console shows Korean game names on its
+     * HOME menu, so it has the glyphs, and asking only for the language's region
+     * font and giving up leaves those names falling back to a product code on the
+     * one console that could have shown them. */
     g_font = C2D_FontLoadSystem(region_for(lang));
+    g_font_source = g_font != NULL ? 1 : 0;
+
+    if (g_font == NULL) {
+        u8 console_region = 0;
+
+        if (R_SUCCEEDED(CFGU_SecureInfoGetRegion(&console_region))) {
+            g_font = C2D_FontLoadSystem((CFG_Region)console_region);
+            g_font_source = g_font != NULL ? 2 : 0;
+        }
+    }
+    /* NULL is not a failure: citro2d falls back to the built in font, which draws
+     * Latin and nothing else. That is what the ASCII restriction is for. */
     g_have_font = (g_font != NULL);
 
     return g_top != NULL && g_bottom != NULL && g_text_buf != NULL &&
@@ -89,6 +108,11 @@ void daemoon_gfx_exit(void)
 int daemoon_gfx_has_language_font(void)
 {
     return g_have_font;
+}
+
+int daemoon_gfx_font_source(void)
+{
+    return g_font_source;
 }
 
 void daemoon_gfx_frame_begin(void)

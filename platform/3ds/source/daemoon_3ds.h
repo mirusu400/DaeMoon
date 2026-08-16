@@ -120,6 +120,12 @@ typedef struct {
     long read;
     unsigned read_bytes;
     int  which;
+    /* Which language slot the name came from, or -1 when none was usable. The
+     * console's own language is not always the one a game carries. */
+    int  name_lang;
+    /* Set when a slot held a name but the renderer could not draw it. That is a
+     * font problem wearing the same clothes as a missing name. */
+    int  rejected_non_ascii;
 } daemoon_3ds_name_probe_t;
 
 const daemoon_3ds_name_probe_t *daemoon_3ds_last_name_probe(void);

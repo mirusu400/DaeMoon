@@ -42,6 +42,11 @@ void daemoon_gfx_exit(void);
 /* Whether a font covering the selected language was actually found. */
 int daemoon_gfx_has_language_font(void);
 
+/* Which one: 0 the built in font, 1 the selected language's region, 2 the
+ * console's own region. Written into the survey, because "the names are product
+ * codes" has three different causes and this rules one of them in or out. */
+int daemoon_gfx_font_source(void);
+
 void daemoon_gfx_frame_begin(void);
 void daemoon_gfx_frame_end(void);
 void daemoon_gfx_top(void);    /* subsequent drawing goes to the top screen */

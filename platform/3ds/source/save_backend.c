@@ -568,6 +568,13 @@ static daemoon_result_t remove_all(void *ctx, daemoon_save_t *s)
  */
 #define SMDH_NAMES_BYTES (SMDH_LANG_COUNT * 0x200)
 
+/* Every step of the name lookup, kept apart.
+ *
+ * The previous version overwrote one variable as it went, so a failure could not
+ * be attributed to the open or to the read - and the two need different fixes.
+ * A diagnostic that loses the distinction it exists to make is worth nothing. */
+static daemoon_3ds_name_probe_t g_probe;
+
 /* Whether the console's text renderer can draw this at all.
  *
  * consoleInit gives an 8x8 bitmap font with no CJK in it, so a Korean or Japanese
@@ -622,12 +629,20 @@ static daemoon_result_t take_smdh_slot(const u8 *names, int lang, unsigned flags
     return DAEMOON_OK;
 }
 
-/* Every step of the name lookup, kept apart.
- *
- * The previous version overwrote one variable as it went, so a failure could not
- * be attributed to the open or to the read - and the two need different fixes.
- * A diagnostic that loses the distinction it exists to make is worth nothing. */
-static daemoon_3ds_name_probe_t g_probe;
+/* Tries one slot and records what happened to it. */
+static daemoon_result_t try_slot(const u8 *names, int lang, unsigned flags, char *out,
+                                 size_t cap)
+{
+    daemoon_result_t r = take_smdh_slot(names, lang, flags, out, cap);
+
+    if (r == DAEMOON_OK) {
+        g_probe.name_lang = lang;
+    } else if (r == DAEMOON_ERR_UNSUPPORTED) {
+        g_probe.rejected_non_ascii = 1;
+    }
+    return r;
+}
+
 
 const daemoon_3ds_name_probe_t *daemoon_3ds_last_name_probe(void)
 {
@@ -747,15 +762,18 @@ daemoon_result_t daemoon_3ds_smdh_name(const void *smdh, int lang, unsigned flag
      * Reading only the console's language is why this came back empty on
      * hardware: a Korean console asks for slot 7, and a game that was never sold
      * in Korea leaves that slot blank. */
-    r = take_smdh_slot(names, lang, flags, out, cap);
+    g_probe.name_lang = -1;
+    g_probe.rejected_non_ascii = 0;
+
+    r = try_slot(names, lang, flags, out, cap);
     if (r != DAEMOON_OK && lang != SMDH_LANG_ENGLISH) {
-        r = take_smdh_slot(names, SMDH_LANG_ENGLISH, flags, out, cap);
+        r = try_slot(names, SMDH_LANG_ENGLISH, flags, out, cap);
     }
     if (r != DAEMOON_OK && lang != SMDH_LANG_JAPANESE) {
-        r = take_smdh_slot(names, SMDH_LANG_JAPANESE, flags, out, cap);
+        r = try_slot(names, SMDH_LANG_JAPANESE, flags, out, cap);
     }
     for (i = 0; r != DAEMOON_OK && i < SMDH_LANG_COUNT; ++i) {
-        r = take_smdh_slot(names, i, flags, out, cap);
+        r = try_slot(names, i, flags, out, cap);
     }
 
     if (r != DAEMOON_OK) {

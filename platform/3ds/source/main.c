@@ -432,6 +432,12 @@ static void action_survey(void)
         daemoon_strbuf_init(&hb, header, sizeof(header));
         daemoon_strbuf_add(&hb, "# DaeMoon build ");
         daemoon_strbuf_add(&hb, DAEMOON_BUILD_STAMP);
+        daemoon_strbuf_add(&hb, " font=");
+        daemoon_strbuf_add_uint(&hb, (unsigned long long)daemoon_gfx_font_source());
+        daemoon_strbuf_add(&hb, " ascii_names=");
+        daemoon_strbuf_add_uint(&hb, (unsigned long long)g_save_ctx.ascii_names);
+        daemoon_strbuf_add(&hb, " smdh_lang=");
+        daemoon_strbuf_add_uint(&hb, (unsigned long long)g_save_ctx.smdh_language);
         daemoon_strbuf_addc(&hb, '\n');
         (void)daemoon_stream_write(out, header, hb.len);
     }
@@ -492,6 +498,17 @@ static void action_survey(void)
 
             daemoon_strbuf_add(&sb, "\tname=");
             daemoon_strbuf_add(&sb, nr == DAEMOON_OK ? "smdh" : daemoon_result_code(nr));
+            {
+                const daemoon_3ds_name_probe_t *pr = daemoon_3ds_last_name_probe();
+
+                daemoon_strbuf_add(&sb, " lang=");
+                daemoon_strbuf_add_int(&sb, pr->name_lang);
+                if (pr->rejected_non_ascii) {
+                    /* A name was there and could not be drawn. That is the font,
+                     * not the lookup. */
+                    daemoon_strbuf_add(&sb, " undrawable");
+                }
+            }
             if (nr != DAEMOON_OK) {
                 /* Every route and what it said. One coarse word covered three
                  * different causes and cost four trips to a console; this is the

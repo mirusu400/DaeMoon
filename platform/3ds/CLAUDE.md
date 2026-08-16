@@ -144,6 +144,33 @@ obvious - and this one was two function calls deep in a file about backups, so i
 compiled, linked, and shipped. Grep for `printf` and `console` in this directory
 before believing a screen works.
 
+## A desktop stack is eight megabytes and this one is not
+
+The first restore ever run on this console died in a data abort, writing sixteen
+bytes below the stack pointer into a section with no mapping at all. The photo of
+Luma's screen was the whole diagnosis: `PC 001099A4`, `FAR` just under `SP`,
+access type write. `addr2line` put the PC in `reader_open`'s prologue and the LR
+in `daemoon_archive_verify`.
+
+`daemoon_archive_verify` and `daemoon_archive_unpack` each held a
+`daemoon_archive_ctx_t` in a local. **That structure is 50,696 bytes.** Both are
+on the restore path, both passed every desktop test - where the stack is a
+hundred times larger and nothing ever complained.
+
+Both now take the context from the caller, the way `daemoon_archive_pack` and
+`daemoon_archive_hash_save` already did. The rule in the root `CLAUDE.md` about
+preferring caller supplied buffers is written about the heap; it applies at least
+as hard to the stack, and there the failure is not fragmentation but a console
+that stops.
+
+`make check` runs `tools/stack-check.sh`, which compiles core and this directory
+with `-fstack-usage` and fails on any frame over 8 KiB. It needs no console and
+no cross compiler - the structures are the same size on a desktop, which is the
+part that goes wrong. Reverting the fix makes it name both functions and exit 1.
+
+The two lessons are the same one twice: **the console's limits are not the
+desktop's, so measure them rather than remembering them.**
+
 ## Names and icons are read once, ever
 
 `title_cache.c` keeps each title's name and its 48x48 icon in

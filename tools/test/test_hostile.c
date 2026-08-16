@@ -112,7 +112,7 @@ static daemoon_result_t unpack_hostile(fixture_t *f, const daemoon_title_t *t,
         return r;
     }
 
-    r = daemoon_archive_unpack(&f->env, pkg, save);
+    r = daemoon_archive_unpack(&f->env, &f->actx, pkg, save);
 
     (void)daemoon_stream_close(pkg);
     (void)f->env.save->close_save(f->env.save_ctx, save);

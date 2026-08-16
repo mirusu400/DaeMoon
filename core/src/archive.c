@@ -525,12 +525,11 @@ static size_t hash_write_cb(void *opaque, mz_uint64 file_ofs, const void *buf, s
     return n;
 }
 
-daemoon_result_t daemoon_archive_verify(const daemoon_env_t *env, daemoon_stream_t *pkg,
-                                        const daemoon_manifest_t *m)
+daemoon_result_t daemoon_archive_verify(const daemoon_env_t *env, daemoon_archive_ctx_t *ctx,
+                                        daemoon_stream_t *pkg, const daemoon_manifest_t *m)
 {
     mz_zip_archive zip;
     zip_io_t io;
-    daemoon_archive_ctx_t ctx;
     daemoon_sha256_t hash;
     unsigned char digest[DAEMOON_SHA256_DIGEST_LEN];
     char hex[DAEMOON_SHA256_HEX];
@@ -539,18 +538,18 @@ daemoon_result_t daemoon_archive_verify(const daemoon_env_t *env, daemoon_stream
     daemoon_result_t r;
 
     (void)env;
-    if (m == NULL) {
+    if (m == NULL || ctx == NULL) {
         return DAEMOON_ERR_INVALID_REQUEST;
     }
     DAEMOON_TRY(reader_open(&zip, &io, pkg));
 
-    r = collect_payload(&zip, &ctx);
+    r = collect_payload(&zip, ctx);
     if (r != DAEMOON_OK) {
         goto done;
     }
 
     daemoon_sha256_init(&hash);
-    for (i = 0; i < ctx.count; ++i) {
+    for (i = 0; i < ctx->count; ++i) {
         hash_sink_t hs;
         int idx;
         char name[DAEMOON_PATH_MAX + sizeof(DAEMOON_ARCHIVE_PAYLOAD_DIR)];
@@ -558,7 +557,7 @@ daemoon_result_t daemoon_archive_verify(const daemoon_env_t *env, daemoon_stream
 
         daemoon_strbuf_init(&sb, name, sizeof(name));
         daemoon_strbuf_add(&sb, DAEMOON_ARCHIVE_PAYLOAD_DIR);
-        daemoon_strbuf_add(&sb, ctx.entries[i].path);
+        daemoon_strbuf_add(&sb, ctx->entries[i].path);
         r = daemoon_strbuf_result(&sb);
         if (r != DAEMOON_OK) {
             goto done;
@@ -570,7 +569,7 @@ daemoon_result_t daemoon_archive_verify(const daemoon_env_t *env, daemoon_stream
             goto done;
         }
 
-        hash_entry_header(&hash, ctx.entries[i].path, ctx.entries[i].size);
+        hash_entry_header(&hash, ctx->entries[i].path, ctx->entries[i].size);
 
         hs.hash = &hash;
         hs.len = 0;
@@ -578,7 +577,7 @@ daemoon_result_t daemoon_archive_verify(const daemoon_env_t *env, daemoon_stream
             r = (io.err != DAEMOON_OK) ? io.err : DAEMOON_ERR_ARCHIVE_ERROR;
             goto done;
         }
-        if (hs.len != ctx.entries[i].size) {
+        if (hs.len != ctx->entries[i].size) {
             r = DAEMOON_ERR_ARCHIVE_ERROR;
             goto done;
         }
@@ -618,21 +617,20 @@ static size_t extract_write_cb(void *opaque, mz_uint64 file_ofs, const void *buf
     return (es->err == DAEMOON_OK) ? n : 0;
 }
 
-daemoon_result_t daemoon_archive_unpack(const daemoon_env_t *env, daemoon_stream_t *pkg,
-                                        daemoon_save_t *save)
+daemoon_result_t daemoon_archive_unpack(const daemoon_env_t *env, daemoon_archive_ctx_t *ctx,
+                                        daemoon_stream_t *pkg, daemoon_save_t *save)
 {
     mz_zip_archive zip;
     zip_io_t io;
-    daemoon_archive_ctx_t ctx;
     size_t i;
     daemoon_result_t r;
 
-    if (env == NULL || save == NULL) {
+    if (env == NULL || save == NULL || ctx == NULL) {
         return DAEMOON_ERR_INVALID_REQUEST;
     }
     DAEMOON_TRY(reader_open(&zip, &io, pkg));
 
-    r = collect_payload(&zip, &ctx);
+    r = collect_payload(&zip, ctx);
     if (r != DAEMOON_OK) {
         goto done;
     }
@@ -644,7 +642,7 @@ daemoon_result_t daemoon_archive_unpack(const daemoon_env_t *env, daemoon_stream
         goto done;
     }
 
-    for (i = 0; i < ctx.count; ++i) {
+    for (i = 0; i < ctx->count; ++i) {
         extract_sink_t es;
         char name[DAEMOON_PATH_MAX + sizeof(DAEMOON_ARCHIVE_PAYLOAD_DIR)];
         daemoon_strbuf_t sb;
@@ -652,7 +650,7 @@ daemoon_result_t daemoon_archive_unpack(const daemoon_env_t *env, daemoon_stream
 
         daemoon_strbuf_init(&sb, name, sizeof(name));
         daemoon_strbuf_add(&sb, DAEMOON_ARCHIVE_PAYLOAD_DIR);
-        daemoon_strbuf_add(&sb, ctx.entries[i].path);
+        daemoon_strbuf_add(&sb, ctx->entries[i].path);
         r = daemoon_strbuf_result(&sb);
         if (r != DAEMOON_OK) {
             goto done;
@@ -667,7 +665,7 @@ daemoon_result_t daemoon_archive_unpack(const daemoon_env_t *env, daemoon_stream
         es.out = NULL;
         es.err = DAEMOON_OK;
         /* The backend creates any missing parent directories. */
-        r = env->save->open_file(env->save_ctx, save, ctx.entries[i].path,
+        r = env->save->open_file(env->save_ctx, save, ctx->entries[i].path,
                                  DAEMOON_OPEN_WRITE, &es.out);
         if (r != DAEMOON_OK) {
             goto done;

@@ -130,7 +130,7 @@ TEST_CASE(pack_verify_unpack_round_trip)
     CHECK_STR(read_back.title_id, t->id);
 
     CHECK_OK(f.env.fs->open(f.env.fs_ctx, pkg_path, DAEMOON_OPEN_READ, &pkg));
-    CHECK_OK(daemoon_archive_verify(&f.env, pkg, &read_back));
+    CHECK_OK(daemoon_archive_verify(&f.env, &f.actx, pkg, &read_back));
     CHECK_OK(daemoon_stream_close(pkg));
 
     /* Unpacking into a cleared archive brings the exact same bytes back. */
@@ -138,7 +138,7 @@ TEST_CASE(pack_verify_unpack_round_trip)
 
     CHECK_OK(f.env.save->open_save_write(f.env.save_ctx, t, &save));
     CHECK_OK(f.env.fs->open(f.env.fs_ctx, pkg_path, DAEMOON_OPEN_READ, &pkg));
-    CHECK_OK(daemoon_archive_unpack(&f.env, pkg, save));
+    CHECK_OK(daemoon_archive_unpack(&f.env, &f.actx, pkg, save));
     CHECK_OK(daemoon_stream_close(pkg));
     CHECK_OK(f.env.save->commit(f.env.save_ctx, save));
     CHECK_OK(f.env.save->close_save(f.env.save_ctx, save));
@@ -193,7 +193,7 @@ TEST_CASE(verify_rejects_a_tampered_payload)
                              "0000000000000000000000000000000000000000000000000000000000000000"));
 
     CHECK_OK(f.env.fs->open(f.env.fs_ctx, pkg_path, DAEMOON_OPEN_READ, &pkg));
-    CHECK_RESULT(daemoon_archive_verify(&f.env, pkg, &m), DAEMOON_ERR_CHECKSUM_MISMATCH);
+    CHECK_RESULT(daemoon_archive_verify(&f.env, &f.actx, pkg, &m), DAEMOON_ERR_CHECKSUM_MISMATCH);
     CHECK_OK(daemoon_stream_close(pkg));
 
     fixture_close(&f);

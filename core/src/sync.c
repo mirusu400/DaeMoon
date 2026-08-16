@@ -519,7 +519,7 @@ daemoon_result_t daemoon_sync_restore_package(const daemoon_env_t *env, daemoon_
     DAEMOON_TRY(env->fs->open(env->fs_ctx, pkg_path, DAEMOON_OPEN_READ, &pkg));
     r = daemoon_archive_read_manifest(pkg, &m);
     if (r == DAEMOON_OK) {
-        r = daemoon_archive_verify(env, pkg, &m);
+        r = daemoon_archive_verify(env, actx, pkg, &m);
     }
     (void)daemoon_stream_close(pkg);
     if (r != DAEMOON_OK) {
@@ -543,7 +543,7 @@ daemoon_result_t daemoon_sync_restore_package(const daemoon_env_t *env, daemoon_
         return r;
     }
 
-    r = daemoon_archive_unpack(env, pkg, save);
+    r = daemoon_archive_unpack(env, actx, pkg, save);
     (void)daemoon_stream_close(pkg);
 
     if (r == DAEMOON_OK) {

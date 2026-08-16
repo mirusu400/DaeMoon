@@ -69,17 +69,22 @@ daemoon_result_t daemoon_archive_read_manifest(daemoon_stream_t *pkg, daemoon_ma
 
 /* Recompute the payload digest of a package and compare it with the manifest.
  * Called immediately before a restore. On mismatch nothing is written and
- * DAEMOON_ERR_CHECKSUM_MISMATCH comes back. */
-daemoon_result_t daemoon_archive_verify(const daemoon_env_t *env, daemoon_stream_t *pkg,
-                                        const daemoon_manifest_t *m);
+ * DAEMOON_ERR_CHECKSUM_MISMATCH comes back.
+ *
+ * ctx is supplied by the caller for the same reason pack and hash_save take one:
+ * it is fifty kilobytes, and a console's stack is not the place for it. Putting it
+ * in a local here was a crash on hardware and invisible on a desktop, where the
+ * stack is a hundred times larger. */
+daemoon_result_t daemoon_archive_verify(const daemoon_env_t *env, daemoon_archive_ctx_t *ctx,
+                                        daemoon_stream_t *pkg, const daemoon_manifest_t *m);
 
 /* Write a package into an open writable save archive. The archive is cleared first
  * so files the package does not contain cannot survive a restore.
  *
  * This does NOT commit. The caller commits, checks the result, and treats a failed
  * commit as a failed restore. */
-daemoon_result_t daemoon_archive_unpack(const daemoon_env_t *env, daemoon_stream_t *pkg,
-                                        daemoon_save_t *save);
+daemoon_result_t daemoon_archive_unpack(const daemoon_env_t *env, daemoon_archive_ctx_t *ctx,
+                                        daemoon_stream_t *pkg, daemoon_save_t *save);
 
 #ifdef __cplusplus
 }

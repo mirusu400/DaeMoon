@@ -6,7 +6,7 @@
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-.PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check \
+.PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check stack-check \
         core-isolation spec-check server 3ds nx run-server clean \
         docker-images docker-3ds docker-cia docker-nx docker-test docker-shell \
         cia-verify emu-selftest 3ds-install 3ds-selftest
@@ -80,7 +80,13 @@ e2e:
 
 test: core-test server-test tools-test
 
-check: gen-check core-isolation spec-check test e2e
+# A console's stack is tens of kilobytes and a desktop's is eight megabytes, so a
+# structure left in a local passes every test here and takes a console down the
+# first time it is reached. It has happened once already; now it is checked.
+stack-check:
+	@sh $(ROOT)/tools/stack-check.sh $(ROOT)
+
+check: gen-check core-isolation stack-check spec-check test e2e
 	@echo "all checks passed"
 
 server:

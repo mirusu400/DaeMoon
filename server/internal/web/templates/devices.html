@@ -1,0 +1,24 @@
+{{template "head" .}}
+<h1>Consoles</h1>
+<p class="muted">A token lives on an SD card, and SD cards come out of consoles.
+Revoking one stops that card and nothing else.</p>
+{{if .Data}}
+<table>
+  <tr><th>Name</th><th>Platform</th><th>Added</th><th></th></tr>
+  {{range .Data}}
+  <tr>
+    <td>{{.Label}} {{if .Revoked}}<span class="pill revoked">revoked</span>{{end}}</td>
+    <td>{{.Platform}}</td>
+    <td class="muted mono">{{.CreatedAt}}</td>
+    <td>{{if not .Revoked}}
+      <form method="post" action="/devices/{{.ID}}/revoke">
+        <button class="danger">Revoke</button>
+      </form>
+    {{else}}<span class="muted mono">{{.RevokedAt}}</span>{{end}}</td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p class="empty">No consoles yet. <a href="/pair">Add one</a>.</p>
+{{end}}
+{{template "foot" .}}

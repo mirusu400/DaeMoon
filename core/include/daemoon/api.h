@@ -22,6 +22,8 @@ extern "C" {
 
 #define DAEMOON_TOKEN_MAX      129
 #define DAEMOON_DEVICE_ID_MAX  65
+/* A server address as typed or scanned. Matches the 3DS config buffer. */
+#define DAEMOON_SERVER_URL_MAX 256
 #define DAEMOON_DEFAULT_TIMEOUT_MS 30000
 #define DAEMOON_RETRY_CEILING       3 /* total attempts, never unbounded */
 
@@ -73,6 +75,33 @@ daemoon_result_t daemoon_api_pair(const daemoon_env_t *env, const char *grant, c
                                   const char *label, daemoon_platform_t platform,
                                   char *out_token, size_t token_len,
                                   char *out_device_id, size_t device_id_len);
+
+/* What a pairing QR code holds, once it has been read off a camera.
+ *
+ * `DAEMOON|1|<server>|<code>` - a tag, a format version, the server to talk to,
+ * and the six digit pairing code. Deliberately not a URL: the only thing that
+ * reads one of these is a console, and percent decoding and query string order are
+ * work with nothing to show for it. A vertical bar cannot appear unencoded in a
+ * URL, so splitting on it is unambiguous.
+ *
+ * Parsed in core rather than in the platform layer so it can be tested on a
+ * desktop against the fixtures the server's own tests write. The camera and the
+ * decoder are the parts that need a console; agreeing on what the payload means is
+ * not. */
+#define DAEMOON_PAIR_TAG          "DAEMOON"
+#define DAEMOON_PAIR_FORMAT       1
+#define DAEMOON_PAIR_CODE_MAX     16
+
+typedef struct {
+    char server[DAEMOON_SERVER_URL_MAX];
+    char code[DAEMOON_PAIR_CODE_MAX];
+} daemoon_pair_payload_t;
+
+/* Returns parse_error for anything that is not this format, including a format
+ * version this build does not know - a payload that is misread is worse than one
+ * that is refused, because it points a console at an address somebody else chose. */
+daemoon_result_t daemoon_pair_parse(const char *text, size_t len,
+                                    daemoon_pair_payload_t *out);
 
 /* Parse an error body: {"error":{"code":"...","detail":{...}}}. Used by the calls
  * above and exposed for tests. A body that cannot be parsed maps to the status. */

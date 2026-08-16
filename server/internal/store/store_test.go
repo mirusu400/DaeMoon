@@ -6,12 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/mirusu400/DaeMoon/server/internal/store"
+	"github.com/mirusu400/DaeMoon/server/migrations"
 )
 
 func open(t *testing.T) *store.Store {
@@ -88,8 +90,16 @@ func TestMigrationsAreIdempotent(t *testing.T) {
 	}
 	defer func() { _ = s.Close() }()
 
-	if n := countRows(t, s, `SELECT count(*) FROM schema_migrations`); n != 1 {
-		t.Errorf("schema_migrations has %d rows after four opens, want 1", n)
+	// Counted from the embedded files rather than written down here, so adding a
+	// migration does not mean remembering to bump a number in a test - which is a
+	// failure that says nothing about migrations and takes a minute to read.
+	files, err := fs.Glob(migrations.FS, "*.sql")
+	if err != nil {
+		t.Fatalf("list migrations: %v", err)
+	}
+	if n := countRows(t, s, `SELECT count(*) FROM schema_migrations`); n != len(files) {
+		t.Errorf("schema_migrations has %d rows after four opens, want %d",
+			n, len(files))
 	}
 }
 

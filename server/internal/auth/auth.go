@@ -66,6 +66,21 @@ func NewPairingCode() (string, error) {
 	return fmt.Sprintf("%06d", n), nil
 }
 
+// ValidPairingCode is the shape check, used before a code reaches a query or a QR
+// encoder. Six digits and nothing else: anything longer arrived from somewhere
+// other than NewPairingCode.
+func ValidPairingCode(code string) bool {
+	if len(code) != 6 {
+		return false
+	}
+	for i := 0; i < len(code); i++ {
+		if code[i] < '0' || code[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // NewShareCode returns a share code. Longer than a pairing code because it is not
 // rate limited behind a login and it grants a download to anyone holding it.
 func NewShareCode() (string, error) {

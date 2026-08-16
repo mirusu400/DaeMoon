@@ -1,0 +1,31 @@
+{{template "head" .}}
+<h1>People</h1>
+<table>
+  <tr><th>Name</th><th>Role</th><th>Added</th><th></th></tr>
+  {{range .Data}}
+  <tr>
+    <td>{{if .Username}}{{.Username}}{{else}}<span class="muted mono">{{.ID}}</span>{{end}}
+        {{if not .HasPassword}}<span class="pill">no password</span>{{end}}</td>
+    <td>{{if .IsAdmin}}<span class="pill admin">administrator</span>{{else}}<span class="muted">member</span>{{end}}</td>
+    <td class="muted mono">{{.CreatedAt}}</td>
+    <td>
+      <form method="post" action="/users/{{.ID}}/delete"
+            onsubmit="return confirm('Remove this person and every save they have synced?')">
+        <button class="danger">Remove</button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+</table>
+
+<h2>Add someone</h2>
+<div class="card">
+  <form class="stack" method="post" action="/users">
+    <label>Name<input type="text" name="username"></label>
+    <label>Password<input type="password" name="password"></label>
+    <label style="display:flex;gap:.5rem;align-items:center">
+      <input type="checkbox" name="admin"> Administrator</label>
+    <button>Add</button>
+  </form>
+</div>
+{{template "foot" .}}

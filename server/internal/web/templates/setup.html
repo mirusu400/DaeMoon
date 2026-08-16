@@ -1,0 +1,13 @@
+{{template "head" .}}
+<h1>Set up DaeMoon</h1>
+<p class="muted">There is no account on this instance yet. The first one is an
+administrator, and this page stops working once it exists.</p>
+<div class="card">
+  <form class="stack" method="post" action="/setup">
+    <label>Name<input type="text" name="username" autocomplete="username" autofocus></label>
+    <label>Password<input type="password" name="password" autocomplete="new-password">
+      <span class="muted">At least 8 characters.</span></label>
+    <button>Create the account</button>
+  </form>
+</div>
+{{template "foot" .}}

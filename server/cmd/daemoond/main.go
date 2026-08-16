@@ -21,6 +21,7 @@ import (
 	"github.com/mirusu400/DaeMoon/server/internal/auth"
 	"github.com/mirusu400/DaeMoon/server/internal/config"
 	"github.com/mirusu400/DaeMoon/server/internal/store"
+	"github.com/mirusu400/DaeMoon/server/internal/web"
 )
 
 // version is set with -ldflags "-X main.version=..." by the release build.
@@ -75,9 +76,25 @@ func run() error {
 	}
 
 	api.Version = version
+
+	// The API and the browser panel share one listener. Two ports would mean two
+	// certificates, two firewall rules and two addresses to remember, against a
+	// service whose promise is one binary and one file.
+	webUI, err := web.New(st, cfg)
+	if err != nil {
+		return fmt.Errorf("web: %w", err)
+	}
+	apiRoutes := api.New(st, cfg).Routes()
+	mux := http.NewServeMux()
+	// No prefix stripping: the API router already knows its own paths, and the
+	// panel takes everything else.
+	mux.Handle("/v1/", apiRoutes)
+	mux.Handle("/healthz", apiRoutes)
+	mux.Handle("/", webUI.Routes())
+
 	srv := &http.Server{
 		Addr:    cfg.Addr,
-		Handler: api.New(st, cfg).Routes(),
+		Handler: mux,
 		// Every request gets a timeout. No unbounded waits.
 		ReadTimeout:       cfg.ReadTimeout,
 		WriteTimeout:      cfg.WriteTimeout,

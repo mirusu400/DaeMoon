@@ -1,0 +1,51 @@
+/* One stylesheet, no framework. The panel is a handful of tables and forms on a
+   home network; the smallest thing that reads well on a phone and a desktop. */
+:root {
+  --bg: #16181d; --panel: #1e222a; --line: #2c313c;
+  --text: #eef1f5; --dim: #98a0b0; --accent: #2f6fd0;
+  --ok: #50c070; --warn: #e0a030; --danger: #d05050;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, "Noto Sans KR", sans-serif;
+}
+header {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: .8rem 1.2rem; background: var(--panel); border-bottom: 1px solid var(--line);
+}
+header .brand { font-weight: 600; letter-spacing: .02em; }
+header nav { display: flex; gap: 1rem; margin-left: auto; align-items: center; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+main { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.2rem 4rem; }
+h1 { font-size: 1.4rem; margin: 0 0 1rem; }
+h2 { font-size: 1.05rem; margin: 2rem 0 .6rem; color: var(--dim); font-weight: 600; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: .55rem .6rem; border-bottom: 1px solid var(--line); }
+th { color: var(--dim); font-weight: 600; font-size: .85rem; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1.2rem; }
+form.stack { display: grid; gap: .8rem; max-width: 22rem; }
+label { display: grid; gap: .3rem; font-size: .9rem; color: var(--dim); }
+input[type=text], input[type=password], select {
+  background: var(--bg); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: .5rem .6rem; font: inherit; width: 100%;
+}
+button {
+  background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+  padding: .5rem .9rem; font: inherit; cursor: pointer;
+}
+button.quiet { background: transparent; color: var(--dim); border: 1px solid var(--line); }
+button.danger { background: var(--danger); }
+.error { background: #3a2226; border: 1px solid var(--danger); color: #ffd9d9;
+         padding: .6rem .8rem; border-radius: 6px; margin-bottom: 1rem; }
+.muted { color: var(--dim); }
+.mono { font-family: ui-monospace, monospace; font-size: .85rem; }
+.pill { font-size: .75rem; padding: .1rem .45rem; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
+.pill.revoked { border-color: var(--danger); color: #ff9d9d; }
+.pill.admin { border-color: var(--accent); color: #9dc2ff; }
+.code { font: 600 2.6rem/1 ui-monospace, monospace; letter-spacing: .3em; }
+.qr { background: #fff; padding: .6rem; border-radius: 8px; display: inline-block; }
+.split { display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-start; }
+.empty { color: var(--dim); padding: 1.5rem 0; }

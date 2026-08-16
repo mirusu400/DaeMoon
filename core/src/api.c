@@ -558,3 +558,93 @@ daemoon_result_t daemoon_api_pair(const daemoon_env_t *env, const char *grant, c
     }
     return DAEMOON_OK;
 }
+
+/* ------------------------------------------------------------- pairing QR */
+
+/* `DAEMOON|1|<server>|<code>`.
+ *
+ * Every field is bounded and the whole thing is refused unless all four parts are
+ * present and the version is one this build knows. A payload that is misread is
+ * worse than one that is refused: it points a console at an address somebody else
+ * chose, and the next thing that happens is a save being uploaded there.
+ */
+daemoon_result_t daemoon_pair_parse(const char *text, size_t len,
+                                    daemoon_pair_payload_t *out)
+{
+    static const char tag[] = DAEMOON_PAIR_TAG "|";
+    const char *p;
+    const char *end;
+    const char *bar;
+    size_t n;
+
+    if (text == NULL || out == NULL) {
+        return DAEMOON_ERR_INVALID_REQUEST;
+    }
+    memset(out, 0, sizeof(*out));
+
+    end = text + len;
+    if (len < sizeof(tag) || memcmp(text, tag, sizeof(tag) - 1) != 0) {
+        return DAEMOON_ERR_PARSE_ERROR;
+    }
+    p = text + sizeof(tag) - 1;
+
+    /* The format version. Not a range check: an unknown version means the rest of
+     * the payload is laid out some other way, and guessing is the failure this
+     * whole shape exists to prevent. */
+    bar = (const char *)memchr(p, '|', (size_t)(end - p));
+    if (bar == NULL || bar == p) {
+        return DAEMOON_ERR_PARSE_ERROR;
+    }
+    {
+        unsigned long long version = 0;
+
+        for (n = 0; n < (size_t)(bar - p); ++n) {
+            if (p[n] < '0' || p[n] > '9') {
+                return DAEMOON_ERR_PARSE_ERROR;
+            }
+            version = version * 10u + (unsigned long long)(p[n] - '0');
+            if (version > 999u) {
+                return DAEMOON_ERR_PARSE_ERROR;
+            }
+        }
+        if (version != (unsigned long long)DAEMOON_PAIR_FORMAT) {
+            return DAEMOON_ERR_UNSUPPORTED;
+        }
+    }
+    p = bar + 1;
+
+    bar = (const char *)memchr(p, '|', (size_t)(end - p));
+    if (bar == NULL || bar == p) {
+        return DAEMOON_ERR_PARSE_ERROR;
+    }
+    n = (size_t)(bar - p);
+    if (n >= sizeof(out->server)) {
+        return DAEMOON_ERR_BUFFER_TOO_SMALL;
+    }
+    memcpy(out->server, p, n);
+    out->server[n] = '\0';
+    /* Only the two schemes this client can speak. A payload naming anything else
+     * is either a different product's QR code or an attempt to be clever. */
+    if (strncmp(out->server, "http://", 7) != 0 &&
+        strncmp(out->server, "https://", 8) != 0) {
+        return DAEMOON_ERR_PARSE_ERROR;
+    }
+    p = bar + 1;
+
+    /* The code runs to the end. A trailing bar would leave it empty, which is
+     * caught by the length check below. */
+    n = (size_t)(end - p);
+    while (n > 0 && (p[n - 1] == '\n' || p[n - 1] == '\r' || p[n - 1] == '\0')) {
+        --n;
+    }
+    if (n == 0 || n >= sizeof(out->code)) {
+        return DAEMOON_ERR_PARSE_ERROR;
+    }
+    if (memchr(p, '|', n) != NULL) {
+        return DAEMOON_ERR_PARSE_ERROR;
+    }
+    memcpy(out->code, p, n);
+    out->code[n] = '\0';
+
+    return DAEMOON_OK;
+}

@@ -1,0 +1,10 @@
+{{template "head" .}}
+<h1>Sign in</h1>
+<div class="card">
+  <form class="stack" method="post" action="/login">
+    <label>Name<input type="text" name="username" autocomplete="username" autofocus></label>
+    <label>Password<input type="password" name="password" autocomplete="current-password"></label>
+    <button>Sign in</button>
+  </form>
+</div>
+{{template "foot" .}}

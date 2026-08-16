@@ -23,6 +23,12 @@ var cases = []struct {
 	{"pair-url", "https://daemoon.example/pair#K7QW-2M9X"},
 	{"punctuation", "http://192.168.1.13:8080/pair?code=493747&d=3ds"},
 	{"long", strings.Repeat("DaeMoon-pairing-", 8)},
+	// The real thing, in the exact shape the panel serves. The C tests decode this
+	// one and then hand it to core's parser, so the whole pairing payload - encoder,
+	// decoder and parser, three implementations - is checked end to end without a
+	// console.
+	{"pair-payload", "DAEMOON|1|https://192.168.1.13:8443|493747"},
+	{"pair-payload-plain", "DAEMOON|1|http://192.168.1.13:8080|000042"},
 }
 
 // Encoded once and read back by the C side. See tools/test/test_qr.c: quirc is a

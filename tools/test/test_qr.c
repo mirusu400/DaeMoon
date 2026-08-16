@@ -16,6 +16,7 @@
 
 #include "quirc.h"
 
+#include <daemoon/api.h>
 #include <daemoon/util/strbuf.h>
 
 #include <stdio.h>
@@ -185,10 +186,141 @@ TEST_CASE(quirc_reads_what_the_server_encodes)
     check_fixture("pair-url");
     check_fixture("punctuation");
     check_fixture("long");
+    check_fixture("pair-payload");
+    check_fixture("pair-payload-plain");
+}
+
+/* And what comes off the camera has to mean something.
+ *
+ * Three implementations meet here: the server encodes the payload, quirc decodes
+ * it, and core parses it. Each was written from the same description by different
+ * code, and this is the only place all three are in the same room - on a desktop,
+ * where a failure is a line of output rather than a console that will not pair. */
+static void check_payload(const char *name, const char *server, const char *code)
+{
+    static qr_fixture_t fx;
+    struct quirc *q;
+    uint8_t *image;
+    int iw = 0;
+    int ih = 0;
+    int side;
+    int x;
+    int y;
+
+    if (read_fixture(name, &fx) != 0) {
+        CHECK(0);
+        return;
+    }
+    side = (fx.size + QR_QUIET * 2) * QR_SCALE;
+    q = quirc_new();
+    CHECK(q != NULL);
+    if (q == NULL || quirc_resize(q, side, side) < 0) {
+        if (q != NULL) {
+            quirc_destroy(q);
+        }
+        CHECK(0);
+        return;
+    }
+    image = quirc_begin(q, &iw, &ih);
+    memset(image, 0xff, (size_t)side * (size_t)side);
+    for (y = 0; y < fx.size; ++y) {
+        for (x = 0; x < fx.size; ++x) {
+            int sy;
+
+            if (!fx.modules[y * fx.size + x]) {
+                continue;
+            }
+            for (sy = 0; sy < QR_SCALE; ++sy) {
+                int row = (y + QR_QUIET) * QR_SCALE + sy;
+
+                memset(image + (size_t)row * (size_t)side +
+                           (size_t)(x + QR_QUIET) * QR_SCALE,
+                       0x00, QR_SCALE);
+            }
+        }
+    }
+    quirc_end(q);
+
+    if (quirc_count(q) == 1) {
+        struct quirc_code qc;
+        struct quirc_data qd;
+        daemoon_pair_payload_t got;
+
+        quirc_extract(q, 0, &qc);
+        CHECK_EQ_INT((int)quirc_decode(&qc, &qd), (int)QUIRC_SUCCESS);
+        CHECK_OK(daemoon_pair_parse((const char *)qd.payload, (size_t)qd.payload_len,
+                                    &got));
+        CHECK_STR(got.server, server);
+        CHECK_STR(got.code, code);
+    } else {
+        CHECK(0);
+    }
+    quirc_destroy(q);
+}
+
+TEST_CASE(a_scanned_payload_becomes_a_server_and_a_code)
+{
+    check_payload("pair-payload", "https://192.168.1.13:8443", "493747");
+    check_payload("pair-payload-plain", "http://192.168.1.13:8080", "000042");
+}
+
+/* Everything that is not this format is refused rather than guessed at. A payload
+ * that is misread points a console at an address somebody else chose, and the next
+ * thing that happens is a save being uploaded to it. */
+TEST_CASE(a_payload_that_is_not_ours_is_refused)
+{
+    daemoon_pair_payload_t out;
+    size_t i;
+    static const char *const bad[] = {
+        "",
+        "DAEMOON",
+        "DAEMOON|",
+        "DAEMOON|1|https://host",                 /* no code */
+        "DAEMOON|1|https://host|",                /* empty code */
+        "DAEMOON|1||493747",                      /* no server */
+        "DAEMOON|1|ftp://host|493747",            /* a scheme this client cannot speak */
+        "DAEMOON|1|host:8080|493747",             /* no scheme at all */
+        "NOTDAEMOON|1|https://host|493747",
+        "DAEMOON|1|https://host|4937|47",         /* a bar inside the code */
+        "https://daemoon.example/pair?code=1234", /* a plain URL */
+    };
+
+    for (i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
+        daemoon_result_t r = daemoon_pair_parse(bad[i], strlen(bad[i]), &out);
+
+        if (r == DAEMOON_OK) {
+            printf("  accepted %s\n", bad[i]);
+        }
+        CHECK(r != DAEMOON_OK);
+    }
+
+    /* A version this build does not know is its own answer: the rest of the
+     * payload is laid out some other way, so refusing it is not the same as
+     * calling it malformed. */
+    {
+        const char *future = "DAEMOON|2|https://host|493747";
+
+        CHECK_RESULT(daemoon_pair_parse(future, strlen(future), &out),
+                     DAEMOON_ERR_UNSUPPORTED);
+    }
+
+    /* And a server address longer than the buffer is a refusal, not a truncation:
+     * half a URL is a different host. */
+    {
+        char huge[512];
+        int n = snprintf(huge, sizeof(huge), "DAEMOON|1|https://");
+
+        memset(huge + n, 'a', sizeof(huge) - (size_t)n - 12);
+        (void)snprintf(huge + sizeof(huge) - 12, 12, "|493747");
+        CHECK_RESULT(daemoon_pair_parse(huge, strlen(huge), &out),
+                     DAEMOON_ERR_BUFFER_TOO_SMALL);
+    }
 }
 
 void test_qr(void)
 {
     printf("qr (server encodes, quirc decodes)\n");
     RUN(quirc_reads_what_the_server_encodes);
+    RUN(a_scanned_payload_becomes_a_server_and_a_code);
+    RUN(a_payload_that_is_not_ours_is_refused);
 }

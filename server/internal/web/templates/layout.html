@@ -1,0 +1,25 @@
+{{define "head"}}<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<link rel="stylesheet" href="/static/style.css">
+</head><body>
+{{if .User.ID}}
+<header>
+  <span class="brand">DaeMoon</span>
+  <nav>
+    <a href="/">Saves</a>
+    <a href="/devices">Consoles</a>
+    <a href="/pair">Add a console</a>
+    {{if .User.IsAdmin}}<a href="/users">People</a>{{end}}
+    <span class="muted">{{.User.Username}}</span>
+    <form method="post" action="/logout"><button class="quiet">Sign out</button></form>
+  </nav>
+</header>
+{{end}}
+<main>
+{{if .Error}}<div class="error">{{.Error}}</div>{{end}}
+{{end}}
+
+{{define "foot"}}</main></body></html>{{end}}

@@ -1,0 +1,26 @@
+{{template "head" .}}
+{{with .Data}}
+<h1 class="mono">{{.TitleID}}</h1>
+<p class="muted">{{.Platform}} — every version is kept. Nothing here is ever
+replaced, which is what makes a conflict recoverable.</p>
+{{if .Versions}}
+<table>
+  <tr><th class="num">Version</th><th class="num">Parent</th><th class="num">Size</th>
+      <th>From</th><th>Received</th><th>Digest</th><th></th></tr>
+  {{range .Versions}}
+  <tr>
+    <td class="num">{{.Version}}</td>
+    <td class="num muted">{{if .ParentVersion}}{{.ParentVersion}}{{else}}—{{end}}</td>
+    <td class="num">{{bytes .Size}}</td>
+    <td>{{.DeviceLabel}}</td>
+    <td class="muted mono">{{.ReceivedAt}}</td>
+    <td class="mono muted">{{slice .SHA256 0 12}}</td>
+    <td><a href="/titles/{{$.Data.Platform}}/{{$.Data.TitleID}}/blob/{{.Version}}">Download</a></td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p class="empty">No versions.</p>
+{{end}}
+{{end}}
+{{template "foot" .}}

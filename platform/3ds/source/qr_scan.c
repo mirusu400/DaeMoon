@@ -41,6 +41,13 @@
 #define CAM_PIXELS ((size_t)CAM_W * (size_t)CAM_H)
 #define CAM_BYTES  (CAM_PIXELS * 2)
 
+/* How often the decoder runs, in captured frames.
+ *
+ * quirc on a 400x240 frame is a good fraction of a second here, and running it on
+ * every frame is what made the preview look frozen. A code that is in shot stays in
+ * shot for longer than a person can hold still, so ten looks a second is generous. */
+#define QUIRC_EVERY_N_FRAMES 3
+
 /* Smallest power of two that holds a 400x240 frame. */
 #define TEX_W 512
 #define TEX_H 256
@@ -176,7 +183,7 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
     u32 transfer = 0;
     u32 select = SELECT_OUT1;
     int cancelled = 0;
-    int want_flip = 0;
+    unsigned tick = 0;
 
     memset(&g_stats, 0, sizeof(g_stats));
     g_stats.layout = DAEMOON_3DS_CAM_LAYOUT_DEFAULT;
@@ -245,10 +252,45 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
         return DAEMOON_ERR_OUT_OF_MEMORY;
     }
 
+    /* Capture, draw, and decode - in that order, and not at the same rate.
+     *
+     * The first version drew before capturing and ran quirc on every frame, which
+     * made the preview show the previous picture and hold it for as long as a
+     * decode took. On a 268 MHz ARM11 a decode is a good fraction of a second, so
+     * the preview updated perhaps twice a second and read as frozen.
+     *
+     * A person aiming a camera needs the picture at the camera's rate. quirc needs
+     * a frame every so often, because a code that is in shot is in shot for longer
+     * than a person can hold still. Those are different rates and this loop runs
+     * them separately.
+     */
     while (aptMainLoop()) {
         Result res;
         int action;
+        int captured = 0;
 
+        res = CAMU_SetReceiving(&receive, g_frame, PORT_CAM1, CAM_BYTES,
+                                (s16)transfer);
+        if (R_FAILED(res)) {
+            ++g_stats.receive_failures;
+        } else {
+            /* Bounded, always, and short. A camera that stops delivering must not
+             * become an application that never returns - and a long wait here is
+             * also a button press that does not register. */
+            res = svcWaitSynchronization(receive, 250000000LL);
+            svcCloseHandle(receive);
+            receive = 0;
+            if (R_FAILED(res)) {
+                ++g_stats.timeouts;
+            } else {
+                ++g_stats.frames;
+                captured = 1;
+                frame_to_texture();
+            }
+        }
+
+        /* Drawn after the texture is fresh, and called even when a capture failed,
+         * because the callback is the only way out of this screen. */
         action = frame_cb != NULL ? frame_cb(user) : 1;
         if (action == 0) {
             cancelled = 1;
@@ -258,16 +300,15 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
             /* Next candidate layout. Asking the console beats another round of
              * being told "still broken", which is one bit for one trip. */
             g_stats.layout = (g_stats.layout + 1) % DAEMOON_3DS_CAM_LAYOUTS;
+            if (captured) {
+                frame_to_texture();
+            }
             continue;
         }
         if (action == 2) {
             /* The other camera. A person who cannot get a code to read will try
              * the front one, and refusing to let them is a worse answer than
              * letting them find out. */
-            want_flip = 1;
-        }
-        if (want_flip) {
-            want_flip = 0;
             stop_camera();
             select = (select == SELECT_OUT1) ? SELECT_IN1 : SELECT_OUT1;
             g_stats.camera = (select == SELECT_IN1);
@@ -278,27 +319,18 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
             continue;
         }
 
-        res = CAMU_SetReceiving(&receive, g_frame, PORT_CAM1, CAM_BYTES,
-                                (s16)transfer);
-        if (R_FAILED(res)) {
-            ++g_stats.receive_failures;
+        if (!captured) {
             continue;
         }
-        /* Bounded, always. A camera that stops delivering must not become an
-         * application that never returns, on a screen whose only way out is the
-         * frame callback. */
-        res = svcWaitSynchronization(receive, 500000000LL);
-        svcCloseHandle(receive);
-        receive = 0;
-        if (R_FAILED(res)) {
-            ++g_stats.timeouts;
+
+        /* Decoding is the expensive half, so it runs at its own rate. Every third
+         * frame is about ten a second, which is far more chances than a person
+         * holding a console still needs. */
+        if (++tick % QUIRC_EVERY_N_FRAMES != 0) {
             continue;
         }
-        ++g_stats.frames;
 
         g_stats.mean_luma = frame_to_luma(g_frame, g_luma, CAM_PIXELS);
-        frame_to_texture();
-
         {
             int w = 0;
             int h = 0;

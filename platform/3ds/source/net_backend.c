@@ -131,6 +131,39 @@ static size_t on_header(char *buffer, size_t size, size_t count, void *user)
     static const char wanted[] = "x-daemoon-sha256:";
     size_t i;
 
+    /* The status line, which curl delivers as the first header of a response.
+     *
+     * backend.h requires the status before the first body_write, and reading it
+     * from curl_easy_getinfo after curl_easy_perform returns is far too late:
+     * every callback has already run. Getting this wrong put a successful upload's
+     * response into the caller's error buffer and left the success buffer empty,
+     * which the console reported as parse_error for an upload the server had
+     * accepted.
+     *
+     * A response can begin more than once - a 100-continue, or a redirect - so the
+     * per response fields are reset here rather than only before the request. */
+    if (len > 8 && buffer[0] == 'H' && buffer[1] == 'T' && buffer[2] == 'T' &&
+        buffer[3] == 'P' && buffer[4] == '/') {
+        const char *space = (const char *)memchr(buffer, ' ', len);
+
+        if (space != NULL) {
+            int code = 0;
+            size_t n;
+
+            for (n = 1; n < len - (size_t)(space - buffer) && space[n] >= '0' &&
+                        space[n] <= '9';
+                 ++n) {
+                code = code * 10 + (space[n] - '0');
+            }
+            if (code >= 100 && code < 600) {
+                resp->status = code;
+                resp->sha256[0] = '\0';
+                resp->content_length = -1;
+            }
+        }
+        return len;
+    }
+
     /* Case insensitive, because a header name is. */
     if (len <= sizeof(wanted) - 1) {
         return len;

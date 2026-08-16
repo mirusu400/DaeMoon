@@ -98,6 +98,25 @@ static daemoon_result_t flaky_request(void *vctx, const daemoon_http_req_t *req,
 
 static const daemoon_net_backend_t flaky_backend = { flaky_request };
 
+/* A backend that hands over the body before it knows the status, which is what
+ * curl looks like if the status is read with curl_easy_getinfo after the transfer
+ * instead of off the status line as it arrives. */
+static daemoon_result_t late_status_request(void *vctx, const daemoon_http_req_t *req,
+                                            daemoon_http_resp_t *resp)
+{
+    flaky_net_t *net = (flaky_net_t *)vctx;
+    daemoon_result_t r = DAEMOON_OK;
+
+    net->calls++;
+    if (net->body != NULL && resp->body_write != NULL) {
+        r = resp->body_write(resp->body_ctx, net->body, strlen(net->body));
+    }
+    resp->status = net->status; /* too late to be useful, and that is the point */
+    return r;
+}
+
+static const daemoon_net_backend_t late_status_backend = { late_status_request };
+
 static void flaky_env(daemoon_env_t *env, flaky_net_t *net)
 {
     memset(env, 0, sizeof(*env));
@@ -168,6 +187,44 @@ TEST_CASE(a_retry_that_succeeds_returns_the_answer)
     CHECK_EQ_INT(meta.exists, 1);
     CHECK_EQ_INT(meta.latest_version, 7);
     CHECK_EQ_INT(meta.size, 42);
+}
+
+/* backend.h says the status is filled in before the first body_write, because
+ * that call is where a save is told apart from an error message and there is no
+ * asking again afterwards.
+ *
+ * The 3DS backend read the status with curl_easy_getinfo after curl_easy_perform
+ * returned, by which point every callback had already run with a status of zero.
+ * A successful upload's response went into the error buffer, the success buffer
+ * stayed empty, and the console said parse_error for an upload the server had
+ * accepted - a wrong answer wearing the clothes of a parse failure.
+ *
+ * So a body offered without a status is refused rather than guessed at. */
+TEST_CASE(a_body_before_the_status_is_refused_rather_than_misfiled)
+{
+    daemoon_env_t env;
+    flaky_net_t net;
+    daemoon_remote_meta_t meta;
+
+    memset(&net, 0, sizeof(net));
+    net.status = 200;
+    net.body = "{\"title_id\":\"0004000000055D00\",\"platform\":\"3ds\",\"version\":7,"
+               "\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\","
+               "\"size\":42,\"device_label\":\"other\",\"received_at\":\"2026-01-01T00:00:00Z\"}";
+
+    memset(&env, 0, sizeof(env));
+    env.net = &late_status_backend;
+    env.net_ctx = &net;
+    env.server_url = "http://example.invalid";
+    env.token = "test-token";
+    env.device_label = "test console";
+
+    memset(&meta, 0, sizeof(meta));
+    /* Not parse_error: the body parsed fine, it was put in the wrong place. */
+    CHECK_RESULT(daemoon_api_get_latest(&env, DAEMOON_PLATFORM_3DS, "0004000000055D00",
+                                        &meta),
+                 DAEMOON_ERR_BACKEND_ERROR);
+    CHECK_EQ_INT(meta.exists, 0);
 }
 
 TEST_CASE(a_failure_that_cannot_be_retried_is_not_retried)
@@ -377,6 +434,7 @@ void test_api(void)
     RUN(a_conflict_without_detail_still_parses);
     RUN(a_retryable_failure_is_retried_up_to_the_ceiling);
     RUN(a_retry_that_succeeds_returns_the_answer);
+    RUN(a_body_before_the_status_is_refused_rather_than_misfiled);
     RUN(a_failure_that_cannot_be_retried_is_not_retried);
     RUN(a_missing_title_is_not_an_error);
     RUN(an_error_body_never_reaches_the_download_sink);

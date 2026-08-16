@@ -71,6 +71,19 @@ static daemoon_result_t api_body_write(void *ctx, const void *buf, size_t len)
     if (s->err != DAEMOON_OK) {
         return s->err;
     }
+    if (status == 0) {
+        /* backend.h requires the status before the first body_write, because this
+         * is where a save is told apart from an error message and there is no
+         * asking again later.
+         *
+         * Said out loud rather than assumed. A backend that filled the status in
+         * only after the transfer finished sent a successful upload's response
+         * into the error buffer and left the success buffer empty, and the console
+         * reported parse_error for an upload the server had accepted. A wrong
+         * answer that looks like a parse failure is worse than a refusal. */
+        s->err = DAEMOON_ERR_BACKEND_ERROR;
+        return s->err;
+    }
     if (status >= 200 && status < 300) {
         if (s->sink != NULL) {
             s->err = daemoon_stream_write(s->sink, buf, len);

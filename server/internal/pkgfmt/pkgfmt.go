@@ -51,6 +51,26 @@ func (p Platform) Valid() bool {
 	return false
 }
 
+// CanCarry reports whether a device on platform d may hold saves belonging to
+// platform p.
+//
+// Not the same question as whether the two are equal, which is what this used to
+// be. A 3DS holds nds-bootstrap's plain .sav files next to its own save archives,
+// on the same SD card, synced by the same application - that is the whole of
+// Phase 2 in the roadmap, and equality refused it.
+//
+// The check is kept rather than dropped because what it was written for is still
+// worth catching: a 3DS uploading a Switch package is never intentional.
+func (d Platform) CanCarry(p Platform) bool {
+	if !d.Valid() || !p.Valid() {
+		return false
+	}
+	if d == p {
+		return true
+	}
+	return d == Platform3DS && p == PlatformNDS
+}
+
 type SaveType string
 
 const (

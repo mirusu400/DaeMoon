@@ -350,11 +350,15 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 			WithDetail(map[string]any{"field": "title_id"}))
 		return
 	}
-	if string(manifest.Platform) != device.Platform && device.Platform != "" {
-		// A 3DS console uploading a Switch package means something is wired wrong.
-		// It is not fatal to the data, but it is never intentional.
+	if device.Platform != "" && !pkgfmt.Platform(device.Platform).CanCarry(manifest.Platform) {
+		// A 3DS uploading a Switch package is never intentional. A 3DS uploading
+		// an nds package is Phase 2, which is why this asks what the device can
+		// carry rather than whether the two strings match.
 		apierr.Write(w, r, apierr.New(apierr.UnsupportedPlatform).
-			WithDetail(map[string]any{"platform": string(manifest.Platform)}))
+			WithDetail(map[string]any{
+				"platform":        string(manifest.Platform),
+				"device_platform": device.Platform,
+			}))
 		return
 	}
 	if uint64(manifest.Parent()) != parent {

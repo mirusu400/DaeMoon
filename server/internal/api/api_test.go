@@ -421,6 +421,60 @@ func TestTenantIsolation(t *testing.T) {
 	}
 }
 
+// A 3DS carries two libraries: its own save archives, and the plain .sav files
+// nds-bootstrap keeps on the same SD card. Both are synced by the same
+// application from the same console, which is the whole of Phase 2 - and the
+// upload handler used to compare the two platform strings for equality and refuse
+// the second one. It reached a real console before anything here noticed.
+func TestA3DSMayUploadNDSSavesButNotSwitchOnes(t *testing.T) {
+	h := newHarness(t)
+
+	for _, tc := range []struct {
+		name     string
+		platform pkgfmt.Platform
+		titleID  string
+		saveType pkgfmt.SaveType
+		want     int
+	}{
+		{"its own saves", pkgfmt.Platform3DS, "0004000000055D00", pkgfmt.SaveData,
+			http.StatusCreated},
+		{"nds-bootstrap saves", pkgfmt.PlatformNDS, "IRAK_POKEMON_W", pkgfmt.SaveNDS,
+			http.StatusCreated},
+		{"a Switch package, which is never intentional", pkgfmt.PlatformNX,
+			"0100000000010000", pkgfmt.SaveData, http.StatusBadRequest},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := pkgfmt.Manifest{
+				Platform:    tc.platform,
+				TitleID:     tc.titleID,
+				SaveType:    tc.saveType,
+				DeviceLabel: "test console",
+				CreatedAt:   "2026-01-01T00:00:00Z",
+			}
+			blob, err := pkgfmt.Build(m, pkgfmt.StringFiles(
+				map[string]string{"save.sav": "player data"}))
+			if err != nil {
+				t.Fatalf("build package: %v", err)
+			}
+
+			resp := h.auth("POST",
+				fmt.Sprintf("/v1/titles/%s/blob?parent_version=0&platform=%s",
+					tc.titleID, tc.platform),
+				"application/zip", bytes.NewReader(blob))
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.want {
+				t.Fatalf("status = %d, want %d: %s", resp.StatusCode, tc.want,
+					readAll(t, resp.Body))
+			}
+			if tc.want == http.StatusBadRequest &&
+				errorCode(t, resp) != "unsupported_platform" {
+				t.Fatalf("code = %s, want unsupported_platform", errorCode(t, resp))
+			}
+		})
+	}
+}
+
 func TestUploadRejectsAnOversizedSave(t *testing.T) {
 	cfg := config.Default()
 	cfg.Database = filepath.Join(t.TempDir(), "small.db")

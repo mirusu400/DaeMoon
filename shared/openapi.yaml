@@ -189,6 +189,13 @@ paths:
         `parent_version == latest` accepts and issues `latest + 1`.
         Anything else is `409 version_conflict`; **both versions are retained** and the
         409 body carries what the client needs for `ui->choose()`.
+
+        The package's platform is checked against the device's, but not for equality:
+        a device may upload saves for any platform it can host. A **3ds** device may
+        upload **3ds** and **nds** packages, because nds-bootstrap's plain `.sav`
+        files live on that console's own SD card and are synced by the same
+        application. Anything else is `400 unsupported_platform`, which is what a
+        3DS uploading a Switch package should get.
       parameters:
         - $ref: "#/components/parameters/Tid"
         - name: parent_version

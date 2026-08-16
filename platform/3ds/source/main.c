@@ -1717,6 +1717,23 @@ int main(void)
      * question the file exists to answer. */
     daemoon_3ds_trace("app/start", DAEMOON_BUILD_STAMP);
     {
+        /* What survived the last run.
+         *
+         * Reinstalling a CIA does not touch the SD card, so a token that keeps
+         * changing across installs means something is losing it rather than the
+         * install replacing it - and the difference is not visible from a device
+         * list. The token itself is never written here; a console screen and a
+         * trace file both end up in bug reports. */
+        char line[96];
+
+        (void)snprintf(line, sizeof(line), "server=%s token=%s device=%s lang=%s",
+                       g_config.server_url[0] != '\0' ? "yes" : "no",
+                       g_config.token[0] != '\0' ? "yes" : "no",
+                       g_config.device_id[0] != '\0' ? g_config.device_id : "-",
+                       g_config.language[0] != '\0' ? g_config.language : "auto");
+        daemoon_3ds_trace("app/config", line);
+    }
+    {
         /* Both clocks, because they are not the same one and only one of them
          * decides whether a certificate is valid. mbedtls reads the C library's,
          * so a console where that says 1970 cannot complete a handshake against

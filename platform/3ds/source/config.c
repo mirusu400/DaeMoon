@@ -139,8 +139,18 @@ daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_con
     if (fp == NULL) {
         return DAEMOON_ERR_IO_ERROR;
     }
-    ok = fprintf(fp, "server = %s\ntoken = %s\nlabel = %s\n", cfg->server_url,
-                 cfg->token, cfg->device_label) > 0;
+    ok = fprintf(fp, "server = %s\nlabel = %s\n", cfg->server_url,
+                 cfg->device_label) > 0;
+    /* Absent rather than empty when there is none, the way `language` already is.
+     *
+     * This file is rewritten whole from memory whenever any setting changes, so an
+     * unpaired console used to leave `token = ` behind. That parses back to the
+     * same thing and is not a bug on its own - but a file that says a key exists
+     * and a file that omits it should not both mean "not set", because the next
+     * person reading it by hand has to know which. */
+    if (ok && cfg->token[0] != '\0') {
+        ok = fprintf(fp, "token = %s\n", cfg->token) > 0;
+    }
     if (ok && cfg->device_id[0] != '\0') {
         ok = fprintf(fp, "device = %s\n", cfg->device_id) > 0;
     }

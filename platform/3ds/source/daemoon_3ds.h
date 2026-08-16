@@ -65,6 +65,16 @@ typedef struct {
 
 extern const daemoon_save_backend_t daemoon_3ds_nds_backend;
 
+/* The 32x32 icon out of a DS cartridge's banner, converted into the same 48x48
+ * tiled RGB565 buffer an SMDH icon produces - centred, so one upload serves both
+ * libraries. out must hold DAEMOON_3DS_ICON_BYTES. not_found when the ROM is not
+ * beside the save or carries no banner, which is normal.
+ *
+ * base is the save's name without .sav, which is also the ROM's name: a real card
+ * has files with spaces and Hangul in them and nothing else connects the two. */
+daemoon_result_t daemoon_3ds_nds_icon_read(const char *rom_dir, const char *base,
+                                           void *out);
+
 /* The network, over 3ds-curl and 3ds-mbedtls rather than httpc:C. That service
  * ships old cipher suites and a stale root CA store, and a self hosted server is
  * exactly the case where nobody can be asked to downgrade their TLS to suit a
@@ -93,6 +103,7 @@ typedef struct {
 
 void             daemoon_3ds_config_defaults(daemoon_3ds_config_t *cfg);
 daemoon_result_t daemoon_3ds_config_load(const char *path, daemoon_3ds_config_t *cfg);
+daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_config_t *cfg);
 int              daemoon_3ds_config_can_sync(const daemoon_3ds_config_t *cfg);
 
 /* soc:U needs a buffer for the lifetime of the session, so the network is opened

@@ -101,6 +101,51 @@ daemoon_result_t daemoon_3ds_config_load(const char *path, daemoon_3ds_config_t 
     return DAEMOON_OK;
 }
 
+/* Writes the file back, keeping the shape a person can still edit by hand.
+ *
+ * Temp then rename, the same rule the save path follows. A configuration is not
+ * save data and losing one costs a retype, but a half written file is read by the
+ * next launch as a console with no server - and the first thing anyone would do
+ * about that is type it all in again on a software keyboard.
+ *
+ * Only the four keys are written. A comment somebody added is lost, which is worth
+ * saying out loud rather than pretending: the alternative is a rewriter that has to
+ * understand a file format whose whole point is that it barely has one.
+ */
+daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_config_t *cfg)
+{
+    char temp[DAEMOON_PATH_MAX];
+    daemoon_strbuf_t sb;
+    FILE *fp;
+    int ok;
+
+    daemoon_strbuf_init(&sb, temp, sizeof(temp));
+    daemoon_strbuf_add(&sb, path);
+    daemoon_strbuf_add(&sb, ".tmp");
+    DAEMOON_TRY(daemoon_strbuf_result(&sb));
+
+    fp = fopen(temp, "wb");
+    if (fp == NULL) {
+        return DAEMOON_ERR_IO_ERROR;
+    }
+    ok = fprintf(fp, "server = %s\ntoken = %s\nlabel = %s\n", cfg->server_url,
+                 cfg->token, cfg->device_label) > 0;
+    if (ok && cfg->ca_bundle[0] != '\0') {
+        ok = fprintf(fp, "ca_bundle = %s\n", cfg->ca_bundle) > 0;
+    }
+    if (fclose(fp) != 0 || !ok) {
+        (void)remove(temp);
+        return DAEMOON_ERR_IO_ERROR;
+    }
+
+    (void)remove(path);
+    if (rename(temp, path) != 0) {
+        (void)remove(temp);
+        return DAEMOON_ERR_IO_ERROR;
+    }
+    return DAEMOON_OK;
+}
+
 int daemoon_3ds_config_can_sync(const daemoon_3ds_config_t *cfg)
 {
     return cfg->server_url[0] != '\0' && cfg->token[0] != '\0';

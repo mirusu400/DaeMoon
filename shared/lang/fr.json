@@ -39,6 +39,14 @@
   "conflict.keep_server": "Utiliser la sauvegarde du serveur ({0}, du {1})",
   "conflict.keep_both": "Tout conserver et décider plus tard",
 
+  "settings.title": "Réglages",
+  "settings.server": "Adresse du serveur",
+  "settings.token": "Jeton de l'appareil",
+  "settings.label": "Nom de cette console",
+  "settings.saved": "Enregistré. Cette console utilisera ces réglages désormais.",
+  "settings.save_failed": "Impossible d'écrire les réglages sur la carte SD.",
+  "settings.unset": "non défini",
+
   "verify.failed": "La somme de contrôle ne correspond pas. La restauration a été annulée et rien n'a été modifié.",
   "commit.failed": "La sauvegarde n'a pas pu être validée. Ne lancez pas le jeu avant d'avoir résolu ce problème.",
 

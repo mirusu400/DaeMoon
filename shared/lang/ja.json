@@ -39,6 +39,14 @@
   "conflict.keep_server": "サーバーのセーブを使う（{0}、{1}）",
   "conflict.keep_both": "両方残して後で決める",
 
+  "settings.title": "設定",
+  "settings.server": "サーバーのアドレス",
+  "settings.token": "本体のトークン",
+  "settings.label": "この本体の名前",
+  "settings.saved": "保存しました。これ以降はこの設定を使います。",
+  "settings.save_failed": "設定を SD カードに書き込めませんでした。",
+  "settings.unset": "未設定",
+
   "verify.failed": "チェックサムが一致しません。復元を中止し、変更はありません。",
   "commit.failed": "セーブを確定できませんでした。解決するまでゲームを起動しないでください。",
 

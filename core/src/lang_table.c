@@ -65,6 +65,13 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Unpacking save data", /* progress.unpacking */
         "Uploading", /* progress.uploading */
         "Verifying", /* progress.verifying */
+        "This console's name", /* settings.label */
+        "The settings could not be written to the SD card.", /* settings.save_failed */
+        "Saved. This console will use these from now on.", /* settings.saved */
+        "Server address", /* settings.server */
+        "Settings", /* settings.title */
+        "Device token", /* settings.token */
+        "not set", /* settings.unset */
         "Conflict", /* sync.action_conflict */
         "Download", /* sync.action_download */
         "Up to date", /* sync.action_none */
@@ -133,6 +140,13 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "세이브 데이터 푸는 중", /* progress.unpacking */
         "업로드 중", /* progress.uploading */
         "검증 중", /* progress.verifying */
+        "이 본체의 이름", /* settings.label */
+        "설정을 SD 카드에 쓰지 못했습니다.", /* settings.save_failed */
+        "저장했습니다. 이제부터 이 설정을 사용합니다.", /* settings.saved */
+        "서버 주소", /* settings.server */
+        "설정", /* settings.title */
+        "기기 토큰", /* settings.token */
+        "설정 안 됨", /* settings.unset */
         "충돌", /* sync.action_conflict */
         "다운로드", /* sync.action_download */
         "최신 상태", /* sync.action_none */
@@ -201,6 +215,13 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "セーブデータを展開中", /* progress.unpacking */
         "アップロード中", /* progress.uploading */
         "検証中", /* progress.verifying */
+        "この本体の名前", /* settings.label */
+        "設定を SD カードに書き込めませんでした。", /* settings.save_failed */
+        "保存しました。これ以降はこの設定を使います。", /* settings.saved */
+        "サーバーのアドレス", /* settings.server */
+        "設定", /* settings.title */
+        "本体のトークン", /* settings.token */
+        "未設定", /* settings.unset */
         "競合", /* sync.action_conflict */
         "ダウンロード", /* sync.action_download */
         "最新", /* sync.action_none */
@@ -269,6 +290,13 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "正在解包存档", /* progress.unpacking */
         "正在上传", /* progress.uploading */
         "正在校验", /* progress.verifying */
+        "这台主机的名称", /* settings.label */
+        "无法把设置写入 SD 卡。", /* settings.save_failed */
+        "已保存。此后将使用这些设置。", /* settings.saved */
+        "服务器地址", /* settings.server */
+        "设置", /* settings.title */
+        "设备令牌", /* settings.token */
+        "未设置", /* settings.unset */
         "冲突", /* sync.action_conflict */
         "下载", /* sync.action_download */
         "已是最新", /* sync.action_none */
@@ -337,6 +365,13 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "正在解開存檔", /* progress.unpacking */
         "正在上傳", /* progress.uploading */
         "正在驗證", /* progress.verifying */
+        "這台主機的名稱", /* settings.label */
+        "無法將設定寫入 SD 卡。", /* settings.save_failed */
+        "已儲存。此後將使用這些設定。", /* settings.saved */
+        "伺服器位址", /* settings.server */
+        "設定", /* settings.title */
+        "裝置權杖", /* settings.token */
+        "未設定", /* settings.unset */
         "衝突", /* sync.action_conflict */
         "下載", /* sync.action_download */
         "已是最新", /* sync.action_none */
@@ -405,6 +440,13 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Extrayendo la partida", /* progress.unpacking */
         "Subiendo", /* progress.uploading */
         "Verificando", /* progress.verifying */
+        "Nombre de esta consola", /* settings.label */
+        "No se han podido escribir los ajustes en la tarjeta SD.", /* settings.save_failed */
+        "Guardado. Esta consola usará estos ajustes a partir de ahora.", /* settings.saved */
+        "Dirección del servidor", /* settings.server */
+        "Ajustes", /* settings.title */
+        "Token del dispositivo", /* settings.token */
+        "sin definir", /* settings.unset */
         "Conflicto", /* sync.action_conflict */
         "Descargar", /* sync.action_download */
         "Al día", /* sync.action_none */
@@ -473,6 +515,13 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Extraction de la sauvegarde", /* progress.unpacking */
         "Envoi en cours", /* progress.uploading */
         "Vérification", /* progress.verifying */
+        "Nom de cette console", /* settings.label */
+        "Impossible d'écrire les réglages sur la carte SD.", /* settings.save_failed */
+        "Enregistré. Cette console utilisera ces réglages désormais.", /* settings.saved */
+        "Adresse du serveur", /* settings.server */
+        "Réglages", /* settings.title */
+        "Jeton de l'appareil", /* settings.token */
+        "non défini", /* settings.unset */
         "Conflit", /* sync.action_conflict */
         "Télécharger", /* sync.action_download */
         "À jour", /* sync.action_none */
@@ -541,6 +590,13 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Spielstand wird entpackt", /* progress.unpacking */
         "Wird hochgeladen", /* progress.uploading */
         "Wird geprüft", /* progress.verifying */
+        "Name dieser Konsole", /* settings.label */
+        "Die Einstellungen konnten nicht auf die SD-Karte geschrieben werden.", /* settings.save_failed */
+        "Gespeichert. Diese Konsole verwendet sie ab jetzt.", /* settings.saved */
+        "Serveradresse", /* settings.server */
+        "Einstellungen", /* settings.title */
+        "Gerätetoken", /* settings.token */
+        "nicht gesetzt", /* settings.unset */
         "Konflikt", /* sync.action_conflict */
         "Herunterladen", /* sync.action_download */
         "Aktuell", /* sync.action_none */

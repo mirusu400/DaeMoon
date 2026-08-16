@@ -76,12 +76,30 @@ static int g_source_nds;
 static daemoon_3ds_ui_ctx_t   g_ui_ctx;
 static daemoon_env_t          g_env;
 
-static daemoon_title_t   *g_titles;
-static size_t             g_title_count;
-static daemoon_3ds_icon_t g_icons[MAX_ICONS];
+/* Both libraries, kept side by side.
+ *
+ * Switching used to free one list and enumerate the other from scratch, and on a
+ * console with a real library that is a decrypt per title and several seconds -
+ * every single press of L or R. The lists do not change while the application is
+ * running unless it changes them, so they are read once and kept, along with where
+ * the cursor was in each: coming back to a library and finding it where you left
+ * it is most of what makes two libraries feel like one application. */
+typedef struct {
+    daemoon_title_t   *titles;
+    size_t             count;
+    daemoon_3ds_icon_t icons[MAX_ICONS];
+    int                loaded;
+    int                selected;
+    int                scroll;
+} library_t;
 
-static int g_selected;
-static int g_scroll;
+#define LIB_3DS 0
+#define LIB_NDS 1
+
+static library_t g_lib[2];
+
+/* Shorthand for whichever library is on screen. */
+#define CUR (&g_lib[g_source_nds ? LIB_NDS : LIB_3DS])
 
 /* --------------------------------------------------------------------- i18n */
 
@@ -123,13 +141,25 @@ static unsigned long long tid_of(const daemoon_title_t *t)
     return id;
 }
 
-static void free_icons(void)
+static void free_library(library_t *lib)
 {
     size_t i;
 
     for (i = 0; i < MAX_ICONS; ++i) {
-        daemoon_3ds_icon_free(&g_icons[i]);
+        daemoon_3ds_icon_free(&lib->icons[i]);
     }
+    if (lib->titles != NULL) {
+        /* Freed by the backend that produced it, which is why the pairing below
+         * is set before anything is released. */
+        g_env.save = (lib == &g_lib[LIB_NDS]) ? &daemoon_3ds_nds_backend
+                                              : &daemoon_3ds_save_backend;
+        g_env.save_ctx = (lib == &g_lib[LIB_NDS]) ? (void *)&g_nds_ctx
+                                                  : (void *)&g_save_ctx;
+        g_env.save->free_titles(g_env.save_ctx, lib->titles, lib->count);
+        lib->titles = NULL;
+        lib->count = 0;
+    }
+    lib->loaded = 0;
 }
 
 /* One frame of the loading screen. Reading the list opens every save archive on
@@ -166,52 +196,84 @@ static void loading_progress(void *user, unsigned done, unsigned total)
     draw_loading("reading titles", done, total);
 }
 
-static daemoon_result_t reload_titles(void)
+/* Points the environment at one library's backend. The backend and its context
+ * change together: getting that pair out of step would point save operations at
+ * the wrong library entirely. */
+static void select_backend(int nds)
 {
-    daemoon_result_t r;
-    size_t i;
-
-    free_icons();
-    if (g_titles != NULL) {
-        g_env.save->free_titles(g_env.save_ctx, g_titles, g_title_count);
-        g_titles = NULL;
-        g_title_count = 0;
-    }
-
-    /* The backend and its context change together. Getting that pair out of step
-     * would point save operations at the wrong library entirely. */
-    if (g_source_nds) {
+    if (nds) {
         g_env.save = &daemoon_3ds_nds_backend;
         g_env.save_ctx = &g_nds_ctx;
     } else {
         g_env.save = &daemoon_3ds_save_backend;
         g_env.save_ctx = &g_save_ctx;
     }
+}
 
-    r = g_env.save->list_titles(g_env.save_ctx, &g_titles, &g_title_count);
+static daemoon_result_t load_library(int nds)
+{
+    library_t *lib = &g_lib[nds ? LIB_NDS : LIB_3DS];
+    daemoon_result_t r;
+    size_t i;
+
+    free_library(lib);
+    select_backend(nds);
+
+    r = g_env.save->list_titles(g_env.save_ctx, &lib->titles, &lib->count);
     if (r != DAEMOON_OK) {
         return r;
     }
 
-    if (!g_source_nds) {
-        for (i = 0; i < g_title_count && i < MAX_ICONS; ++i) {
-            draw_loading("reading icons", (unsigned)i, (unsigned)g_title_count);
+    for (i = 0; i < lib->count && i < MAX_ICONS; ++i) {
+        draw_loading("reading icons", (unsigned)i, (unsigned)lib->count);
+        if (nds) {
+            /* Out of the ROM's banner, beside the save. A .sav next to a file
+             * called "5684(Dsi0143) 포켓몬화이트 (K)" is exactly where a name
+             * stops helping and a picture starts. */
+            static unsigned char pixels[DAEMOON_3DS_ICON_BYTES];
+
+            if (daemoon_3ds_nds_icon_read(g_nds_ctx.rom_dir, lib->titles[i].name,
+                                          pixels) == DAEMOON_OK) {
+                (void)daemoon_3ds_icon_upload(pixels, &lib->icons[i]);
+            }
+        } else {
             /* The same SMDH the name came from, already in the cache by now, so
              * this loop costs a texture upload rather than a decrypt per title. */
             (void)daemoon_3ds_icon_upload(
                 daemoon_3ds_cache_icon(g_save_ctx.cache, g_save_ctx.media,
-                                       tid_of(&g_titles[i])),
-                &g_icons[i]);
+                                       tid_of(&lib->titles[i])),
+                &lib->icons[i]);
         }
+    }
+    if (!nds) {
         /* Written back once the list is complete, not per title: a title that was
          * skipped this run is a title that is no longer installed, and that is
          * only known at the end. */
         (void)daemoon_3ds_cache_flush(g_save_ctx.cache, DAEMOON_3DS_CACHE_PATH);
     }
-    if (g_selected >= (int)g_title_count) {
-        g_selected = g_title_count > 0 ? (int)g_title_count - 1 : 0;
+    if (lib->selected >= (int)lib->count) {
+        lib->selected = lib->count > 0 ? (int)lib->count - 1 : 0;
     }
+    lib->loaded = 1;
     return DAEMOON_OK;
+}
+
+/* Makes the library on screen the current one, reading it only if it has never
+ * been read. This is what L and R call, and it is why they are now instant. */
+static daemoon_result_t show_library(int nds)
+{
+    g_source_nds = nds;
+    select_backend(nds);
+    if (g_lib[nds ? LIB_NDS : LIB_3DS].loaded) {
+        return DAEMOON_OK;
+    }
+    return load_library(nds);
+}
+
+/* Re-reads the library on screen. For after something changed it. */
+static daemoon_result_t reload_titles(void)
+{
+    return load_library(g_source_nds);
 }
 
 /* ------------------------------------------------------------------ drawing */
@@ -221,7 +283,7 @@ static void draw_grid(void)
     char right[96];
     float w;
     int i;
-    int first = g_scroll * GRID_COLS;
+    int first = CUR->scroll * GRID_COLS;
 
     daemoon_gfx_top();
     daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
@@ -229,11 +291,11 @@ static void draw_grid(void)
     daemoon_gfx_text(96.0f, 9.0f, 0.4f, GFX_ACCENT,
                      g_source_nds ? "nds-bootstrap saves" : "3DS titles");
 
-    if (g_title_count > GRID_PAGE) {
-        (void)snprintf(right, sizeof(right), "%d/%u   %s", g_selected + 1,
-                       (unsigned)g_title_count, DAEMOON_BUILD_STAMP);
+    if (CUR->count > GRID_PAGE) {
+        (void)snprintf(right, sizeof(right), "%d/%u   %s", CUR->selected + 1,
+                       (unsigned)CUR->count, DAEMOON_BUILD_STAMP);
     } else {
-        (void)snprintf(right, sizeof(right), "%u saves   %s", (unsigned)g_title_count,
+        (void)snprintf(right, sizeof(right), "%u saves   %s", (unsigned)CUR->count,
                        DAEMOON_BUILD_STAMP);
     }
     w = daemoon_gfx_text_width(0.36f, right);
@@ -244,17 +306,17 @@ static void draw_grid(void)
         float x = GRID_X + (float)(i % GRID_COLS) * GRID_CELL_W;
         float y = GRID_Y + (float)(i / GRID_COLS) * GRID_CELL_H;
 
-        if (index >= (int)g_title_count) {
+        if (index >= (int)CUR->count) {
             break;
         }
 
-        if (index == g_selected) {
+        if (index == CUR->selected) {
             daemoon_gfx_rect(x, y - 2.0f, GRID_CELL_W - 4.0f, GRID_CELL_H - 6.0f,
                              GFX_ACCENT);
         }
 
-        if (index < MAX_ICONS && g_icons[index].loaded) {
-            C2D_DrawImageAt(g_icons[index].image, x + 6.0f, y + 2.0f, 0.0f, NULL,
+        if (index < MAX_ICONS && CUR->icons[index].loaded) {
+            C2D_DrawImageAt(CUR->icons[index].image, x + 6.0f, y + 2.0f, 0.0f, NULL,
                             1.0f, 1.0f);
         } else {
             /* No icon is normal for some titles. A flat tile keeps the grid
@@ -263,11 +325,11 @@ static void draw_grid(void)
         }
 
         daemoon_gfx_text_fit(x, y + 54.0f, GRID_CELL_W - 4.0f, 0.34f,
-                             index == g_selected ? GFX_TEXT : GFX_TEXT_DIM,
-                             g_titles[index].name);
+                             index == CUR->selected ? GFX_TEXT : GFX_TEXT_DIM,
+                             CUR->titles[index].name);
     }
 
-    if (g_title_count == 0) {
+    if (CUR->count == 0) {
         daemoon_gfx_text(12.0f, 100.0f, 0.5f, GFX_TEXT_DIM,
                          "No titles with save data were found.");
     }
@@ -280,7 +342,8 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
         "Restore from a backup",
         "Sync with the server",
         "Survey every title to the SD card",
-        "Self test (destroys this save)"
+        "Self test (destroys this save)",
+        "Settings"
     };
     const daemoon_title_t *t = NULL;
     char line[160];
@@ -288,17 +351,17 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
     int touched = (down & KEY_TOUCH) != 0;
     size_t i;
 
-    if (g_title_count > 0) {
-        t = &g_titles[g_selected];
+    if (CUR->count > 0) {
+        t = &CUR->titles[CUR->selected];
     }
 
     daemoon_gfx_bottom();
 
     if (t != NULL) {
-        daemoon_gfx_text_fit(4.0f, y, GFX_BOTTOM_W - 8.0f, 0.5f, GFX_TEXT, t->name);
-        y += 20.0f;
-        daemoon_gfx_text(8.0f, y, 0.36f, GFX_TEXT_DIM, t->id);
-        y += 15.0f;
+        daemoon_gfx_text_fit(4.0f, y, GFX_BOTTOM_W - 8.0f, 0.45f, GFX_TEXT, t->name);
+        y += 17.0f;
+        daemoon_gfx_text(8.0f, y, 0.34f, GFX_TEXT_DIM, t->id);
+        y += 13.0f;
 
         /* The warning that matters before a restore, on screen before anything is
          * chosen rather than after. */
@@ -308,23 +371,26 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
             if (daemoon_3ds_read_secure_value(t, &secure) == DAEMOON_OK && secure.exists) {
                 (void)snprintf(line, sizeof(line), "secure value %016llX",
                                (unsigned long long)secure.value);
-                daemoon_gfx_text(8.0f, y, 0.34f, GFX_WARN, line);
+                daemoon_gfx_text(8.0f, y, 0.32f, GFX_WARN, line);
             } else {
-                daemoon_gfx_text(8.0f, y, 0.34f, GFX_TEXT_DIM, "no secure value");
+                daemoon_gfx_text(8.0f, y, 0.32f, GFX_TEXT_DIM, "no secure value");
             }
-            y += 16.0f;
+            y += 14.0f;
         }
     } else {
-        daemoon_gfx_text(8.0f, y, 0.5f, GFX_TEXT_DIM, "nothing selected");
-        y += 40.0f;
+        daemoon_gfx_text(8.0f, y, 0.45f, GFX_TEXT_DIM, "nothing selected");
+        y += 44.0f;
     }
 
+    /* Six buttons and 240 pixels. The heights are what they are so the last one
+     * and the hint line both fit; a button that is off the bottom of the screen is
+     * a feature nobody can reach. */
     for (i = 0; i < sizeof(labels) / sizeof(labels[0]); ++i) {
-        if (daemoon_gfx_button(8.0f, y, GFX_BOTTOM_W - 16.0f, 30.0f, labels[i], 0,
+        if (daemoon_gfx_button(8.0f, y, GFX_BOTTOM_W - 16.0f, 27.0f, labels[i], 0,
                                down, touch.px, touch.py, touched)) {
             *out_action = (int)i;
         }
-        y += 34.0f;
+        y += 29.0f;
     }
 
     daemoon_gfx_text(8.0f, GFX_SCREEN_H - 16.0f, 0.34f, GFX_TEXT_DIM,
@@ -383,7 +449,7 @@ static void action_backup(void)
     char path[DAEMOON_PATH_MAX * 2];
     daemoon_str_ref_t ask;
 
-    if (g_title_count == 0) {
+    if (CUR->count == 0) {
         return;
     }
 
@@ -392,10 +458,10 @@ static void action_backup(void)
      * makes a backup and the button that overwrites a save are next to each other
      * on a console with no pointer, and being told which title is about to be read
      * is worth one press. */
-    daemoon_3ds_trace("backup/begin", g_titles[g_selected].id);
+    daemoon_3ds_trace("backup/begin", CUR->titles[CUR->selected].id);
     memset(&ask, 0, sizeof(ask));
     ask.id = DAEMOON_STR_CONFIRM_BACKUP;
-    ask.args[0] = g_titles[g_selected].name;
+    ask.args[0] = CUR->titles[CUR->selected].name;
     ask.nargs = 1;
     if (!g_env.ui->confirm(g_env.ui_ctx, &ask)) {
         return;
@@ -403,7 +469,7 @@ static void action_backup(void)
 
     {
         daemoon_result_t r = daemoon_sync_backup_local(&g_env, &g_archive,
-                                                       &g_titles[g_selected], path,
+                                                       &CUR->titles[CUR->selected], path,
                                                        sizeof(path));
 
         daemoon_3ds_trace("backup/done", daemoon_result_code(r));
@@ -440,7 +506,7 @@ static void action_restore(void)
     daemoon_strbuf_t sb;
     daemoon_result_t pr;
 
-    if (g_title_count == 0) {
+    if (CUR->count == 0) {
         return;
     }
 
@@ -451,19 +517,19 @@ static void action_restore(void)
         return;
     }
 
-    daemoon_3ds_trace("restore/begin", g_titles[g_selected].id);
+    daemoon_3ds_trace("restore/begin", CUR->titles[CUR->selected].id);
     draw_loading("reading backups", 0, 0);
-    current_digest(&g_titles[g_selected], digest, sizeof(digest));
+    current_digest(&CUR->titles[CUR->selected], digest, sizeof(digest));
     daemoon_3ds_trace("restore/digest", digest[0] != '\0' ? digest : "-");
 
-    pr = daemoon_3ds_pick_backup(&g_env, dir, &g_titles[g_selected], digest, pick,
+    pr = daemoon_3ds_pick_backup(&g_env, dir, &CUR->titles[CUR->selected], digest, pick,
                                  sizeof(pick));
     daemoon_3ds_trace("restore/picked", daemoon_result_code(pr));
     if (pr == DAEMOON_ERR_NOT_FOUND) {
         char none[256];
         const char *args[1];
 
-        args[0] = g_titles[g_selected].name;
+        args[0] = CUR->titles[CUR->selected].name;
         (void)daemoon_strf(none, sizeof(none), DAEMOON_STR_BACKUP_NONE, args, 1);
         message(daemoon_str(DAEMOON_STR_APP_TITLE), none, GFX_PANEL);
         return;
@@ -477,18 +543,18 @@ static void action_restore(void)
      * save as corrupt and delete it. */
     {
         daemoon_3ds_secure_value_t secure;
-        daemoon_result_t sr = daemoon_3ds_read_secure_value(&g_titles[g_selected], &secure);
+        daemoon_result_t sr = daemoon_3ds_read_secure_value(&CUR->titles[CUR->selected], &secure);
         daemoon_result_t r;
 
         daemoon_3ds_trace("restore/secure-read", daemoon_result_code(sr));
         daemoon_3ds_trace("restore/core", pick);
-        r = daemoon_sync_restore_package(&g_env, &g_archive, &g_titles[g_selected], pick);
+        r = daemoon_sync_restore_package(&g_env, &g_archive, &CUR->titles[CUR->selected], pick);
         daemoon_3ds_trace("restore/core-done", daemoon_result_code(r));
         report("restore", r);
 
         if (r == DAEMOON_OK && sr == DAEMOON_OK && secure.exists) {
             report("secure value",
-                   daemoon_3ds_write_secure_value(&g_titles[g_selected], &secure));
+                   daemoon_3ds_write_secure_value(&CUR->titles[CUR->selected], &secure));
             daemoon_3ds_trace("restore/secure-written", NULL);
         }
     }
@@ -517,7 +583,7 @@ static void action_sync(void)
     char body[256];
     daemoon_result_t r;
 
-    if (g_title_count == 0) {
+    if (CUR->count == 0) {
         return;
     }
     if (!daemoon_3ds_config_can_sync(&g_config)) {
@@ -528,8 +594,8 @@ static void action_sync(void)
     }
 
     memset(&stats, 0, sizeof(stats));
-    daemoon_3ds_trace("sync/begin", g_titles[g_selected].id);
-    r = daemoon_sync_title(&g_env, &g_archive, &g_titles[g_selected], &stats);
+    daemoon_3ds_trace("sync/begin", CUR->titles[CUR->selected].id);
+    r = daemoon_sync_title(&g_env, &g_archive, &CUR->titles[CUR->selected], &stats);
     daemoon_3ds_trace("sync/done", daemoon_result_code(r));
 
     if (r != DAEMOON_OK) {
@@ -558,6 +624,179 @@ static int survey_count_cb(void *user, const char *path, unsigned long long size
  * of this phase are answered by data about a whole console, and reading that off a
  * screen one title at a time is how a survey turns into three titles and a guess.
  */
+/* Typing a URL and a token on a console.
+ *
+ * The rules call a software keyboard painful and they are right - which is why
+ * Phase 4 is QR and device code pairing, and why this exists anyway: until then
+ * the only way to point a console at a server is to take the card out and edit a
+ * file, and taking the card out is the thing this whole workflow was built to
+ * stop doing.
+ *
+ * Written straight back to config.txt, so what is typed here and what is pushed
+ * over FTP are the same file in the same format.
+ */
+static int edit_field(daemoon_str_id_t label, const char *hint, char *value, size_t cap)
+{
+    SwkbdState kbd;
+    char buf[512];
+    SwkbdButton pressed;
+
+    if (cap > sizeof(buf)) {
+        cap = sizeof(buf);
+    }
+    swkbdInit(&kbd, SWKBD_TYPE_NORMAL, 2, (int)cap - 1);
+    swkbdSetInitialText(&kbd, value);
+    swkbdSetHintText(&kbd, hint);
+    swkbdSetButton(&kbd, SWKBD_BUTTON_LEFT, daemoon_str(DAEMOON_STR_BTN_CANCEL), false);
+    swkbdSetButton(&kbd, SWKBD_BUTTON_RIGHT, daemoon_str(DAEMOON_STR_BTN_OK), true);
+    /* Blank is a legitimate answer for the token - it is how somebody unpairs a
+     * console - so validation only rejects what cannot be stored. */
+    swkbdSetValidation(&kbd, SWKBD_ANYTHING, 0, 0);
+
+    daemoon_3ds_trace("settings/keyboard", daemoon_str(label));
+    pressed = swkbdInputText(&kbd, buf, cap);
+    if (pressed != SWKBD_BUTTON_CONFIRM) {
+        return 0;
+    }
+    (void)daemoon_strlcpy(value, cap, buf);
+    return 1;
+}
+
+static void draw_settings(int selected)
+{
+    static const daemoon_str_id_t labels[3] = {
+        DAEMOON_STR_SETTINGS_SERVER, DAEMOON_STR_SETTINGS_TOKEN,
+        DAEMOON_STR_SETTINGS_LABEL
+    };
+    const char *values[3];
+    char masked[32];
+    float y;
+    size_t i;
+
+    /* The token is a credential and this screen gets photographed for bug
+     * reports. Enough of it to tell two apart, and no more. */
+    if (g_config.token[0] == '\0') {
+        (void)daemoon_strlcpy(masked, sizeof(masked), daemoon_str(DAEMOON_STR_SETTINGS_UNSET));
+    } else {
+        (void)snprintf(masked, sizeof(masked), "%.6s...", g_config.token);
+    }
+    values[0] = g_config.server_url[0] != '\0' ? g_config.server_url
+                                               : daemoon_str(DAEMOON_STR_SETTINGS_UNSET);
+    values[1] = masked;
+    values[2] = g_config.device_label;
+
+    daemoon_gfx_top();
+    daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
+    daemoon_gfx_text(12.0f, 6.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_SETTINGS_TITLE));
+
+    y = 48.0f;
+    for (i = 0; i < 3; ++i) {
+        daemoon_gfx_text(14.0f, y, 0.4f, GFX_TEXT_DIM, daemoon_str(labels[i]));
+        daemoon_gfx_text_fit(14.0f, y + 18.0f, GFX_TOP_W - 28.0f, 0.45f,
+                             (int)i == selected ? GFX_TEXT : GFX_TEXT_DIM, values[i]);
+        y += 48.0f;
+    }
+    daemoon_gfx_text(14.0f, GFX_SCREEN_H - 22.0f, 0.34f, GFX_TEXT_DIM,
+                     DAEMOON_3DS_CONFIG_PATH);
+
+    daemoon_gfx_bottom();
+    y = 16.0f;
+    for (i = 0; i < 3; ++i) {
+        daemoon_gfx_rect(10.0f, y, GFX_BOTTOM_W - 20.0f, 34.0f,
+                         (int)i == selected ? GFX_ACCENT : GFX_PANEL);
+        daemoon_gfx_text(18.0f, y + 8.0f, 0.45f, GFX_TEXT, daemoon_str(labels[i]));
+        y += 40.0f;
+    }
+    daemoon_gfx_text(10.0f, GFX_SCREEN_H - 18.0f, 0.34f, GFX_TEXT_DIM,
+                     "A edit   B back   up/down move");
+}
+
+static void action_settings(void)
+{
+    static const daemoon_str_id_t labels[3] = {
+        DAEMOON_STR_SETTINGS_SERVER, DAEMOON_STR_SETTINGS_TOKEN,
+        DAEMOON_STR_SETTINGS_LABEL
+    };
+    int selected = 0;
+    int dirty = 0;
+
+    daemoon_3ds_trace("settings/open", NULL);
+
+    while (aptMainLoop()) {
+        u32 down;
+        int edited = 0;
+
+        hidScanInput();
+        down = hidKeysDown();
+
+        daemoon_gfx_frame_begin();
+        draw_settings(selected);
+        daemoon_gfx_frame_end();
+
+        if (down & KEY_B) {
+            break;
+        }
+        if (down & KEY_A) {
+            switch (selected) {
+            case 0:
+                edited = edit_field(labels[0], "http://192.168.1.10:8080",
+                                    g_config.server_url, sizeof(g_config.server_url));
+                if (edited) {
+                    /* The same trailing slash rule the parser applies, so typing
+                     * one here and pushing one over FTP end up identical. */
+                    size_t len = strlen(g_config.server_url);
+
+                    while (len > 0 && g_config.server_url[len - 1] == '/') {
+                        g_config.server_url[--len] = '\0';
+                    }
+                }
+                break;
+            case 1:
+                edited = edit_field(labels[1], "daemoonctl pair", g_config.token,
+                                    sizeof(g_config.token));
+                break;
+            default:
+                edited = edit_field(labels[2], "3DS", g_config.device_label,
+                                    sizeof(g_config.device_label));
+                break;
+            }
+            dirty = dirty || edited;
+        }
+        if ((down & KEY_UP) && selected > 0) {
+            --selected;
+        }
+        if ((down & KEY_DOWN) && selected < 2) {
+            ++selected;
+        }
+    }
+
+    if (!dirty) {
+        return;
+    }
+
+    {
+        daemoon_result_t r = daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
+
+        daemoon_3ds_trace("settings/save", daemoon_result_code(r));
+        if (r != DAEMOON_OK) {
+            message(daemoon_str(DAEMOON_STR_APP_TITLE),
+                    daemoon_str(DAEMOON_STR_SETTINGS_SAVE_FAILED), GFX_DANGER);
+            return;
+        }
+
+        /* The environment points at these buffers, so the new values are already
+         * in use. What is not is the network, which is opened once at startup and
+         * may not have been opened at all. */
+        g_env.token = g_config.token[0] != '\0' ? g_config.token : NULL;
+        g_net_ctx.ca_bundle = g_config.ca_bundle;
+        if (daemoon_3ds_config_can_sync(&g_config)) {
+            (void)daemoon_3ds_net_init();
+        }
+        message(daemoon_str(DAEMOON_STR_APP_TITLE),
+                daemoon_str(DAEMOON_STR_SETTINGS_SAVED), GFX_OK);
+    }
+}
+
 static void action_survey(void)
 {
     daemoon_stream_t *out = NULL;
@@ -588,8 +827,8 @@ static void action_survey(void)
         (void)daemoon_stream_write(out, header, hb.len);
     }
 
-    for (i = 0; i < g_title_count; ++i) {
-        daemoon_title_t *t = &g_titles[i];
+    for (i = 0; i < CUR->count; ++i) {
+        daemoon_title_t *t = &CUR->titles[i];
         daemoon_3ds_secure_value_t secure;
         daemoon_save_t *save = NULL;
         unsigned long long bytes = 0;
@@ -631,7 +870,7 @@ static void action_survey(void)
         }
 
         daemoon_strbuf_add(&sb, "\ticon=");
-        daemoon_strbuf_add(&sb, (i < MAX_ICONS && g_icons[i].loaded) ? "yes" : "no");
+        daemoon_strbuf_add(&sb, (i < MAX_ICONS && CUR->icons[i].loaded) ? "yes" : "no");
 
         /* Why the name is what it is, and the raw Result when it is not a name.
          * A wire code says "not supported"; a Result says which module said it,
@@ -709,32 +948,32 @@ static void action_self_test(void)
     char body[256];
     int before;
 
-    if (g_title_count == 0) {
+    if (CUR->count == 0) {
         return;
     }
 
     (void)snprintf(body, sizeof(body),
                    "This DESTROYS the save of %s. Use a dummy title. A backup is "
                    "made first, but do not rely on it.",
-                   g_titles[g_selected].name);
+                   CUR->titles[CUR->selected].name);
     message(daemoon_str(DAEMOON_STR_APP_TITLE), body, GFX_DANGER);
 
     memset(&ask, 0, sizeof(ask));
     ask.id = DAEMOON_STR_CONFIRM_RESTORE;
-    ask.args[0] = g_titles[g_selected].name;
+    ask.args[0] = CUR->titles[CUR->selected].name;
     ask.nargs = 1;
     if (!g_env.ui->confirm(g_env.ui_ctx, &ask)) {
         return;
     }
 
-    report("backup", daemoon_sync_backup_local(&g_env, &g_archive, &g_titles[g_selected],
+    report("backup", daemoon_sync_backup_local(&g_env, &g_archive, &CUR->titles[CUR->selected],
                                                path, sizeof(path)));
 
     memset(&ut, 0, sizeof(ut));
     ut.name = "3ds";
     ut.backend = &daemoon_3ds_save_backend;
     ut.ctx = &g_save_ctx;
-    ut.title = &g_titles[g_selected];
+    ut.title = &CUR->titles[CUR->selected];
     ut.other = NULL;
     ut.scratch = g_scratch;
     ut.scratch_len = sizeof(g_scratch);
@@ -854,10 +1093,18 @@ int main(void)
 
     g_save_ctx.media = 1; /* MEDIATYPE_SD */
     g_save_ctx.only_with_saves = 1;
-    /* The console's own font draws the languages this project ships, so a name no
-     * longer has to be ASCII to be shown - unless the console has no font for it,
-     * which is what docs/fonts.md is about. */
-    g_save_ctx.ascii_names = !daemoon_gfx_has_language_font();
+    /* Names in whatever script the title carries.
+     *
+     * This used to be tied to daemoon_gfx_has_language_font(), which answers a
+     * narrower question: whether an *extra* region font was loaded. It never is,
+     * so every non ASCII name fell back to a product code - and then hardware
+     * showed Korean dialog text rendering perfectly. The system font a console
+     * ships with is its own region's, and it is the font the HOME menu draws these
+     * same names with. There was never a reason to refuse them.
+     *
+     * The survey still records the real name either way, so a title whose glyphs
+     * are genuinely missing is a fact rather than a guess. */
+    g_save_ctx.ascii_names = 0;
 
     daemoon_3ds_ui_init(&g_ui_ctx);
     g_archive.count = 0;
@@ -902,7 +1149,7 @@ int main(void)
         g_save_ctx.cache = NULL;
     }
 
-    if (reload_titles() != DAEMOON_OK) {
+    if (show_library(0) != DAEMOON_OK) {
         message(daemoon_str(DAEMOON_STR_APP_TITLE), "Could not read the title list.",
                 GFX_DANGER);
     }
@@ -925,26 +1172,23 @@ int main(void)
             break;
         }
         if (down & (KEY_L | KEY_R)) {
-            /* The other library. Reading it costs a moment, so it is a deliberate
-             * press rather than something that happens while scrolling. */
-            g_source_nds = !g_source_nds;
-            g_selected = 0;
-            g_scroll = 0;
-            (void)reload_titles();
+            /* The other library, kept from last time: its list, its icons and
+             * where the cursor was. Only the first press of each pays for a read. */
+            (void)show_library(!g_source_nds);
             continue;
         }
-        if (g_title_count > 0) {
-            if ((down & KEY_RIGHT) && g_selected + 1 < (int)g_title_count) {
-                ++g_selected;
+        if (CUR->count > 0) {
+            if ((down & KEY_RIGHT) && CUR->selected + 1 < (int)CUR->count) {
+                ++CUR->selected;
             }
-            if ((down & KEY_LEFT) && g_selected > 0) {
-                --g_selected;
+            if ((down & KEY_LEFT) && CUR->selected > 0) {
+                --CUR->selected;
             }
-            if ((down & KEY_DOWN) && g_selected + GRID_COLS < (int)g_title_count) {
-                g_selected += GRID_COLS;
+            if ((down & KEY_DOWN) && CUR->selected + GRID_COLS < (int)CUR->count) {
+                CUR->selected += GRID_COLS;
             }
-            if ((down & KEY_UP) && g_selected - GRID_COLS >= 0) {
-                g_selected -= GRID_COLS;
+            if ((down & KEY_UP) && CUR->selected - GRID_COLS >= 0) {
+                CUR->selected -= GRID_COLS;
             }
             if (down & KEY_A) {
                 action = 0; /* back up */
@@ -957,11 +1201,11 @@ int main(void)
             }
 
             /* Keep the selection on screen. */
-            if (g_selected / GRID_COLS < g_scroll) {
-                g_scroll = g_selected / GRID_COLS;
+            if (CUR->selected / GRID_COLS < CUR->scroll) {
+                CUR->scroll = CUR->selected / GRID_COLS;
             }
-            if (g_selected / GRID_COLS >= g_scroll + GRID_ROWS) {
-                g_scroll = g_selected / GRID_COLS - GRID_ROWS + 1;
+            if (CUR->selected / GRID_COLS >= CUR->scroll + GRID_ROWS) {
+                CUR->scroll = CUR->selected / GRID_COLS - GRID_ROWS + 1;
             }
         }
 
@@ -976,16 +1220,15 @@ int main(void)
         case 2: action_sync(); break;
         case 3: action_survey(); break;
         case 4: action_self_test(); (void)reload_titles(); break;
+        case 5: action_settings(); break;
         default: break;
         }
     }
 
 done:
     daemoon_3ds_trace("app/exit", NULL);
-    free_icons();
-    if (g_titles != NULL) {
-        g_env.save->free_titles(g_env.save_ctx, g_titles, g_title_count);
-    }
+    free_library(&g_lib[LIB_3DS]);
+    free_library(&g_lib[LIB_NDS]);
     (void)daemoon_3ds_cache_flush(g_save_ctx.cache, DAEMOON_3DS_CACHE_PATH);
     daemoon_3ds_cache_close(g_save_ctx.cache);
     daemoon_3ds_net_exit();

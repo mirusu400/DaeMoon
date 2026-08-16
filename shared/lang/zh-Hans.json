@@ -39,6 +39,14 @@
   "conflict.keep_server": "使用服务器存档（{0}，来自 {1}）",
   "conflict.keep_both": "都保留，稍后再决定",
 
+  "settings.title": "设置",
+  "settings.server": "服务器地址",
+  "settings.token": "设备令牌",
+  "settings.label": "这台主机的名称",
+  "settings.saved": "已保存。此后将使用这些设置。",
+  "settings.save_failed": "无法把设置写入 SD 卡。",
+  "settings.unset": "未设置",
+
   "verify.failed": "校验值不匹配。已中止恢复，未做任何更改。",
   "commit.failed": "存档未能提交。问题解决前请不要启动游戏。",
 

@@ -230,6 +230,48 @@ launch as well.
 The stub counts SMDH opens, so "the cache works" is an assertion in
 `make core-test` rather than an impression that the loading screen feels quicker.
 
+## Phase 2 is verified on hardware
+
+A `.sav` was packed on the console, uploaded, and pulled back down on a desktop:
+the payload inside the package the 3DS built is byte for byte the file on the SD
+card. Three saves, uploads and skips both behaving.
+
+Two things had to be fixed to get there and neither was in this directory:
+
+- The server compared the device's platform with the save's and demanded they
+  match. A 3DS carries both libraries, which is the whole design.
+- The net backend read the HTTP status with `curl_easy_getinfo` after
+  `curl_easy_perform` returned, by which point every callback had already run with
+  a status of zero. `backend.h` has always said the status is filled in before the
+  first `body_write`, because that call is where a save is told apart from an error
+  message. A successful upload's response went into the error buffer and came back
+  as `parse_error`. The status now comes off the status line in the header
+  callback, and core refuses a body offered with no status rather than guessing.
+
+## Two libraries, read once
+
+L and R used to free one list and enumerate the other from scratch, every press.
+Both are now held side by side - list, icons, and where the cursor was - and only
+the first visit to each pays for a read.
+
+nds icons come from the ROM's banner beside the save (`nds_icon.c`): a 32x32 4bpp
+image and a BGR555 palette, converted into the same 48x48 tiled buffer an SMDH
+produces so one upload serves both libraries. The swizzle is tested on a desktop
+against a Morton table written out by hand, because a wrong swizzle does not fail -
+it draws noise, and noise on a console is a photograph and a guess.
+
+## Names are not restricted to ASCII any more
+
+`ascii_names` was tied to `daemoon_gfx_has_language_font()`, which answers a
+narrower question: whether an *extra* region font was loaded. It never is, so every
+Korean title in the list showed a product code.
+
+Then hardware rendered a Korean error dialog perfectly. The system font a console
+ships with is its own region's - the font the HOME menu draws these same names
+with - so there was never a reason to refuse them. The survey records the real name
+either way, so a title whose glyphs are genuinely missing stays a fact rather than
+a guess.
+
 ## Proving the backend
 
 `tools/test/backend_conformance.c` is the contract, written against the interface

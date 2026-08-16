@@ -39,6 +39,14 @@
   "conflict.keep_server": "서버의 세이브 사용 ({0}, {1})",
   "conflict.keep_both": "둘 다 보관하고 나중에 결정",
 
+  "settings.title": "설정",
+  "settings.server": "서버 주소",
+  "settings.token": "기기 토큰",
+  "settings.label": "이 본체의 이름",
+  "settings.saved": "저장했습니다. 이제부터 이 설정을 사용합니다.",
+  "settings.save_failed": "설정을 SD 카드에 쓰지 못했습니다.",
+  "settings.unset": "설정 안 됨",
+
   "verify.failed": "체크섬이 일치하지 않습니다. 복원을 중단했으며 변경된 내용은 없습니다.",
   "commit.failed": "세이브를 확정하지 못했습니다. 해결하기 전에는 게임을 실행하지 마세요.",
 

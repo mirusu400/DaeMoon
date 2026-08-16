@@ -39,6 +39,14 @@
   "conflict.keep_server": "Keep the server save ({0}, from {1})",
   "conflict.keep_both": "Keep both and decide later",
 
+  "settings.title": "Settings",
+  "settings.server": "Server address",
+  "settings.token": "Device token",
+  "settings.label": "This console's name",
+  "settings.saved": "Saved. This console will use these from now on.",
+  "settings.save_failed": "The settings could not be written to the SD card.",
+  "settings.unset": "not set",
+
   "verify.failed": "Checksum does not match. The restore was aborted and nothing was changed.",
   "commit.failed": "The save could not be committed. Do not launch the game until this is resolved.",
 

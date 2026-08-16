@@ -74,6 +74,13 @@ kept it becomes a double slash in every path built from it.
 from somewhere, and on a self hosted setup that is usually the operator's own CA.
 Verification is never turned off.
 
+From Phase 2 on the app can also write this file itself: **Settings** on the
+bottom screen, with the software keyboard. The rules call that keyboard painful
+and they are right, which is why Phase 4 is QR and device code pairing - but until
+then the alternative is taking the card out, and not taking the card out is what
+this whole workflow is for. What it writes is the same file in the same format, so
+the two ways of setting a server do not diverge.
+
 Push it with the tool rather than moving the card:
 
 ```bash

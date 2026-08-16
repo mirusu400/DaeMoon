@@ -39,6 +39,14 @@
   "conflict.keep_server": "使用伺服器存檔（{0}，來自 {1}）",
   "conflict.keep_both": "都保留，稍後再決定",
 
+  "settings.title": "設定",
+  "settings.server": "伺服器位址",
+  "settings.token": "裝置權杖",
+  "settings.label": "這台主機的名稱",
+  "settings.saved": "已儲存。此後將使用這些設定。",
+  "settings.save_failed": "無法將設定寫入 SD 卡。",
+  "settings.unset": "未設定",
+
   "verify.failed": "校驗值不符。已中止還原，未做任何變更。",
   "commit.failed": "存檔未能提交。問題解決前請勿啟動遊戲。",
 

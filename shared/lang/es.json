@@ -39,6 +39,14 @@
   "conflict.keep_server": "Usar la partida del servidor ({0}, del {1})",
   "conflict.keep_both": "Conservar ambas y decidir más tarde",
 
+  "settings.title": "Ajustes",
+  "settings.server": "Dirección del servidor",
+  "settings.token": "Token del dispositivo",
+  "settings.label": "Nombre de esta consola",
+  "settings.saved": "Guardado. Esta consola usará estos ajustes a partir de ahora.",
+  "settings.save_failed": "No se han podido escribir los ajustes en la tarjeta SD.",
+  "settings.unset": "sin definir",
+
   "verify.failed": "La suma de verificación no coincide. La restauración se ha cancelado y no se ha cambiado nada.",
   "commit.failed": "No se ha podido confirmar la partida. No inicies el juego hasta resolverlo.",
 

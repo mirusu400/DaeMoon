@@ -1566,6 +1566,173 @@ TEST_CASE(an_nds_package_only_carries_the_one_entry)
     (void)daemoon_posix_rmtree(root);
 }
 
+/* The 8x8 Morton order a 3DS texture stores a tile in, written out by hand.
+ *
+ * Here on purpose rather than shared with the code under test: a swizzle that is
+ * wrong does not fail, it draws noise, and checking it against the same
+ * expression that produced it would check nothing. This table is the hardware
+ * layout, and it is short enough to read. */
+static const unsigned char k_morton8[8][8] = {
+    {  0,  1,  4,  5, 16, 17, 20, 21 },
+    {  2,  3,  6,  7, 18, 19, 22, 23 },
+    {  8,  9, 12, 13, 24, 25, 28, 29 },
+    { 10, 11, 14, 15, 26, 27, 30, 31 },
+    { 32, 33, 36, 37, 48, 49, 52, 53 },
+    { 34, 35, 38, 39, 50, 51, 54, 55 },
+    { 40, 41, 44, 45, 56, 57, 60, 61 },
+    { 42, 43, 46, 47, 58, 59, 62, 63 }
+};
+
+/* Where (x, y) of a 48 wide tiled image lands. The band arithmetic is the same
+ * one icons.c copies with: 8 rows at a time, 6 tiles of 64 across. */
+static size_t tiled_at(unsigned x, unsigned y)
+{
+    return ((size_t)(y / 8) * 6u + (x / 8)) * 64u + k_morton8[y % 8][x % 8];
+}
+
+/* A ROM with just enough of a header and a banner to have an icon. */
+static void write_rom_with_banner(const char *path, const unsigned char *bitmap,
+                                  const unsigned short *palette)
+{
+    static unsigned char rom[0x440];
+    size_t i;
+
+    memset(rom, 0, sizeof(rom));
+    /* Header offset 0x68: where the banner is. */
+    rom[0x68] = 0x00;
+    rom[0x69] = 0x02;
+    memcpy(rom + 0x200 + 0x20, bitmap, 512);
+    for (i = 0; i < 16; ++i) {
+        rom[0x200 + 0x220 + i * 2] = (unsigned char)(palette[i] & 0xff);
+        rom[0x200 + 0x220 + i * 2 + 1] = (unsigned char)(palette[i] >> 8);
+    }
+    write_file(path, rom, sizeof(rom));
+}
+
+/* Sets one pixel of a DS icon bitmap: sixteen 8x8 tiles, four bits each, low
+ * nibble first. */
+static void nds_set_pixel(unsigned char *bitmap, unsigned x, unsigned y, unsigned idx)
+{
+    unsigned tile = (y / 8) * 4 + (x / 8);
+    unsigned within = (y % 8) * 8 + (x % 8);
+    unsigned char *b = &bitmap[tile * 32 + within / 2];
+
+    if (within & 1) {
+        *b = (unsigned char)((*b & 0x0f) | (idx << 4));
+    } else {
+        *b = (unsigned char)((*b & 0xf0) | idx);
+    }
+}
+
+TEST_CASE(an_nds_icon_comes_out_of_the_cartridge_banner)
+{
+    char root[256];
+    char roms[320];
+    char rom[420];
+    static unsigned char bitmap[512];
+    static unsigned short out[DAEMOON_3DS_ICON_BYTES / 2];
+    unsigned short palette[16];
+    /* BGR555, which is not the order it will come out in. */
+    const unsigned short bgr_red = 0x001f;
+    const unsigned short bgr_green = 0x03e0;
+    const unsigned short bgr_blue = 0x7c00;
+    const unsigned inset = (48 - 32) / 2;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "nds-icon"), 0);
+    (void)snprintf(roms, sizeof(roms), "%s/roms", root);
+    CHECK_EQ_INT(mkdir(roms, 0755), 0);
+    (void)snprintf(rom, sizeof(rom), "%s/A Game (K)", roms);
+
+    memset(palette, 0, sizeof(palette));
+    palette[1] = bgr_red;
+    palette[2] = bgr_green;
+    palette[3] = bgr_blue;
+
+    memset(bitmap, 0, sizeof(bitmap));
+    /* Corners and a pixel inside the second tile, so a swizzle that is off by a
+     * tile and one that is off within a tile both show up. */
+    nds_set_pixel(bitmap, 0, 0, 1);
+    nds_set_pixel(bitmap, 1, 0, 2);
+    nds_set_pixel(bitmap, 0, 1, 3);
+    nds_set_pixel(bitmap, 9, 2, 1);
+    nds_set_pixel(bitmap, 31, 31, 2);
+
+    {
+        char with_ext[460];
+
+        (void)snprintf(with_ext, sizeof(with_ext), "%s.nds", rom);
+        write_rom_with_banner(with_ext, bitmap, palette);
+    }
+
+    CHECK_OK(daemoon_3ds_nds_icon_read(roms, "A Game (K)", out));
+
+    /* BGR555 red is RGB565 red, in the other half of the word. */
+    CHECK_EQ_INT((int)out[tiled_at(inset + 0, inset + 0)], 0xf800);
+    CHECK_EQ_INT((int)out[tiled_at(inset + 1, inset + 0)], 0x07e0);
+    CHECK_EQ_INT((int)out[tiled_at(inset + 0, inset + 1)], 0x001f);
+    CHECK_EQ_INT((int)out[tiled_at(inset + 9, inset + 2)], 0xf800);
+    CHECK_EQ_INT((int)out[tiled_at(inset + 31, inset + 31)], 0x07e0);
+
+    /* Index 0 is transparent and the texture has nowhere to say so, so it becomes
+     * the same flat tile the grid draws for a title with no icon - and so does
+     * everything outside the 32x32. */
+    {
+        const unsigned short panel = (unsigned short)(((0x24 >> 3) << 11) |
+                                                      ((0x28 >> 2) << 5) | (0x32 >> 3));
+        int coloured = 0;
+        size_t i;
+
+        CHECK_EQ_INT((int)out[tiled_at(inset + 5, inset + 5)], (int)panel);
+        CHECK_EQ_INT((int)out[tiled_at(0, 0)], (int)panel);
+        CHECK_EQ_INT((int)out[tiled_at(47, 47)], (int)panel);
+
+        for (i = 0; i < sizeof(out) / sizeof(out[0]); ++i) {
+            if (out[i] != panel) {
+                ++coloured;
+            }
+        }
+        /* Exactly the five pixels that were set, so nothing was written twice and
+         * nothing landed outside the icon. */
+        CHECK_EQ_INT(coloured, 5);
+    }
+
+    (void)daemoon_posix_rmtree(root);
+}
+
+TEST_CASE(a_rom_with_no_banner_has_no_icon)
+{
+    char root[256];
+    char roms[320];
+    char path[460];
+    static unsigned char rom[0x440];
+    static unsigned short out[DAEMOON_3DS_ICON_BYTES / 2];
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "nds-icon-none"), 0);
+    (void)snprintf(roms, sizeof(roms), "%s/roms", root);
+    CHECK_EQ_INT(mkdir(roms, 0755), 0);
+
+    /* No ROM beside the save at all: normal, somebody copied a .sav on its own. */
+    CHECK_RESULT(daemoon_3ds_nds_icon_read(roms, "Missing", out),
+                 DAEMOON_ERR_NOT_FOUND);
+
+    /* A ROM whose banner pointer is zero: normal for homebrew. */
+    memset(rom, 0, sizeof(rom));
+    (void)snprintf(path, sizeof(path), "%s/Homebrew.nds", roms);
+    write_file(path, rom, sizeof(rom));
+    CHECK_RESULT(daemoon_3ds_nds_icon_read(roms, "Homebrew", out),
+                 DAEMOON_ERR_NOT_FOUND);
+
+    /* A ROM that points past its own end - a copy that stopped early. */
+    rom[0x68] = 0x00;
+    rom[0x69] = 0x02;
+    (void)snprintf(path, sizeof(path), "%s/Truncated.nds", roms);
+    write_file(path, rom, 0x210);
+    CHECK_RESULT(daemoon_3ds_nds_icon_read(roms, "Truncated", out),
+                 DAEMOON_ERR_NOT_FOUND);
+
+    (void)daemoon_posix_rmtree(root);
+}
+
 TEST_CASE(the_nds_backend_conforms)
 {
     char root[256];
@@ -1672,6 +1839,46 @@ TEST_CASE(the_config_file_is_forgiving_but_not_careless)
     (void)daemoon_posix_rmtree(root);
 }
 
+/* The settings screen writes this file, so what it writes has to be what the
+ * parser reads back - including a label with a space and Hangul in it, which is
+ * what somebody actually types on a console keyboard. */
+TEST_CASE(a_saved_config_is_read_back_exactly)
+{
+    char root[256];
+    char path[320];
+    daemoon_3ds_config_t out;
+    daemoon_3ds_config_t in;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-cfgsave"), 0);
+    (void)snprintf(path, sizeof(path), "%s/config.txt", root);
+
+    daemoon_3ds_config_defaults(&out);
+    (void)daemoon_strlcpy(out.server_url, sizeof(out.server_url),
+                          "http://192.168.1.13:8080");
+    (void)daemoon_strlcpy(out.token, sizeof(out.token), "MCRV_abc-123_XYZ");
+    (void)daemoon_strlcpy(out.device_label, sizeof(out.device_label), "거실 3DS");
+
+    CHECK_OK(daemoon_3ds_config_save(path, &out));
+    CHECK_OK(daemoon_3ds_config_load(path, &in));
+    CHECK_STR(in.server_url, "http://192.168.1.13:8080");
+    CHECK_STR(in.token, "MCRV_abc-123_XYZ");
+    CHECK_STR(in.device_label, "거실 3DS");
+    CHECK_EQ_INT(daemoon_3ds_config_can_sync(&in), 1);
+
+    /* A trailing slash is stripped on the way in, so saving what was loaded does
+     * not slowly grow a URL. */
+    (void)daemoon_strlcpy(out.server_url, sizeof(out.server_url),
+                          "http://example.test:8080/");
+    CHECK_OK(daemoon_3ds_config_save(path, &out));
+    CHECK_OK(daemoon_3ds_config_load(path, &in));
+    CHECK_STR(in.server_url, "http://example.test:8080");
+    CHECK_OK(daemoon_3ds_config_save(path, &in));
+    CHECK_OK(daemoon_3ds_config_load(path, &in));
+    CHECK_STR(in.server_url, "http://example.test:8080");
+
+    (void)daemoon_posix_rmtree(root);
+}
+
 void test_3ds_backend(void)
 {
     printf("3ds backend (stubbed libctru)\n");
@@ -1706,6 +1913,9 @@ void test_3ds_backend(void)
     RUN(nds_titles_are_named_from_the_cartridge_header);
     RUN(an_nds_save_round_trips_through_core);
     RUN(an_nds_package_only_carries_the_one_entry);
+    RUN(an_nds_icon_comes_out_of_the_cartridge_banner);
+    RUN(a_rom_with_no_banner_has_no_icon);
     RUN(the_nds_backend_conforms);
     RUN(the_config_file_is_forgiving_but_not_careless);
+    RUN(a_saved_config_is_read_back_exactly);
 }

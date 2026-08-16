@@ -39,6 +39,14 @@
   "conflict.keep_server": "Spielstand vom Server verwenden ({0}, vom {1})",
   "conflict.keep_both": "Beide behalten und später entscheiden",
 
+  "settings.title": "Einstellungen",
+  "settings.server": "Serveradresse",
+  "settings.token": "Gerätetoken",
+  "settings.label": "Name dieser Konsole",
+  "settings.saved": "Gespeichert. Diese Konsole verwendet sie ab jetzt.",
+  "settings.save_failed": "Die Einstellungen konnten nicht auf die SD-Karte geschrieben werden.",
+  "settings.unset": "nicht gesetzt",
+
   "verify.failed": "Die Prüfsumme stimmt nicht. Die Wiederherstellung wurde abgebrochen, es wurde nichts geändert.",
   "commit.failed": "Der Spielstand konnte nicht festgeschrieben werden. Starte das Spiel erst, wenn das behoben ist.",
 

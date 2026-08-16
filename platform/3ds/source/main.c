@@ -1022,6 +1022,12 @@ static int finish_pairing(const char *grant, const char *code)
         return 0;
     }
 
+    /* Whether this console is claiming to be one the server already knows. It goes
+     * out as an ordinary bearer header, and the server rotates that device instead
+     * of minting another - so if a console keeps appearing twice, this line is the
+     * first thing to look at. */
+    daemoon_3ds_trace("pair/bearer",
+                      (g_env.token != NULL && g_env.token[0] != '\0') ? "yes" : "no");
     daemoon_3ds_trace("pair/exchange", grant);
     draw_loading(DAEMOON_STR_PAIR_TITLE, 0, 0);
 
@@ -1033,6 +1039,13 @@ static int finish_pairing(const char *grant, const char *code)
         report(DAEMOON_STR_PAIR_TITLE, r);
         return 0;
     }
+    /* The same id back means the server rotated this console's device. A different
+     * one means it made another, and the panel will show two. */
+    daemoon_3ds_trace("pair/device",
+                      (g_config.device_id[0] != '\0' &&
+                       strcmp(g_config.device_id, device_id) == 0)
+                          ? "same"
+                          : "new");
 
     /* The token this console was already holding went out with the request, as an
      * ordinary bearer header, and that is deliberate: it is how the server knows

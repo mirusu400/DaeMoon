@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -178,14 +179,30 @@ func (s *Server) pairDevice(w http.ResponseWriter, r *http.Request) {
 	// Nothing else could connect the two. The server sees two pairings, and the
 	// only thing that would tie them to one console is a hardware id - which is not
 	// secret, follows a person across services, and the rules refuse it.
+	// Why a pairing became a new device rather than a rotation, at INFO.
+	//
+	// This is the sort of decision that is invisible until somebody counts rows on
+	// a web page and finds three consoles where there is one, and then there is
+	// nothing to look at. A self hosted instance has no other observer.
+	reason := "no bearer"
 	if old := auth.BearerOf(r); old != "" {
 		existing, lookupErr := s.store.DeviceByTokenHash(r.Context(), auth.HashToken(old))
+		switch {
+		case lookupErr != nil:
+			reason = "bearer not a known device"
+		case existing.Revoked:
+			reason = "bearer belongs to a revoked device"
+		case existing.UserID != pairing.UserID:
+			reason = "bearer belongs to another account"
+		}
 		if lookupErr == nil && !existing.Revoked && existing.UserID == pairing.UserID {
 			if err := s.store.RotateDeviceToken(r.Context(), existing.ID,
 				auth.HashToken(token), req.Label); err != nil {
 				apierr.Write(w, r, apierr.Wrap(apierr.InternalError, err))
 				return
 			}
+			slog.InfoContext(r.Context(), "pairing rotated an existing device",
+				"device", existing.ID, "label", req.Label)
 			writeJSON(w, r, http.StatusOK, map[string]string{
 				"device_id": existing.ID,
 				"token":     token,
@@ -196,6 +213,8 @@ func (s *Server) pairDevice(w http.ResponseWriter, r *http.Request) {
 		// existing device. It becomes a new one, which is what a console with a
 		// fresh SD card should get.
 	}
+	slog.InfoContext(r.Context(), "pairing created a new device", "why", reason,
+		"label", req.Label)
 
 	deviceID, err := auth.NewID()
 	if err != nil {

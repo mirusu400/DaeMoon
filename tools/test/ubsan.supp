@@ -1,0 +1,8 @@
+# quirc 1.2, lib/quirc.c: the first quirc_resize copies from a buffer that does not
+# exist yet, with a length of zero. memcpy is declared with non-null arguments, so
+# this is undefined by the letter of the standard and harmless in practice.
+#
+# Suppressed rather than fixed because vendored sources are not patched in place.
+# Reported upstream shape: quirc_resize's "min" computation is correct; the call is
+# simply made before there is anything to copy.
+nonnull-attribute:quirc.c

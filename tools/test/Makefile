@@ -18,7 +18,7 @@ SAN ?= -fsanitize=address,undefined -fno-omit-frame-pointer
 # The libctru stub comes first: platform/3ds/source includes <3ds.h>, and on a
 # desktop the only one that exists is the one under ctru_stub.
 INCLUDES := -I$(ROOT)/tools/test/ctru_stub \
-            -I$(ROOT)/core/include -I$(ROOT)/vendor -I$(ROOT)/platform/posix \
+            -I$(ROOT)/core/include -I$(ROOT)/vendor -I$(ROOT)/vendor/quirc -I$(ROOT)/platform/posix \
             -I$(ROOT)/tools/test -I$(ROOT)/platform/3ds/source
 
 CFLAGS := $(CSTD) $(WARN) $(SAN) -g -O1 -MMD -MP $(INCLUDES)
@@ -39,7 +39,14 @@ TDS_SRC := $(ROOT)/platform/3ds/source/save_backend.c \
            $(ROOT)/platform/3ds/source/backup_list.c \
            $(ROOT)/platform/3ds/source/trace.c \
            $(ROOT)/platform/3ds/source/title_id.c
-VENDOR_SRC := $(ROOT)/vendor/miniz/miniz.c
+VENDOR_SRC := $(ROOT)/vendor/miniz/miniz.c $(wildcard $(ROOT)/vendor/quirc/*.c)
+
+# quirc 1.2 calls memcpy with a null source and a length of zero the first time a
+# buffer is sized. Harmless, and undefined by the letter of the standard, so the
+# sanitizer says so on every run. Vendored sources are not patched in place - see
+# vendor/README.md - so the report is suppressed rather than the code changed.
+UBSAN_OPTIONS ?= suppressions=$(ROOT)/tools/test/ubsan.supp
+export UBSAN_OPTIONS
 
 SRC := $(CORE_SRC) $(POSIX_SRC) $(TEST_SRC) $(TDS_SRC) $(VENDOR_SRC)
 OBJ := $(patsubst $(ROOT)/%.c,$(BUILD)/%.o,$(SRC))

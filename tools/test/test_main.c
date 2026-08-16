@@ -99,6 +99,7 @@ int main(int argc, char **argv)
     test_fuzz();
     test_backend();
     test_3ds_backend();
+    test_qr();
 
     printf("%d checks, %d failures\n", daemoon_test_checks, daemoon_test_failures);
     return daemoon_test_failures == 0 ? 0 : 1;

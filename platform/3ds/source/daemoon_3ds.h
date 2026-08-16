@@ -363,6 +363,10 @@ typedef struct {
     unsigned decode_failures;
     unsigned receive_failures;
     unsigned timeouts;
+    /* The camera port overran: a frame arrived with no receive armed. It stays
+     * stopped until cleared, so one slow pass used to wedge it rather than drop a
+     * frame. */
+    unsigned buffer_errors;
     int      last_decode_error;
     int      camera; /* 0 outer, 1 inner */
     int      layout; /* which candidate sensor layout the preview is drawing */

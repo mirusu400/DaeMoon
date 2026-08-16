@@ -52,7 +52,17 @@
 #define TEX_W 512
 #define TEX_H 256
 
-static u16 *g_frame;   /* linear: the GPU reads it, and so does the camera */
+/* Two frames, alternating.
+ *
+ * The camera is a DMA engine with nowhere to spill: while no receive is armed it
+ * has no buffer to write into, and the port overruns and stops. This loop spends
+ * about seventy milliseconds tiling, drawing and decoding, which was long enough
+ * that almost every capture afterwards timed out - measured at 250 ms a frame,
+ * which was exactly the timeout, on a camera that runs at thirty.
+ *
+ * So the next frame is armed before the last one is touched, and the camera always
+ * has somewhere to put a picture. */
+static u16 *g_frame[2];
 static u8  *g_luma;    /* what quirc is given */
 
 static C3D_Tex          g_preview;
@@ -109,9 +119,9 @@ const daemoon_3ds_qr_stats_t *daemoon_3ds_qr_last_stats(void)
  *
  * Ninety six thousand pixels a frame, which is far less than quirc costs on the
  * same frame. */
-static void frame_to_texture(void)
+static void frame_to_texture(const u16 *frame)
 {
-    daemoon_3ds_cam_to_tiled(g_frame, CAM_W, CAM_H, (u16 *)g_preview.data,
+    daemoon_3ds_cam_to_tiled(frame, CAM_W, CAM_H, (u16 *)g_preview.data,
                              TEX_W, TEX_H, g_stats.layout);
     C3D_TexFlush(&g_preview);
 }
@@ -143,6 +153,16 @@ const C2D_Image *daemoon_3ds_qr_preview(void)
     return g_preview_image.tex != NULL ? &g_preview_image : NULL;
 }
 
+static void release_buffers(void)
+{
+    free(g_luma);
+    linearFree(g_frame[0]);
+    linearFree(g_frame[1]);
+    g_luma = NULL;
+    g_frame[0] = NULL;
+    g_frame[1] = NULL;
+}
+
 static daemoon_result_t start_camera(u32 select, u32 *transfer)
 {
     if (R_FAILED(CAMU_SetSize(select, SIZE_CTR_TOP_LCD, CONTEXT_A)) ||
@@ -162,9 +182,7 @@ static daemoon_result_t start_camera(u32 select, u32 *transfer)
         return DAEMOON_ERR_BACKEND_ERROR;
     }
 
-    CAMU_ClearBuffer(PORT_CAM1);
     CAMU_SynchronizeVsyncTiming(SELECT_OUT1, SELECT_IN1);
-    CAMU_StartCapture(PORT_CAM1);
     return DAEMOON_OK;
 }
 
@@ -179,6 +197,8 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
 {
     struct quirc *q = NULL;
     Handle receive = 0;
+    Handle buffer_error = 0;
+    int cur = 0;
     daemoon_result_t result = DAEMOON_ERR_NOT_FOUND;
     u32 transfer = 0;
     u32 select = SELECT_OUT1;
@@ -194,31 +214,24 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
 
     /* Linear memory: the camera writes here and the GPU reads it, and neither can
      * reach an ordinary array. */
-    g_frame = (u16 *)linearAlloc(CAM_BYTES);
+    g_frame[0] = (u16 *)linearAlloc(CAM_BYTES);
+    g_frame[1] = (u16 *)linearAlloc(CAM_BYTES);
     g_luma = (u8 *)malloc(CAM_PIXELS);
-    if (g_frame == NULL || g_luma == NULL) {
-        free(g_luma);
-        linearFree(g_frame);
-        g_frame = NULL;
-        g_luma = NULL;
+    if (g_frame[0] == NULL || g_frame[1] == NULL || g_luma == NULL) {
+        release_buffers();
         return DAEMOON_ERR_OUT_OF_MEMORY;
     }
-    memset(g_frame, 0, CAM_BYTES);
+    memset(g_frame[0], 0, CAM_BYTES);
+    memset(g_frame[1], 0, CAM_BYTES);
 
     if (R_FAILED(camInit())) {
-        free(g_luma);
-        linearFree(g_frame);
-        g_frame = NULL;
-        g_luma = NULL;
+        release_buffers();
         return DAEMOON_ERR_BACKEND_ERROR;
     }
 
     if (!preview_open()) {
         camExit();
-        free(g_luma);
-        linearFree(g_frame);
-        g_frame = NULL;
-        g_luma = NULL;
+        release_buffers();
         return DAEMOON_ERR_OUT_OF_MEMORY;
     }
 
@@ -226,10 +239,7 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
         C3D_TexDelete(&g_preview);
         g_preview_image.tex = NULL;
         camExit();
-        free(g_luma);
-        linearFree(g_frame);
-        g_frame = NULL;
-        g_luma = NULL;
+        release_buffers();
         return DAEMOON_ERR_BACKEND_ERROR;
     }
 
@@ -245,10 +255,7 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
         C3D_TexDelete(&g_preview);
         g_preview_image.tex = NULL;
         camExit();
-        free(g_luma);
-        linearFree(g_frame);
-        g_frame = NULL;
-        g_luma = NULL;
+        release_buffers();
         return DAEMOON_ERR_OUT_OF_MEMORY;
     }
 
@@ -264,38 +271,71 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
      * than a person can hold still. Those are different rates and this loop runs
      * them separately.
      */
-    while (aptMainLoop()) {
+    /* Arm the first receive before capture starts, so there is never a moment when
+     * the camera has a frame and nowhere to put it. */
+    CAMU_GetBufferErrorInterruptEvent(&buffer_error, PORT_CAM1);
+    CAMU_ClearBuffer(PORT_CAM1);
+    if (R_FAILED(CAMU_SetReceiving(&receive, g_frame[cur], PORT_CAM1, CAM_BYTES,
+                                   (s16)transfer))) {
+        result = DAEMOON_ERR_BACKEND_ERROR;
+    } else {
+        CAMU_StartCapture(PORT_CAM1);
+    }
+
+    while (result != DAEMOON_ERR_BACKEND_ERROR && aptMainLoop()) {
+        Handle events[2];
+        s32 which = -1;
         Result res;
         int action;
-        int captured = 0;
+        const u16 *ready = NULL;
         u64 t0;
-        u64 t1;
+
+        events[0] = receive;
+        events[1] = buffer_error;
 
         t0 = osGetTime();
-        res = CAMU_SetReceiving(&receive, g_frame, PORT_CAM1, CAM_BYTES,
-                                (s16)transfer);
+        res = svcWaitSynchronizationN(&which, events, 2, false, 250000000LL);
+        g_stats.ms_capture = (unsigned)(osGetTime() - t0);
+
         if (R_FAILED(res)) {
-            ++g_stats.receive_failures;
-        } else {
-            /* Bounded, always, and short. A camera that stops delivering must not
-             * become an application that never returns - and a long wait here is
-             * also a button press that does not register. */
-            res = svcWaitSynchronization(receive, 250000000LL);
+            ++g_stats.timeouts;
+        } else if (which == 1) {
+            /* The port overran. That is what happens when a frame arrives with no
+             * receive armed, and it stays stopped until it is cleared - so a single
+             * slow pass used to wedge the camera for good rather than drop one
+             * frame. */
+            ++g_stats.buffer_errors;
             svcCloseHandle(receive);
             receive = 0;
-            if (R_FAILED(res)) {
-                ++g_stats.timeouts;
-            } else {
-                ++g_stats.frames;
-                captured = 1;
+            CAMU_StopCapture(PORT_CAM1);
+            CAMU_ClearBuffer(PORT_CAM1);
+            if (R_FAILED(CAMU_SetReceiving(&receive, g_frame[cur], PORT_CAM1,
+                                           CAM_BYTES, (s16)transfer))) {
+                result = DAEMOON_ERR_BACKEND_ERROR;
+                break;
+            }
+            CAMU_StartCapture(PORT_CAM1);
+        } else {
+            svcCloseHandle(receive);
+            receive = 0;
+            ++g_stats.frames;
+            ready = g_frame[cur];
+            cur ^= 1;
+
+            /* Re-armed before a single pixel of the frame just delivered is read.
+             * Everything below takes about seventy milliseconds and the camera runs
+             * at thirty a second; without this it has nowhere to write for two
+             * frames out of every three. */
+            if (R_FAILED(CAMU_SetReceiving(&receive, g_frame[cur], PORT_CAM1,
+                                           CAM_BYTES, (s16)transfer))) {
+                result = DAEMOON_ERR_BACKEND_ERROR;
+                break;
             }
         }
-        t1 = osGetTime();
-        g_stats.ms_capture = (unsigned)(t1 - t0);
 
-        if (captured) {
+        if (ready != NULL) {
             t0 = osGetTime();
-            frame_to_texture();
+            frame_to_texture(ready);
             g_stats.ms_tile = (unsigned)(osGetTime() - t0);
         }
 
@@ -304,23 +344,23 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
         t0 = osGetTime();
         action = frame_cb != NULL ? frame_cb(user) : 1;
         g_stats.ms_draw = (unsigned)(osGetTime() - t0);
+
         if (action == 0) {
             cancelled = 1;
             break;
         }
         if (action == 3) {
-            /* Next candidate layout. Asking the console beats another round of
-             * being told "still broken", which is one bit for one trip. */
             g_stats.layout = (g_stats.layout + 1) % DAEMOON_3DS_CAM_LAYOUTS;
-            if (captured) {
-                frame_to_texture();
-            }
             continue;
         }
         if (action == 2) {
             /* The other camera. A person who cannot get a code to read will try
              * the front one, and refusing to let them is a worse answer than
              * letting them find out. */
+            if (receive != 0) {
+                svcCloseHandle(receive);
+                receive = 0;
+            }
             stop_camera();
             select = (select == SELECT_OUT1) ? SELECT_IN1 : SELECT_OUT1;
             g_stats.camera = (select == SELECT_IN1);
@@ -328,22 +368,28 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
                 result = DAEMOON_ERR_BACKEND_ERROR;
                 break;
             }
+            CAMU_ClearBuffer(PORT_CAM1);
+            if (R_FAILED(CAMU_SetReceiving(&receive, g_frame[cur], PORT_CAM1,
+                                           CAM_BYTES, (s16)transfer))) {
+                result = DAEMOON_ERR_BACKEND_ERROR;
+                break;
+            }
+            CAMU_StartCapture(PORT_CAM1);
             continue;
         }
 
-        if (!captured) {
+        if (ready == NULL) {
             continue;
         }
 
-        /* Decoding is the expensive half, so it runs at its own rate. Every third
-         * frame is about ten a second, which is far more chances than a person
-         * holding a console still needs. */
+        /* Decoding runs at its own rate. It is cheap - measured at thirty
+         * milliseconds - but it is still work the preview does not need. */
         if (++tick % QUIRC_EVERY_N_FRAMES != 0) {
             continue;
         }
 
         t0 = osGetTime();
-        g_stats.mean_luma = frame_to_luma(g_frame, g_luma, CAM_PIXELS);
+        g_stats.mean_luma = frame_to_luma(ready, g_luma, CAM_PIXELS);
         {
             int w = 0;
             int h = 0;
@@ -378,6 +424,9 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
         }
     }
 
+    if (buffer_error != 0) {
+        svcCloseHandle(buffer_error);
+    }
     if (receive != 0) {
         svcCloseHandle(receive);
     }
@@ -387,21 +436,19 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
 
     C3D_TexDelete(&g_preview);
     g_preview_image.tex = NULL;
-    free(g_luma);
-    linearFree(g_frame);
-    g_luma = NULL;
-    g_frame = NULL;
+    release_buffers();
 
     {
         char line[192];
 
         (void)snprintf(line, sizeof(line),
                        "frames=%u luma=%u codes=%d decfail=%u recvfail=%u "
-                       "timeout=%u cam=%s layout=%s err=%d "
+                       "timeout=%u buferr=%u cam=%s layout=%s err=%d "
                        "cap=%u tile=%u draw=%u dec=%u",
                        g_stats.frames, g_stats.mean_luma, g_stats.codes_seen,
                        g_stats.decode_failures, g_stats.receive_failures,
-                       g_stats.timeouts, g_stats.camera ? "inner" : "outer",
+                       g_stats.timeouts, g_stats.buffer_errors,
+                       g_stats.camera ? "inner" : "outer",
                        daemoon_3ds_cam_layout_name(g_stats.layout),
                        g_stats.last_decode_error, g_stats.ms_capture,
                        g_stats.ms_tile, g_stats.ms_draw, g_stats.ms_decode);

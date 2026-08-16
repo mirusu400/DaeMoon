@@ -1926,7 +1926,7 @@ TEST_CASE(a_camera_frame_is_rotated_and_tiled)
      * column, or a flip is a different value rather than a similar picture. */
     for (y = 0; y < CH; ++y) {
         for (x = 0; x < CW; ++x) {
-            frame[daemoon_3ds_cam_index(x, y, CW)] =
+            frame[daemoon_3ds_cam_index(x, y, CH)] =
                 (unsigned short)(0x1000u + y * 0x40u + x);
         }
     }
@@ -1962,22 +1962,26 @@ TEST_CASE(a_camera_frame_is_rotated_and_tiled)
     }
 }
 
-/* The camera keeps a frame in rows, left to right, top to bottom.
+/* The camera keeps a frame in columns, top left first.
  *
- * Two attempts assumed otherwise, on the strength of the camera being "in
- * framebuffer order", and both drew a scrambled screen. What settles it is not a
- * document: quirc is handed the same buffer as a 400 wide image and decodes real
- * codes from it, and reading columns as 400 wide rows would shear the picture one
- * pixel further along on every line rather than rotate it. No QR code survives
- * that. It decoded, so these are rows. */
-TEST_CASE(the_camera_layout_is_rows_of_the_frame_width)
+ * Established by asking the console: the preview cycles through the four plausible
+ * layouts and this is the one that is a picture. It took three attempts, and the
+ * argument behind the first two is worth remembering because it was wrong - quirc
+ * decoded real codes from the buffer read as 400 wide rows, which looked like proof
+ * that the rows were 400 wide. It was not. quirc fits a perspective transform from
+ * the finder corners, a shear is affine, and affine is inside what a perspective
+ * transform undoes.
+ *
+ * A decoder that corrects for something cannot be used to detect it. */
+TEST_CASE(the_camera_layout_is_columns_from_the_top_left)
 {
-    CHECK_EQ_INT((int)daemoon_3ds_cam_index(0, 0, 400), 0);
-    CHECK_EQ_INT((int)daemoon_3ds_cam_index(399, 0, 400), 399);
-    /* One row down is one frame width further on. */
-    CHECK_EQ_INT((int)daemoon_3ds_cam_index(0, 1, 400), 400);
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(0, 0, 240), 0);
+    /* One row down is one pixel further on: a column is contiguous. */
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(0, 1, 240), 1);
+    /* One column right is a whole column further on. */
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(1, 0, 240), 240);
     /* And the last pixel of a 400x240 frame is the last index. */
-    CHECK_EQ_INT((int)daemoon_3ds_cam_index(399, 239, 400), 400 * 240 - 1);
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(399, 239, 240), 400 * 240 - 1);
 }
 
 void test_3ds_backend(void)
@@ -2005,7 +2009,7 @@ void test_3ds_backend(void)
 
     printf("camera preview\n");
     RUN(a_camera_frame_is_rotated_and_tiled);
-    RUN(the_camera_layout_is_rows_of_the_frame_width);
+    RUN(the_camera_layout_is_columns_from_the_top_left);
 
     printf("name and icon cache\n");
     RUN(a_cached_name_does_not_read_the_smdh_again);

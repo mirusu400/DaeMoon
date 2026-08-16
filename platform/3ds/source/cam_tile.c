@@ -41,19 +41,26 @@ size_t daemoon_3ds_tile_index(unsigned x, unsigned y, unsigned tex_w)
 
 /* Where the camera keeps the pixel that appears at (x, y).
  *
- * Rows, left to right, top to bottom - the ordinary thing. It is written down here
- * because the first two attempts assumed otherwise, on the strength of the camera
- * being "in framebuffer order", and both drew a scrambled screen.
+ * Columns, top left first: index = x * height + y. The console said so - the
+ * preview was made to cycle through the four plausible layouts and this is the one
+ * that is a picture.
  *
- * The evidence that settles it is not a document. quirc is handed this buffer as a
- * 400 wide image and decodes real codes from it. If the rows were really columns,
- * reading them as 400 wide rows would not rotate the picture - it would shear it,
- * one pixel further along on every line - and no QR code survives that. It
- * decoded, so the layout is rows of 400.
+ * It took three attempts, and the argument that made the first two look right is
+ * worth writing down because it was wrong. quirc was being handed this buffer as a
+ * 400 wide image and decoding real codes from it, and I read that as proof the rows
+ * were 400 wide: reading columns as rows shears the picture, one pixel further
+ * along on every line, and surely no QR code survives that.
+ *
+ * A QR code survives that. quirc fits a perspective transform from the four
+ * corners of the finder pattern, and a shear is affine, which is inside what a
+ * perspective transform can undo. So decoding proved the buffer held an image and
+ * nothing at all about its shape.
+ *
+ * **A decoder that corrects for something cannot be used to detect it.**
  */
-size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_w)
+size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_h)
 {
-    return (size_t)y * (size_t)cam_w + (size_t)x;
+    return (size_t)x * (size_t)cam_h + (size_t)y;
 }
 
 /* The same question, asked on the console instead of guessed at.
@@ -73,12 +80,12 @@ size_t daemoon_3ds_cam_index_as(unsigned x, unsigned y, unsigned cam_w,
     switch (layout) {
     case 1: /* columns, bottom left first - the 3DS framebuffer's own order */
         return (size_t)x * (size_t)cam_h + (size_t)(cam_h - 1u - y);
-    case 2: /* columns, top left first */
-        return (size_t)x * (size_t)cam_h + (size_t)y;
+    case 2: /* rows of the frame width, top down */
+        return (size_t)y * (size_t)cam_w + (size_t)x;
     case 3: /* rows, bottom up */
         return (size_t)(cam_h - 1u - y) * (size_t)cam_w + (size_t)x;
-    default:
-        return (size_t)y * (size_t)cam_w + (size_t)x;
+    default: /* columns, top left first - what the console says it uses */
+        return daemoon_3ds_cam_index(x, y, cam_h);
     }
 }
 

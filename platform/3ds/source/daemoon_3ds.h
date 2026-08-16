@@ -376,7 +376,7 @@ const daemoon_3ds_qr_stats_t *daemoon_3ds_qr_last_stats(void);
  * be checked on a desktop. A wrong swizzle does not fail - it draws noise, and
  * noise on a console is a photograph and a guess. */
 size_t daemoon_3ds_tile_index(unsigned x, unsigned y, unsigned tex_w);
-size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_w);
+size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_h);
 
 /* Four candidate sensor layouts, so the console can be asked which one it uses
  * rather than told. 0 is what ships; the rest exist to be ruled out on screen. */

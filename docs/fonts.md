@@ -35,6 +35,33 @@ their hardware has no font for, and shipping a few hundred kilobytes into every
 build to serve it is a poor trade against falling back to English. If somebody
 turns up who needs it, the detection above is the hook it would attach to.
 
+## What one Korean console actually draws
+
+From its own survey header:
+
+```
+font=0  drawable=en,ko,ja,zh-Hans,zh-Hant,es,fr,de  ascii_names=0
+```
+
+`font=0` means no extra region font was loaded and none was needed: **the system
+font this console shipped with draws all eight scripts this project ships** -
+Hangul, kana and kanji, both Chinese, and Latin with accents.
+
+So on this hardware the fallback never engages, and the decision above costs
+nothing. It is one console, and a European one is still expected to answer
+differently, which is exactly why the probe exists rather than an assumption.
+
+### The trap that is left
+
+A console's own font is also the font its game names are written in. Loading
+another region's font to show a menu in a language the console's own font cannot
+draw would replace the script the library is written in - Korean game names
+becoming replacement characters to show a Japanese menu.
+
+`daemoon_gfx_set_language` therefore prefers the console's own font whenever it
+will do, and loads another region's only when it will not. On the console above
+that branch is never taken.
+
 ## What one Korean console actually showed, and what it corrected
 
 The earlier version of this file recorded that the built in font could draw

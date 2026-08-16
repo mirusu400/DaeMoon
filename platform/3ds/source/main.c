@@ -135,37 +135,6 @@ static daemoon_lang_t console_language(void)
     return lang;
 }
 
-/* Whether the font in use can draw a language at all.
- *
- * One representative character each. A console's system font is its own region's,
- * so a European console has no Hangul and no kanji, and the selected language is a
- * user choice with nothing to do with the console's region. Asked rather than
- * inferred - see docs/fonts.md, where inferring it from a loader returning NULL
- * was wrong for months. */
-static int language_is_drawable(daemoon_lang_t lang)
-{
-    static const struct {
-        daemoon_lang_t lang;
-        unsigned int   probe;
-    } k_probe[] = {
-        { DAEMOON_LANG_KO,      0xAC00u }, /* 가 */
-        { DAEMOON_LANG_JA,      0x3042u }, /* あ */
-        { DAEMOON_LANG_ZH_HANS, 0x4E2Du }, /* 中 */
-        { DAEMOON_LANG_ZH_HANT, 0x4E2Du },
-        { DAEMOON_LANG_DE,      0x00DFu }, /* ß */
-        { DAEMOON_LANG_FR,      0x00E9u }, /* é */
-        { DAEMOON_LANG_ES,      0x00F1u }  /* ñ */
-    };
-    size_t i;
-
-    for (i = 0; i < sizeof(k_probe) / sizeof(k_probe[0]); ++i) {
-        if (k_probe[i].lang == lang) {
-            return daemoon_gfx_can_draw(k_probe[i].probe);
-        }
-    }
-    return 1; /* English needs nothing this font could be missing. */
-}
-
 /* The UI language: the user's choice when they made one, the console's otherwise.
  *
  * Kept apart from the console's setting on purpose. Empty in the file is not the
@@ -892,7 +861,7 @@ static void language_row_text(size_t row, char *out, size_t cap, int *drawable)
     {
         daemoon_lang_t lang = k_lang_order[row - 1];
 
-        *drawable = language_is_drawable(lang);
+        *drawable = daemoon_gfx_language_drawable(lang);
         (void)daemoon_strlcpy(out, cap,
                               *drawable ? daemoon_lang_name(lang)
                                         : daemoon_lang_code(lang));
@@ -980,8 +949,11 @@ static int choose_language(void)
         }
         if (down & KEY_A) {
             if (selected == 0) {
+                daemoon_lang_t sys = console_language();
+
                 g_config.language[0] = '\0';
-                daemoon_i18n_set_language(console_language());
+                (void)daemoon_gfx_set_language(sys);
+                daemoon_i18n_set_language(sys);
                 changed = 1;
                 break;
             }
@@ -991,7 +963,13 @@ static int choose_language(void)
                 /* Refused rather than accepted: every screen after this one would
                  * be blank, including this one. The reason is already on the top
                  * screen, so the press simply does nothing. */
-                if (!language_is_drawable(lang)) {
+                if (!daemoon_gfx_language_drawable(lang)) {
+                    continue;
+                }
+                /* The font moves with the language. Changing one without the
+                 * other is how a Korean console ended up drawing Hangul as
+                 * replacement characters. */
+                if (!daemoon_gfx_set_language(lang)) {
                     continue;
                 }
                 (void)daemoon_strlcpy(g_config.language, sizeof(g_config.language),
@@ -1123,6 +1101,26 @@ static void action_survey(void)
         daemoon_strbuf_add(&hb, DAEMOON_BUILD_STAMP);
         daemoon_strbuf_add(&hb, " font=");
         daemoon_strbuf_add_uint(&hb, (unsigned long long)daemoon_gfx_font_source());
+        /* Which languages this console could draw at all, as one bit each. The
+         * font question this project spent weeks on is a fact about the console,
+         * so it belongs in the file that describes one. */
+        daemoon_strbuf_add(&hb, " drawable=");
+        {
+            static const daemoon_lang_t k_all[] = {
+                DAEMOON_LANG_EN, DAEMOON_LANG_KO, DAEMOON_LANG_JA,
+                DAEMOON_LANG_ZH_HANS, DAEMOON_LANG_ZH_HANT, DAEMOON_LANG_ES,
+                DAEMOON_LANG_FR, DAEMOON_LANG_DE
+            };
+            size_t li;
+
+            for (li = 0; li < sizeof(k_all) / sizeof(k_all[0]); ++li) {
+                if (!daemoon_gfx_language_drawable(k_all[li])) {
+                    continue;
+                }
+                daemoon_strbuf_add(&hb, daemoon_lang_code(k_all[li]));
+                daemoon_strbuf_addc(&hb, ',');
+            }
+        }
         daemoon_strbuf_add(&hb, " ascii_names=");
         daemoon_strbuf_add_uint(&hb, (unsigned long long)g_save_ctx.ascii_names);
         daemoon_strbuf_add(&hb, " smdh_lang=");
@@ -1407,8 +1405,11 @@ int main(void)
      * English is a poor answer for somebody who does not read it. It is a better
      * one than a screen of blank boxes on a confirmation they have to answer, and
      * it is the option docs/fonts.md picked with the sizes written down. */
-    if (!language_is_drawable(lang)) {
+    /* daemoon_gfx_init already loaded the font for this language, or fell back.
+     * When it could not, the UI language follows rather than drawing blanks. */
+    if (!daemoon_gfx_language_drawable(lang)) {
         daemoon_3ds_trace("font/fallback", daemoon_lang_code(lang));
+        (void)daemoon_gfx_set_language(DAEMOON_LANG_EN);
         daemoon_i18n_set_language(DAEMOON_LANG_EN);
     }
     (void)amInit();

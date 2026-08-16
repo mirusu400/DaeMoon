@@ -51,6 +51,23 @@ int daemoon_gfx_has_language_font(void);
  * reports a missing one by handing back its replacement character. */
 int daemoon_gfx_can_draw(unsigned int codepoint);
 
+/* Whether this console could draw a language at all, decided once at startup by
+ * loading each candidate font.
+ *
+ * Not the same as asking the font currently loaded, which is a question about
+ * what is on screen now. A console that had switched to Japanese reported that it
+ * had no Korean font, because it was holding the Japanese one and those have no
+ * Hangul. */
+int daemoon_gfx_language_drawable(daemoon_lang_t lang);
+
+/* Loads whichever font can draw this language and keeps it. Returns 0 when none
+ * can, in which case the caller must not select the language: the screen that
+ * would change it back would be blank too.
+ *
+ * The console's own font is preferred whenever it will do, because it is also the
+ * font game names are written in. */
+int daemoon_gfx_set_language(daemoon_lang_t lang);
+
 /* Which one: 0 the built in font, 1 the selected language's region, 2 the
  * console's own region. Written into the survey, because "the names are product
  * codes" has three different causes and this rules one of them in or out. */

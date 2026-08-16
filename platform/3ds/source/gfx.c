@@ -23,8 +23,10 @@ static C2D_TextBuf       g_text_buf;
 static C2D_TextBuf       g_measure_buf;
 static C2D_Font          g_font;
 static int               g_have_font;
-/* 0 built in, 1 the selected language's region, 2 the console's own region. */
+/* 0 the console's own system font, 1 another region's, loaded on purpose. */
 static int               g_font_source;
+/* Which languages this console can draw, worked out once. See probe_languages. */
+static unsigned          g_drawable;
 
 /* Which system font can draw a given language.
  *
@@ -41,6 +43,119 @@ static CFG_Region region_for(daemoon_lang_t lang)
     case DAEMOON_LANG_ZH_HANT: return CFG_REGION_TWN;
     default:                   return CFG_REGION_USA;
     }
+}
+
+/* One representative character per language.
+ *
+ * Here rather than in main.c because the answer depends on which font is loaded,
+ * and this file is the only one that knows that. */
+static unsigned int probe_for(daemoon_lang_t lang)
+{
+    switch (lang) {
+    case DAEMOON_LANG_KO:      return 0xAC00u; /* 가 */
+    case DAEMOON_LANG_JA:      return 0x3042u; /* あ */
+    case DAEMOON_LANG_ZH_HANS: return 0x4E2Du; /* 中 */
+    case DAEMOON_LANG_ZH_HANT: return 0x4E2Du;
+    case DAEMOON_LANG_DE:      return 0x00DFu; /* ß */
+    case DAEMOON_LANG_FR:      return 0x00E9u; /* é */
+    case DAEMOON_LANG_ES:      return 0x00F1u; /* ñ */
+    default:                   return 0u;      /* English needs nothing extra */
+    }
+}
+
+static int font_has(C2D_Font font, unsigned int codepoint)
+{
+    FINF_s *info = C2D_FontGetInfo(font);
+
+    if (codepoint == 0u) {
+        return 1;
+    }
+    if (info == NULL) {
+        return 0;
+    }
+    return C2D_FontGlyphIndexFromCodePoint(font, codepoint) != (int)info->alterCharIndex;
+}
+
+/* Which languages this console can draw at all, decided once at startup.
+ *
+ * It has to be decided by loading each candidate font, because the answer is not
+ * a property of the console - it is a property of the font that would be used.
+ * Asking the currently loaded font is what made a Korean console report that it
+ * had no Korean font: it had loaded the Japanese one when the user switched, and
+ * Japanese fonts have no Hangul.
+ *
+ * Done once and cached, because it loads and frees up to four fonts and the
+ * language list redraws every frame. */
+static void probe_languages(void)
+{
+    static const daemoon_lang_t k_all[] = {
+        DAEMOON_LANG_EN, DAEMOON_LANG_KO, DAEMOON_LANG_JA, DAEMOON_LANG_ZH_HANS,
+        DAEMOON_LANG_ZH_HANT, DAEMOON_LANG_ES, DAEMOON_LANG_FR, DAEMOON_LANG_DE
+    };
+    size_t i;
+
+    g_drawable = 0;
+    for (i = 0; i < sizeof(k_all) / sizeof(k_all[0]); ++i) {
+        daemoon_lang_t lang = k_all[i];
+        unsigned int cp = probe_for(lang);
+        int ok;
+
+        /* The console's own font first. When it can draw the language, nothing
+         * else should be loaded: another region's font would replace the script
+         * this console's game names are written in. */
+        ok = font_has(NULL, cp);
+        if (!ok) {
+            C2D_Font font = C2D_FontLoadSystem(region_for(lang));
+
+            if (font != NULL) {
+                ok = font_has(font, cp);
+                C2D_FontFree(font);
+            }
+        }
+        if (ok) {
+            g_drawable |= 1u << (unsigned)lang;
+        }
+    }
+}
+
+int daemoon_gfx_language_drawable(daemoon_lang_t lang)
+{
+    return (g_drawable & (1u << (unsigned)lang)) != 0;
+}
+
+/* Points the renderer at whichever font can draw this language.
+ *
+ * The console's own system font is preferred whenever it will do, because it is
+ * also the font game names are written in: loading another region's font to show
+ * a Japanese menu on a Korean console turns every Korean game name into
+ * replacement characters, which is exactly what happened when the font was chosen
+ * once at startup and never revisited.
+ */
+int daemoon_gfx_set_language(daemoon_lang_t lang)
+{
+    unsigned int cp = probe_for(lang);
+    C2D_Font font = NULL;
+    int source = 0;
+
+    if (!font_has(NULL, cp)) {
+        font = C2D_FontLoadSystem(region_for(lang));
+        if (font != NULL && !font_has(font, cp)) {
+            C2D_FontFree(font);
+            font = NULL;
+        }
+        source = font != NULL ? 1 : 0;
+    }
+
+    /* Freed only after the replacement is in hand, and between frames - a text
+     * buffer is parsed and drawn inside one frame and cleared at the start of the
+     * next, so nothing outlives this. */
+    if (g_font != NULL) {
+        C2D_FontFree(g_font);
+    }
+    g_font = font;
+    g_font_source = source;
+    g_have_font = font != NULL;
+    return font_has(g_font, cp);
 }
 
 int daemoon_gfx_init(daemoon_lang_t lang)
@@ -60,30 +175,14 @@ int daemoon_gfx_init(daemoon_lang_t lang)
     g_text_buf = C2D_TextBufNew(TEXT_BUF_GLYPHS);
     g_measure_buf = C2D_TextBufNew(MEASURE_BUF_GLYPHS);
 
-    /* The font for the selected language, then the one for the console's own
-     * region, then the built in one.
-     *
-     * The middle step matters: a Korean console shows Korean game names on its
-     * HOME menu, so it has the glyphs, and asking only for the language's region
-     * font and giving up leaves those names falling back to a product code on the
-     * one console that could have shown them. */
-    g_font = C2D_FontLoadSystem(region_for(lang));
-    g_font_source = g_font != NULL ? 1 : 0;
-
-    if (g_font == NULL) {
-        u8 console_region = 0;
-
-        if (R_SUCCEEDED(CFGU_SecureInfoGetRegion(&console_region))) {
-            g_font = C2D_FontLoadSystem((CFG_Region)console_region);
-            g_font_source = g_font != NULL ? 2 : 0;
-        }
+        if (g_top == NULL || g_bottom == NULL || g_text_buf == NULL ||
+        g_measure_buf == NULL) {
+        return 0;
     }
-    /* NULL is not a failure: citro2d falls back to the built in font, which draws
-     * Latin and nothing else. That is what the ASCII restriction is for. */
-    g_have_font = (g_font != NULL);
 
-    return g_top != NULL && g_bottom != NULL && g_text_buf != NULL &&
-           g_measure_buf != NULL;
+    probe_languages();
+    daemoon_gfx_set_language(lang);
+    return 1;
 }
 
 void daemoon_gfx_exit(void)
@@ -119,13 +218,7 @@ void daemoon_gfx_exit(void)
  * wrong on the one console anybody had tested on. */
 int daemoon_gfx_can_draw(unsigned int codepoint)
 {
-    FINF_s *info = C2D_FontGetInfo(g_font);
-    int glyph = C2D_FontGlyphIndexFromCodePoint(g_font, codepoint);
-
-    if (info == NULL) {
-        return 0;
-    }
-    return glyph != (int)info->alterCharIndex;
+    return font_has(g_font, codepoint);
 }
 
 int daemoon_gfx_has_language_font(void)

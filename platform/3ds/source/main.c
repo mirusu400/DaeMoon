@@ -785,11 +785,14 @@ static void draw_settings(int selected)
     size_t i;
 
     /* The token is a credential and this screen gets photographed for bug
-     * reports. Enough of it to tell two apart, and no more. */
+     * reports. Enough of it to tell two apart, and no more - plus where it is
+     * kept, because "on the card" is a property this application claims and should
+     * not quietly stop having. */
     if (g_config.token[0] == '\0') {
         (void)daemoon_strlcpy(masked, sizeof(masked), daemoon_str(DAEMOON_STR_SETTINGS_UNSET));
     } else {
-        (void)snprintf(masked, sizeof(masked), "%.6s...", g_config.token);
+        (void)snprintf(masked, sizeof(masked), "%.6s...  (%s)", g_config.token,
+                       g_config.token_on_card ? "SD card" : "save archive");
     }
     language_value(language, sizeof(language));
     values[0] = g_config.server_url[0] != '\0' ? g_config.server_url
@@ -1063,13 +1066,19 @@ static int finish_pairing(const char *grant, const char *code)
      * only carries the address and the label now. */
     r = daemoon_3ds_secret_save(&g_env, g_config.token, g_config.device_id);
     daemoon_3ds_trace("secret/saved", daemoon_result_code(r));
+    /* Where the token is kept must not decide whether a console can pair. If the
+     * archive will not take it, it goes on the card as it always did, and the
+     * console says which happened rather than quietly giving up a property it
+     * claims to have. */
+    g_config.token_on_card = (r != DAEMOON_OK);
+
+    r = daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
     if (r != DAEMOON_OK) {
         /* The token is live but only in memory. Saying so beats a console that
          * syncs today and is a stranger tomorrow. */
         report(DAEMOON_STR_PAIR_TITLE, r);
         return 1;
     }
-    (void)daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
 
     message(daemoon_str(DAEMOON_STR_APP_TITLE),
             daemoon_str(DAEMOON_STR_PAIR_DONE), GFX_OK);
@@ -1246,6 +1255,7 @@ static void action_settings(void)
                                                                   g_config.device_id);
 
                     daemoon_3ds_trace("secret/typed", daemoon_result_code(sr));
+                    g_config.token_on_card = (sr != DAEMOON_OK);
                     g_env.token = g_config.token[0] != '\0' ? g_config.token : NULL;
                 }
                 break;
@@ -1318,9 +1328,12 @@ static void action_settings(void)
                                                           g_config.device_id);
 
             daemoon_3ds_trace("secret/migrated", daemoon_result_code(mr));
+            /* A migration that cannot happen leaves the token where it already is
+             * and working. It is retried on the next run. */
+            g_config.token_on_card = (mr != DAEMOON_OK);
             if (mr == DAEMOON_OK) {
-                /* Rewritten without it: config_save no longer emits a token, so
-                 * this is what actually takes it off the card. */
+                /* Rewritten without it: config_save only emits a token when the
+                 * archive refused, so this is what takes it off the card. */
                 (void)daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
             }
         }

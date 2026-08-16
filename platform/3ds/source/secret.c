@@ -120,7 +120,10 @@ daemoon_result_t daemoon_3ds_secret_save(const daemoon_env_t *env, const char *t
         /* A declared SaveDataSize does not create an archive; the title has to
          * format it once. Only ever its own - daemoon_3ds_format_own_save refuses
          * any other id, which is not a check worth doing without. */
-        DAEMOON_TRY(daemoon_3ds_format_own_save(&self, 8));
+        /* The same size the unattended self test formats, which is the only value
+         * this has been seen to work at. A declared SaveDataSize is a ceiling, not
+         * an archive. */
+        DAEMOON_TRY(daemoon_3ds_format_own_save(&self, 128));
         r = daemoon_3ds_save_backend.open_save_write(NULL, &self, &save);
     }
     DAEMOON_TRY(r);

@@ -143,13 +143,17 @@ daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_con
     }
     ok = fprintf(fp, "server = %s\nlabel = %s\n", cfg->server_url,
                  cfg->device_label) > 0;
-    /* The token is deliberately not written.
+    /* The token is written only when the archive would not take it.
      *
-     * It lives in this application's own save archive now, because an SD card comes
-     * out of a console and a found card should not be a working credential. The
-     * parser still reads a `token` key so a console paired before that change can
-     * be migrated once, and this is the other half of that: written back, it would
-     * arrive on the card again on the next settings change. */
+     * It belongs in this application's own save archive, because a card comes out
+     * of a console and a found card should not be a working credential. But a
+     * console that cannot pair is worse than one whose token can be found, so a
+     * failure to use the archive falls back to here - and only then. Written
+     * unconditionally, it would arrive back on the card at the next settings
+     * change, which is the thing this whole move was for. */
+    if (ok && cfg->token_on_card && cfg->token[0] != '\0') {
+        ok = fprintf(fp, "token = %s\n", cfg->token) > 0;
+    }
     if (ok && cfg->device_id[0] != '\0') {
         ok = fprintf(fp, "device = %s\n", cfg->device_id) > 0;
     }

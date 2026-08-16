@@ -107,6 +107,14 @@ typedef struct {
      * console is the only party that could know they are the same console, because
      * the alternative is a hardware id and those follow somebody across services. */
     char device_id[DAEMOON_DEVICE_ID_MAX];
+    /* Set when the save archive could not hold the token and it had to stay on the
+     * card after all.
+     *
+     * The archive is where a credential belongs, because a card comes out of a
+     * console. But a console that cannot pair at all is worse than one whose token
+     * is somewhere it can be found, so a failure there falls back rather than
+     * refusing - and says so, rather than quietly downgrading. */
+    int token_on_card;
     /* A language code, or empty for "whatever the console is set to".
      *
      * Empty is the default and is not the same as "en": a console that is later

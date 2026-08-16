@@ -130,5 +130,5 @@
   "pair.aim": "把摄像头对准网页上的代码。   B 取消",
   "pair.no_camera": "无法启动摄像头。",
   "pair.wrong_code": "这不是 DaeMoon 的配对代码。",
-  "pair.switch": "L/R 或 X 切换摄像头   B 取消"
+  "pair.switch": "L/R 摄像头   X/Y 预览模式   B 取消"
 }

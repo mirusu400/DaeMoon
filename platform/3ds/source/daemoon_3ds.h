@@ -365,6 +365,7 @@ typedef struct {
     unsigned timeouts;
     int      last_decode_error;
     int      camera; /* 0 outer, 1 inner */
+    int      layout; /* which candidate sensor layout the preview is drawing */
 } daemoon_3ds_qr_stats_t;
 
 const daemoon_3ds_qr_stats_t *daemoon_3ds_qr_last_stats(void);
@@ -375,10 +376,16 @@ const daemoon_3ds_qr_stats_t *daemoon_3ds_qr_last_stats(void);
  * be checked on a desktop. A wrong swizzle does not fail - it draws noise, and
  * noise on a console is a photograph and a guess. */
 size_t daemoon_3ds_tile_index(unsigned x, unsigned y, unsigned tex_w);
-size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_h);
+size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_w);
+
+/* Four candidate sensor layouts, so the console can be asked which one it uses
+ * rather than told. 0 is what ships; the rest exist to be ruled out on screen. */
+#define DAEMOON_3DS_CAM_LAYOUTS 4
+size_t daemoon_3ds_cam_index_as(unsigned x, unsigned y, unsigned cam_w,
+                                unsigned cam_h, int layout);
 void   daemoon_3ds_cam_to_tiled(const unsigned short *frame, unsigned cam_w,
                                 unsigned cam_h, unsigned short *tex, unsigned tex_w,
-                                unsigned tex_h);
+                                unsigned tex_h, int layout);
 
 /* The console UI keeps a little state: which line is selected, what to draw. */
 typedef struct {

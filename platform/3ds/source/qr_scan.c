@@ -82,6 +82,15 @@ static unsigned frame_to_luma(const u16 *src, u8 *dst, size_t pixels)
     return (unsigned)(total / (unsigned long long)pixels);
 }
 
+/* Everything the last scan learned, so a run that failed says which of the three
+ * ways it failed rather than only that it did. */
+static daemoon_3ds_qr_stats_t g_stats;
+
+const daemoon_3ds_qr_stats_t *daemoon_3ds_qr_last_stats(void)
+{
+    return &g_stats;
+}
+
 /* Frame to texture, on the CPU.
  *
  * GX_DisplayTransfer would do this on the GPU and is what most homebrew uses. It
@@ -96,7 +105,7 @@ static unsigned frame_to_luma(const u16 *src, u8 *dst, size_t pixels)
 static void frame_to_texture(void)
 {
     daemoon_3ds_cam_to_tiled(g_frame, CAM_W, CAM_H, (u16 *)g_preview.data,
-                             TEX_W, TEX_H);
+                             TEX_W, TEX_H, g_stats.layout);
     C3D_TexFlush(&g_preview);
 }
 
@@ -125,15 +134,6 @@ static int preview_open(void)
 const C2D_Image *daemoon_3ds_qr_preview(void)
 {
     return g_preview_image.tex != NULL ? &g_preview_image : NULL;
-}
-
-/* Everything the last scan learned, so a run that failed says which of the three
- * ways it failed rather than only that it did. */
-static daemoon_3ds_qr_stats_t g_stats;
-
-const daemoon_3ds_qr_stats_t *daemoon_3ds_qr_last_stats(void)
-{
-    return &g_stats;
 }
 
 static daemoon_result_t start_camera(u32 select, u32 *transfer)
@@ -250,6 +250,12 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
             cancelled = 1;
             break;
         }
+        if (action == 3) {
+            /* Next candidate layout. Asking the console beats another round of
+             * being told "still broken", which is one bit for one trip. */
+            g_stats.layout = (g_stats.layout + 1) % DAEMOON_3DS_CAM_LAYOUTS;
+            continue;
+        }
         if (action == 2) {
             /* The other camera. A person who cannot get a code to read will try
              * the front one, and refusing to let them is a worse answer than
@@ -341,11 +347,11 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
 
         (void)snprintf(line, sizeof(line),
                        "frames=%u luma=%u codes=%d decfail=%u recvfail=%u "
-                       "timeout=%u cam=%s err=%d",
+                       "timeout=%u cam=%s layout=%d err=%d",
                        g_stats.frames, g_stats.mean_luma, g_stats.codes_seen,
                        g_stats.decode_failures, g_stats.receive_failures,
                        g_stats.timeouts, g_stats.camera ? "inner" : "outer",
-                       g_stats.last_decode_error);
+                       g_stats.layout, g_stats.last_decode_error);
         daemoon_3ds_trace("qr/stats", line);
     }
 

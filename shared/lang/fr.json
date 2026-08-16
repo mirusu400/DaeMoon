@@ -130,5 +130,5 @@
   "pair.aim": "Vise le code de la page web avec la caméra.   B annuler",
   "pair.no_camera": "Impossible de démarrer la caméra.",
   "pair.wrong_code": "Ce n'est pas un code d'association DaeMoon.",
-  "pair.switch": "L/R ou X change de caméra   B annuler"
+  "pair.switch": "L/R caméra   X/Y mode d'aperçu   B annuler"
 }

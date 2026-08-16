@@ -93,7 +93,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "The camera could not be started.", /* pair.no_camera */
         "Set the server address first, or scan a code instead - a scanned code carries the address with it.", /* pair.no_server */
         "Scan a QR code", /* pair.scan */
-        "L/R or X switches camera   B cancel", /* pair.switch */
+        "L/R camera   X/Y preview mode   B cancel", /* pair.switch */
         "Pair this console", /* pair.title */
         "That is not a DaeMoon pairing code.", /* pair.wrong_code */
         "Downloading", /* progress.downloading */
@@ -215,7 +215,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "카메라를 시작하지 못했습니다.", /* pair.no_camera */
         "먼저 서버 주소를 설정하거나, QR 코드를 스캔하세요 — 스캔한 코드에는 주소가 함께 들어 있습니다.", /* pair.no_server */
         "QR 코드 스캔", /* pair.scan */
-        "L/R 또는 X 카메라 전환   B 취소", /* pair.switch */
+        "L/R 카메라   X/Y 프리뷰 모드   B 취소", /* pair.switch */
         "이 본체 연결", /* pair.title */
         "DaeMoon 연결 코드가 아닙니다.", /* pair.wrong_code */
         "다운로드 중", /* progress.downloading */
@@ -337,7 +337,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "カメラを起動できませんでした。", /* pair.no_camera */
         "先にサーバーのアドレスを設定するか、QR コードを読み取ってください。読み取ったコードにはアドレスが含まれています。", /* pair.no_server */
         "QR コードを読み取る", /* pair.scan */
-        "L/R または X でカメラ切替   B キャンセル", /* pair.switch */
+        "L/R カメラ   X/Y プレビュー   B キャンセル", /* pair.switch */
         "この本体を登録", /* pair.title */
         "DaeMoon の登録コードではありません。", /* pair.wrong_code */
         "ダウンロード中", /* progress.downloading */
@@ -459,7 +459,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "无法启动摄像头。", /* pair.no_camera */
         "请先设置服务器地址，或改为扫描二维码——扫描的代码里带着地址。", /* pair.no_server */
         "扫描二维码", /* pair.scan */
-        "L/R 或 X 切换摄像头   B 取消", /* pair.switch */
+        "L/R 摄像头   X/Y 预览模式   B 取消", /* pair.switch */
         "配对这台主机", /* pair.title */
         "这不是 DaeMoon 的配对代码。", /* pair.wrong_code */
         "正在下载", /* progress.downloading */
@@ -581,7 +581,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "無法啟動鏡頭。", /* pair.no_camera */
         "請先設定伺服器位址，或改為掃描 QR 碼——掃描的代碼裡帶著位址。", /* pair.no_server */
         "掃描 QR 碼", /* pair.scan */
-        "L/R 或 X 切換鏡頭   B 取消", /* pair.switch */
+        "L/R 鏡頭   X/Y 預覽模式   B 取消", /* pair.switch */
         "配對這台主機", /* pair.title */
         "這不是 DaeMoon 的配對代碼。", /* pair.wrong_code */
         "正在下載", /* progress.downloading */
@@ -703,7 +703,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "No se ha podido iniciar la cámara.", /* pair.no_camera */
         "Configura primero la dirección del servidor, o escanea un código: el código escaneado lleva la dirección.", /* pair.no_server */
         "Escanear un código QR", /* pair.scan */
-        "L/R o X cambia de cámara   B cancelar", /* pair.switch */
+        "L/R cámara   X/Y modo de vista   B cancelar", /* pair.switch */
         "Vincular esta consola", /* pair.title */
         "Ese no es un código de vinculación de DaeMoon.", /* pair.wrong_code */
         "Descargando", /* progress.downloading */
@@ -825,7 +825,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Impossible de démarrer la caméra.", /* pair.no_camera */
         "Renseigne d'abord l'adresse du serveur, ou scanne un code : un code scanné contient l'adresse.", /* pair.no_server */
         "Scanner un code QR", /* pair.scan */
-        "L/R ou X change de caméra   B annuler", /* pair.switch */
+        "L/R caméra   X/Y mode d'aperçu   B annuler", /* pair.switch */
         "Associer cette console", /* pair.title */
         "Ce n'est pas un code d'association DaeMoon.", /* pair.wrong_code */
         "Téléchargement en cours", /* progress.downloading */
@@ -947,7 +947,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Die Kamera konnte nicht gestartet werden.", /* pair.no_camera */
         "Zuerst die Serveradresse eintragen, oder einen Code scannen - ein gescannter Code enthält die Adresse.", /* pair.no_server */
         "QR-Code scannen", /* pair.scan */
-        "L/R oder X wechselt die Kamera   B abbrechen", /* pair.switch */
+        "L/R Kamera   X/Y Vorschaumodus   B abbrechen", /* pair.switch */
         "Diese Konsole verbinden", /* pair.title */
         "Das ist kein DaeMoon-Verbindungscode.", /* pair.wrong_code */
         "Wird heruntergeladen", /* progress.downloading */

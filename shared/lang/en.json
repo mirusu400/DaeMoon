@@ -130,5 +130,5 @@
   "pair.aim": "Point the camera at the code on the web page.   B cancel",
   "pair.no_camera": "The camera could not be started.",
   "pair.wrong_code": "That is not a DaeMoon pairing code.",
-  "pair.switch": "L/R or X switches camera   B cancel"
+  "pair.switch": "L/R camera   X/Y preview mode   B cancel"
 }

@@ -39,21 +39,52 @@ size_t daemoon_3ds_tile_index(unsigned x, unsigned y, unsigned tex_w)
     return (size_t)tile * 64u + morton8(x % 8u, y % 8u);
 }
 
-/* Where the camera keeps the pixel that appears at screen (x, y).
+/* Where the camera keeps the pixel that appears at (x, y).
  *
- * Columns, bottom to top: index = x * height + (height - 1 - y). Getting this
- * backwards is what turns a preview into diagonal stripes, and it is the same
- * layout the 3DS framebuffer uses - the camera is designed to be copied straight
- * onto the screen.
+ * Rows, left to right, top to bottom - the ordinary thing. It is written down here
+ * because the first two attempts assumed otherwise, on the strength of the camera
+ * being "in framebuffer order", and both drew a scrambled screen.
+ *
+ * The evidence that settles it is not a document. quirc is handed this buffer as a
+ * 400 wide image and decodes real codes from it. If the rows were really columns,
+ * reading them as 400 wide rows would not rotate the picture - it would shear it,
+ * one pixel further along on every line - and no QR code survives that. It
+ * decoded, so the layout is rows of 400.
  */
-size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_h)
+size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_w)
 {
-    return (size_t)x * (size_t)cam_h + (size_t)(cam_h - 1u - y);
+    return (size_t)y * (size_t)cam_w + (size_t)x;
+}
+
+/* The same question, asked on the console instead of guessed at.
+ *
+ * I have been wrong about this twice, and both times the answer arrived as "still
+ * broken" - which is one bit of information for one trip across the room. The
+ * preview can cycle through the four layouts a sensor could plausibly use, so a
+ * person looking at the screen picks the one that is a picture. That converts an
+ * argument into a fact in a single run.
+ *
+ * Layout 0 is what the evidence says and what ships as the default. The rest exist
+ * to be ruled out.
+ */
+size_t daemoon_3ds_cam_index_as(unsigned x, unsigned y, unsigned cam_w,
+                                unsigned cam_h, int layout)
+{
+    switch (layout) {
+    case 1: /* columns, bottom left first - the 3DS framebuffer's own order */
+        return (size_t)x * (size_t)cam_h + (size_t)(cam_h - 1u - y);
+    case 2: /* columns, top left first */
+        return (size_t)x * (size_t)cam_h + (size_t)y;
+    case 3: /* rows, bottom up */
+        return (size_t)(cam_h - 1u - y) * (size_t)cam_w + (size_t)x;
+    default:
+        return (size_t)y * (size_t)cam_w + (size_t)x;
+    }
 }
 
 void daemoon_3ds_cam_to_tiled(const unsigned short *frame, unsigned cam_w,
                               unsigned cam_h, unsigned short *tex, unsigned tex_w,
-                              unsigned tex_h)
+                              unsigned tex_h, int layout)
 {
     unsigned x;
     unsigned y;
@@ -62,7 +93,7 @@ void daemoon_3ds_cam_to_tiled(const unsigned short *frame, unsigned cam_w,
     for (y = 0; y < cam_h && y < tex_h; ++y) {
         for (x = 0; x < cam_w && x < tex_w; ++x) {
             tex[daemoon_3ds_tile_index(x, y, tex_w)] =
-                frame[daemoon_3ds_cam_index(x, y, cam_h)];
+                frame[daemoon_3ds_cam_index_as(x, y, cam_w, cam_h, layout)];
         }
     }
 }

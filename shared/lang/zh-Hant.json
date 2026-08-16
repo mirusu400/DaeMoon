@@ -130,5 +130,5 @@
   "pair.aim": "把鏡頭對準網頁上的代碼。   B 取消",
   "pair.no_camera": "無法啟動鏡頭。",
   "pair.wrong_code": "這不是 DaeMoon 的配對代碼。",
-  "pair.switch": "L/R 或 X 切換鏡頭   B 取消"
+  "pair.switch": "L/R 鏡頭   X/Y 預覽模式   B 取消"
 }

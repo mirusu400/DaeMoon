@@ -130,5 +130,5 @@
   "pair.aim": "ウェブページのコードにカメラを向けてください。   B キャンセル",
   "pair.no_camera": "カメラを起動できませんでした。",
   "pair.wrong_code": "DaeMoon の登録コードではありません。",
-  "pair.switch": "L/R または X でカメラ切替   B キャンセル"
+  "pair.switch": "L/R カメラ   X/Y プレビュー   B キャンセル"
 }

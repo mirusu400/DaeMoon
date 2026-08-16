@@ -1122,9 +1122,10 @@ static int scan_frame(void *user)
     /* The three numbers that tell the failures apart, on screen rather than only in
      * a file: no frames is a camera that never started, a mean near zero is a lens
      * covered, and codes seen without a decode is a code too far or out of focus. */
-    (void)snprintf(line, sizeof(line), "frames %u   light %u   codes %d   %s",
+    (void)snprintf(line, sizeof(line),
+                   "frames %u   light %u   codes %d   %s   layout %d",
                    st->frames, st->mean_luma, st->codes_seen,
-                   st->camera ? "inner" : "outer");
+                   st->camera ? "inner" : "outer", st->layout);
     daemoon_gfx_text(10.0f, GFX_SCREEN_H - 40.0f, 0.38f, GFX_TEXT_DIM, line);
     daemoon_gfx_text(10.0f, GFX_SCREEN_H - 20.0f, 0.36f, GFX_TEXT_DIM,
                      daemoon_str(DAEMOON_STR_PAIR_SWITCH));
@@ -1133,8 +1134,11 @@ static int scan_frame(void *user)
     if (down & KEY_B) {
         return 0;
     }
-    if (down & (KEY_L | KEY_R | KEY_X)) {
+    if (down & (KEY_L | KEY_R)) {
         return 2;
+    }
+    if (down & (KEY_X | KEY_Y)) {
+        return 3;
     }
     return 1;
 }

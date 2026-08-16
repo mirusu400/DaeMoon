@@ -293,6 +293,33 @@ MemoryMapping:
 `make cia-verify` checks it, because an application that never opens an applet
 would never find out, and this one went months without opening one.
 
+## Phase 3 is verified on hardware
+
+3DS savedata syncs to a server, and the conflict flow works in both directions
+against a real one, with a desktop standing in for the second device.
+
+The console's base was behind the server and both sides had changed:
+
+- **Keep the server's** downloaded it, and because that path ends in
+  `daemoon_sync_restore_package` it asked a second time and made a local backup
+  first. The backup on the card is byte identical to what the console held a
+  moment earlier, and the server was not touched. Both versions survived - one on
+  the server, one on the SD card.
+- **Keep this console's** uploaded on top, issuing v5 with parent v4. Every
+  earlier version is still downloadable.
+
+That is rules 1 and 2 holding on hardware rather than in a test: back up before
+restoring, never auto merge, keep both sides.
+
+The conflict dialog names the other device, which is the point of it: `Kali PC`
+against `3DS`, with sizes. A dialog that cannot tell two saves apart is not a
+choice.
+
+Staging that test found the bug worth remembering from the whole phase - an empty
+save could be uploaded over a good server version. See the commit; the guard was
+on the local backup path and not on the wire, which is the half where the damage
+leaves the device.
+
 ## Proving the backend
 
 `tools/test/backend_conformance.c` is the contract, written against the interface

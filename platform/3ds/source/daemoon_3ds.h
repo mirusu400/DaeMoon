@@ -84,10 +84,23 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
  * the module, the summary and the description, and can be looked up. */
 unsigned long daemoon_3ds_last_name_result(void);
 
-/* The result of the fallback archive, when the first one was refused. 0 means it
- * was not needed. Both are recorded so one hardware run answers the question
- * whichever way it goes. */
-unsigned long daemoon_3ds_last_name_result_alt(void);
+/* Every step of the last name lookup.
+ *
+ * The service reports a missing filesystem right, a missing ARM9 right and an
+ * unsupported operation with the same word, so the only way to tell them apart is
+ * to try each route and write down what each one said. `which` is the route that
+ * worked: 1 direct, 2 the ExeFS-only archive, 3 archive then file, 0 none. */
+typedef struct {
+    long open_direct;
+    long open_direct2;
+    long open_archive;
+    long open_file;
+    long read;
+    unsigned read_bytes;
+    int  which;
+} daemoon_3ds_name_probe_t;
+
+const daemoon_3ds_name_probe_t *daemoon_3ds_last_name_probe(void);
 
 /* Creates this application's own save archive, and refuses any other title. A
  * declared SaveDataSize does not create one; the title has to format it once. */

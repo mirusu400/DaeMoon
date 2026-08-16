@@ -381,6 +381,21 @@ static void action_restore(void)
     }
 }
 
+static void append_hex32(daemoon_strbuf_t *sb, unsigned long value)
+{
+    static const char digits[] = "0123456789ABCDEF";
+    char hex[11];
+    int k;
+
+    hex[0] = '0';
+    hex[1] = 'x';
+    for (k = 0; k < 8; ++k) {
+        hex[2 + k] = digits[(value >> ((7 - k) * 4)) & 0xf];
+    }
+    hex[10] = '\0';
+    daemoon_strbuf_add(sb, hex);
+}
+
 static int survey_count_cb(void *user, const char *path, unsigned long long size)
 {
     unsigned long long *total = (unsigned long long *)user;
@@ -426,7 +441,7 @@ static void action_survey(void)
         daemoon_3ds_secure_value_t secure;
         daemoon_save_t *save = NULL;
         unsigned long long bytes = 0;
-        char line[320];
+        char line[512];
         daemoon_strbuf_t sb;
         daemoon_result_t sr;
         daemoon_result_t or_;
@@ -478,28 +493,23 @@ static void action_survey(void)
             daemoon_strbuf_add(&sb, "\tname=");
             daemoon_strbuf_add(&sb, nr == DAEMOON_OK ? "smdh" : daemoon_result_code(nr));
             if (nr != DAEMOON_OK) {
-                static const char hexd[] = "0123456789ABCDEF";
-                unsigned long raw = daemoon_3ds_last_name_result();
-                char hex[11];
-                int k;
+                /* Every route and what it said. One coarse word covered three
+                 * different causes and cost four trips to a console; this is the
+                 * shape of a diagnostic that ends the guessing. */
+                const daemoon_3ds_name_probe_t *pr = daemoon_3ds_last_name_probe();
 
-                hex[0] = '0';
-                hex[1] = 'x';
-                for (k = 0; k < 8; ++k) {
-                    hex[2 + k] = hexd[(raw >> ((7 - k) * 4)) & 0xf];
-                }
-                hex[10] = '\0';
-                daemoon_strbuf_addc(&sb, '/');
-                daemoon_strbuf_add(&sb, hex);
-
-                raw = daemoon_3ds_last_name_result_alt();
-                if (raw != 0) {
-                    for (k = 0; k < 8; ++k) {
-                        hex[2 + k] = hexd[(raw >> ((7 - k) * 4)) & 0xf];
-                    }
-                    daemoon_strbuf_add(&sb, "/alt");
-                    daemoon_strbuf_add(&sb, hex);
-                }
+                daemoon_strbuf_add(&sb, " direct=");
+                append_hex32(&sb, (unsigned long)pr->open_direct);
+                daemoon_strbuf_add(&sb, " direct2=");
+                append_hex32(&sb, (unsigned long)pr->open_direct2);
+                daemoon_strbuf_add(&sb, " archive=");
+                append_hex32(&sb, (unsigned long)pr->open_archive);
+                daemoon_strbuf_add(&sb, " file=");
+                append_hex32(&sb, (unsigned long)pr->open_file);
+                daemoon_strbuf_add(&sb, " read=");
+                append_hex32(&sb, (unsigned long)pr->read);
+                daemoon_strbuf_add(&sb, " got=");
+                daemoon_strbuf_add_uint(&sb, pr->read_bytes);
             }
             daemoon_strbuf_add(&sb, "\treal=");
             daemoon_strbuf_add(&sb, nr == DAEMOON_OK ? real : "-");

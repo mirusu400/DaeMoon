@@ -622,36 +622,36 @@ static daemoon_result_t take_smdh_slot(const u8 *names, int lang, unsigned flags
     return DAEMOON_OK;
 }
 
-static Result g_last_name_result;
-static Result g_last_name_result_alt;
+/* Every step of the name lookup, kept apart.
+ *
+ * The previous version overwrote one variable as it went, so a failure could not
+ * be attributed to the open or to the read - and the two need different fixes.
+ * A diagnostic that loses the distinction it exists to make is worth nothing. */
+static daemoon_3ds_name_probe_t g_probe;
+
+const daemoon_3ds_name_probe_t *daemoon_3ds_last_name_probe(void)
+{
+    return &g_probe;
+}
 
 unsigned long daemoon_3ds_last_name_result(void)
 {
-    return (unsigned long)g_last_name_result;
+    return (unsigned long)g_probe.open_direct;
 }
 
-unsigned long daemoon_3ds_last_name_result_alt(void)
+/* Three ways to reach a title's SMDH, tried in order. They fail differently and
+ * the service reports all of it as "not supported", so the only way to tell them
+ * apart is to try each and write down what happened. */
+static Result open_smdh(u64 title_id, int media, Handle *out)
 {
-    return (unsigned long)g_last_name_result_alt;
-}
-
-daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
-                                        int lang, unsigned flags, char *out, size_t cap)
-{
-    /* Binary paths, as the service wants them. */
     u32 archive_path[4];
     static const u32 file_path[5] = {
         0x00000000u, 0x00000000u, 0x00000002u, 0x6E6F6369u /* "icon" */, 0x00000000u
     };
-    /* Static rather than on the stack: 6 KiB per call, once per title. */
-    static u8 names[SMDH_NAMES_BYTES];
     FS_Path archive;
     FS_Path file;
-    Handle handle = 0;
-    u32 got = 0;
+    FS_Archive handle_archive = 0;
     Result res;
-    daemoon_result_t r;
-    int i;
 
     archive_path[0] = (u32)(title_id & 0xffffffffull);
     archive_path[1] = (u32)(title_id >> 32);
@@ -666,30 +666,62 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
     file.size = sizeof(file_path);
     file.data = file_path;
 
-    res = FSUSER_OpenFileDirectly(&handle, ARCHIVE_SAVEDATA_AND_CONTENT, archive, file,
-                                  FS_OPEN_READ, 0);
-    if (R_FAILED(res)) {
-        /* The second archive id exists for fs:LDR and exposes only the ExeFS,
-         * which is all this needs. Trying it costs one call and means a console
-         * that refuses the first one still answers the question, rather than
-         * costing another round trip to find out. */
-        Result alt = FSUSER_OpenFileDirectly(&handle, ARCHIVE_SAVEDATA_AND_CONTENT2,
-                                             archive, file, FS_OPEN_READ, 0);
+    memset(&g_probe, 0, sizeof(g_probe));
 
-        g_last_name_result = res;
-        g_last_name_result_alt = alt;
-        if (R_FAILED(alt)) {
-            out[0] = '\0';
-            return from_result(res);
+    res = FSUSER_OpenFileDirectly(out, ARCHIVE_SAVEDATA_AND_CONTENT, archive, file,
+                                  FS_OPEN_READ, 0);
+    g_probe.open_direct = res;
+    if (R_SUCCEEDED(res)) {
+        g_probe.which = 1;
+        return res;
+    }
+
+    res = FSUSER_OpenFileDirectly(out, ARCHIVE_SAVEDATA_AND_CONTENT2, archive, file,
+                                  FS_OPEN_READ, 0);
+    g_probe.open_direct2 = res;
+    if (R_SUCCEEDED(res)) {
+        g_probe.which = 2;
+        return res;
+    }
+
+    /* Opening the archive and then the file inside it takes a different path
+     * through the service than opening the file directly does. */
+    res = FSUSER_OpenArchive(&handle_archive, ARCHIVE_SAVEDATA_AND_CONTENT, archive);
+    g_probe.open_archive = res;
+    if (R_SUCCEEDED(res)) {
+        res = FSUSER_OpenFile(out, handle_archive, file, FS_OPEN_READ, 0);
+        g_probe.open_file = res;
+        (void)FSUSER_CloseArchive(handle_archive);
+        if (R_SUCCEEDED(res)) {
+            g_probe.which = 3;
+            return res;
         }
-    } else {
-        g_last_name_result = res;
-        g_last_name_result_alt = 0;
+    }
+
+    return g_probe.open_direct;
+}
+
+daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
+                                        int lang, unsigned flags, char *out, size_t cap)
+{
+    /* Static rather than on the stack: 6 KiB per call, once per title. */
+    static u8 names[SMDH_NAMES_BYTES];
+    Handle handle = 0;
+    u32 got = 0;
+    Result res;
+    daemoon_result_t r;
+    int i;
+
+    res = open_smdh(title_id, media, &handle);
+    if (R_FAILED(res)) {
+        out[0] = '\0';
+        return from_result(res);
     }
 
     res = FSFILE_Read(handle, &got, SMDH_TITLE_OFFSET(0), names, sizeof(names));
     (void)FSFILE_Close(handle);
-    g_last_name_result = res;
+    g_probe.read = res;
+    g_probe.read_bytes = got;
     if (R_FAILED(res) || got < 0x200) {
         out[0] = '\0';
         return R_FAILED(res) ? from_result(res) : DAEMOON_ERR_NOT_FOUND;

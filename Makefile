@@ -132,7 +132,12 @@ docker-3ds:
 # SAVEDATA_SIZE is forwarded on purpose: without it a test build asked for on the
 # command line silently produced a shipped one, and the difference is whether the
 # unattended self test has an archive to run against.
-SAVEDATA_SIZE ?= 0K
+#
+# The shipped build has one now. It is where the device token lives - an SD card
+# comes out of a console and a found card should not be a working credential - and
+# a title that declares no archive has nowhere to put one. 128K is far more than a
+# token needs and the smallest size this has been tested at.
+SAVEDATA_SIZE ?= 128K
 
 # Worked out on the host: the container has no git identity and no reason to.
 # A content hash of what actually goes into the build, not just the commit: two

@@ -1059,13 +1059,17 @@ static int finish_pairing(const char *grant, const char *code)
     (void)daemoon_strlcpy(g_config.device_id, sizeof(g_config.device_id), device_id);
     g_env.token = g_config.token;
 
-    r = daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
+    /* The archive first, because that is where the credential belongs. The file
+     * only carries the address and the label now. */
+    r = daemoon_3ds_secret_save(&g_env, g_config.token, g_config.device_id);
+    daemoon_3ds_trace("secret/saved", daemoon_result_code(r));
     if (r != DAEMOON_OK) {
         /* The token is live but only in memory. Saying so beats a console that
          * syncs today and is a stranger tomorrow. */
         report(DAEMOON_STR_PAIR_TITLE, r);
         return 1;
     }
+    (void)daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
 
     message(daemoon_str(DAEMOON_STR_APP_TITLE),
             daemoon_str(DAEMOON_STR_PAIR_DONE), GFX_OK);
@@ -1234,6 +1238,16 @@ static void action_settings(void)
             case 1:
                 edited = edit_field(labels[1], "daemoonctl pair", g_config.token,
                                     sizeof(g_config.token));
+                if (edited) {
+                    /* Typed by hand, and still a credential: it goes where the
+                     * paired one goes, not onto the card. */
+                    daemoon_result_t sr = daemoon_3ds_secret_save(&g_env,
+                                                                  g_config.token,
+                                                                  g_config.device_id);
+
+                    daemoon_3ds_trace("secret/typed", daemoon_result_code(sr));
+                    g_env.token = g_config.token[0] != '\0' ? g_config.token : NULL;
+                }
                 break;
             case 2:
                 edited = edit_field(labels[2], "3DS", g_config.device_label,
@@ -1281,6 +1295,36 @@ static void action_settings(void)
          * may not have been opened at all. */
         g_env.token = g_config.token[0] != '\0' ? g_config.token : NULL;
         g_net_ctx.ca_bundle = g_config.ca_bundle;
+
+    /* The token lives in this application's own save archive, not on the card.
+     *
+     * A console paired before that change has one in config.txt, so it is moved
+     * across on the first run that finds it there and struck from the file. The
+     * card stops being a credential from that moment, which is the whole point:
+     * revocation answers a lost card, and revocation is a thing you have to notice
+     * you need. */
+    {
+        char token[DAEMOON_TOKEN_MAX];
+        char device_id[DAEMOON_DEVICE_ID_MAX];
+
+        if (daemoon_3ds_secret_load(&g_env, token, sizeof(token), device_id,
+                                    sizeof(device_id)) == DAEMOON_OK) {
+            (void)daemoon_strlcpy(g_config.token, sizeof(g_config.token), token);
+            (void)daemoon_strlcpy(g_config.device_id, sizeof(g_config.device_id),
+                                  device_id);
+            daemoon_3ds_trace("secret/loaded", device_id);
+        } else if (g_config.token[0] != '\0') {
+            daemoon_result_t mr = daemoon_3ds_secret_save(&g_env, g_config.token,
+                                                          g_config.device_id);
+
+            daemoon_3ds_trace("secret/migrated", daemoon_result_code(mr));
+            if (mr == DAEMOON_OK) {
+                /* Rewritten without it: config_save no longer emits a token, so
+                 * this is what actually takes it off the card. */
+                (void)daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
+            }
+        }
+    }
         if (daemoon_3ds_config_can_sync(&g_config)) {
             (void)daemoon_3ds_net_init();
         }
@@ -1552,6 +1596,21 @@ static void run_autotest(void)
     failures = daemoon_test_failures;
     daemoon_backend_conformance(&ut);
     failures = daemoon_test_failures - failures;
+
+    /* The suite clears the archive it is pointed at, and that archive is now where
+     * the device token lives. Putting it back is not tidiness: without it, running
+     * the self test unpairs the console, which is a surprising price for a
+     * diagnostic. */
+    if (g_config.token[0] != '\0') {
+        daemoon_result_t sr = daemoon_3ds_secret_save(&g_env, g_config.token,
+                                                      g_config.device_id);
+
+        daemoon_3ds_trace("secret/restored", daemoon_result_code(sr));
+    }
+
+    if (g_config.token[0] != '\0') {
+        (void)daemoon_3ds_secret_save(&g_env, g_config.token, g_config.device_id);
+    }
 
     /* The screen that has twice gone wrong on hardware, drawn unattended. It
      * asserts nothing - a fault here takes the process down, which is the report. */

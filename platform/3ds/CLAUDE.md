@@ -367,6 +367,30 @@ The two unattended modes now clear each other's flag. A leftover `AUTOTEST` turn
 the first pairing run into a conformance run and reported that the app "did not get
 as far as the pairing call", which is true and says nothing.
 
+## The token is not on the SD card
+
+It lives in this application's own save archive, which is why the shipped build
+declares `SAVEDATA_SIZE` at all now.
+
+A card comes out of a console. While the token was in `config.txt`, a found card
+was a working credential: whoever had it could read a person's saves off the server
+and write over them. Revocation is the answer to that and always has been, but
+revocation is something you have to notice you need, and by then the card is gone.
+
+The alternative that gets proposed - derive the token from console hardware so it
+never changes - trades that for something worse. A token the console computes is
+one the server can neither rotate nor revoke, the derivation is in public source,
+and a console that changes hands takes the identity with it. What was actually
+wanted from it was a stable identity, and pairing already rotates the same device
+in place, so there is nothing left for it to buy.
+
+`config.txt` keeps the server, the label and the language, and the parser still
+reads a `token` key so a console paired before this can be carried across once. It
+is never written back, which is what takes it off the card.
+
+The conformance suite clears the archive it is pointed at, so it re-saves the token
+afterwards. Running a diagnostic should not unpair a console.
+
 ## Proving the backend
 
 `tools/test/backend_conformance.c` is the contract, written against the interface

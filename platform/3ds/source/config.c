@@ -85,6 +85,8 @@ daemoon_result_t daemoon_3ds_config_load(const char *path, daemoon_3ds_config_t 
                 cfg->server_url[--len] = '\0';
             }
         } else if (strcmp(key, "token") == 0) {
+            /* Only ever read, and only so a console paired before the token moved
+             * into the save archive can be carried across once. */
             (void)daemoon_strlcpy(cfg->token, sizeof(cfg->token), value);
         } else if (strcmp(key, "label") == 0) {
             /* Shown on another console in a conflict dialog, so it has to survive
@@ -141,16 +143,13 @@ daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_con
     }
     ok = fprintf(fp, "server = %s\nlabel = %s\n", cfg->server_url,
                  cfg->device_label) > 0;
-    /* Absent rather than empty when there is none, the way `language` already is.
+    /* The token is deliberately not written.
      *
-     * This file is rewritten whole from memory whenever any setting changes, so an
-     * unpaired console used to leave `token = ` behind. That parses back to the
-     * same thing and is not a bug on its own - but a file that says a key exists
-     * and a file that omits it should not both mean "not set", because the next
-     * person reading it by hand has to know which. */
-    if (ok && cfg->token[0] != '\0') {
-        ok = fprintf(fp, "token = %s\n", cfg->token) > 0;
-    }
+     * It lives in this application's own save archive now, because an SD card comes
+     * out of a console and a found card should not be a working credential. The
+     * parser still reads a `token` key so a console paired before that change can
+     * be migrated once, and this is the other half of that: written back, it would
+     * arrive on the card again on the next settings change. */
     if (ok && cfg->device_id[0] != '\0') {
         ok = fprintf(fp, "device = %s\n", cfg->device_id) > 0;
     }

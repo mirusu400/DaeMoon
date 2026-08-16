@@ -1864,9 +1864,13 @@ TEST_CASE(a_saved_config_is_read_back_exactly)
     /* No language set means "follow the console", which is not the same as English
      * and has to survive a round trip as an absence rather than as a value. */
     CHECK_STR(in.language, "");
-    CHECK_STR(in.token, "MCRV_abc-123_XYZ");
     CHECK_STR(in.device_label, "거실 3DS");
-    CHECK_EQ_INT(daemoon_3ds_config_can_sync(&in), 1);
+
+    /* The token is not written. It lives in the application's own save archive,
+     * because an SD card comes out of a console and a found card should not be a
+     * working credential. Writing it here would put it back on the card at the next
+     * settings change, which is the whole failure this is guarding. */
+    CHECK_STR(in.token, "");
 
     /* A trailing slash is stripped on the way in, so saving what was loaded does
      * not slowly grow a URL. */
@@ -1878,6 +1882,26 @@ TEST_CASE(a_saved_config_is_read_back_exactly)
     CHECK_OK(daemoon_3ds_config_save(path, &in));
     CHECK_OK(daemoon_3ds_config_load(path, &in));
     CHECK_STR(in.server_url, "http://example.test:8080");
+
+    /* But it is still read, so a console paired before the token moved can be
+     * carried across once. */
+    {
+        FILE *fp = fopen(path, "ab");
+
+        CHECK(fp != NULL);
+        if (fp != NULL) {
+            (void)fputs("token = MCRV_abc-123_XYZ\n", fp);
+            (void)fclose(fp);
+        }
+    }
+    CHECK_OK(daemoon_3ds_config_load(path, &in));
+    CHECK_STR(in.token, "MCRV_abc-123_XYZ");
+    CHECK_EQ_INT(daemoon_3ds_config_can_sync(&in), 1);
+
+    /* And saving it again takes it off the card, which is what migration is. */
+    CHECK_OK(daemoon_3ds_config_save(path, &in));
+    CHECK_OK(daemoon_3ds_config_load(path, &in));
+    CHECK_STR(in.token, "");
 
     /* A chosen language is kept; a code this build does not know is refused
      * rather than stored, because a typo would otherwise be a console that

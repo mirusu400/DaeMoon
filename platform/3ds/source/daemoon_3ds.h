@@ -322,6 +322,21 @@ daemoon_result_t daemoon_3ds_pick_backup(const daemoon_env_t *env, const char *d
  * emulator run and the hardware run differ in one step and nothing else. */
 #define DAEMOON_3DS_AUTOPAIR_PATH DAEMOON_3DS_WORK_DIR "/AUTOPAIR"
 
+/* The device token, in this application's own save archive rather than on the SD
+ * card.
+ *
+ * A card comes out of a console; an archive does not. It is still a server issued
+ * credential that can be revoked and rotated, which is what a token derived from
+ * console hardware could never be - and it involves no hardware id, which is the
+ * other way to get a stable identity and the one the rules refuse.
+ *
+ * not_found when there is none, which is a console that has not been paired. */
+daemoon_result_t daemoon_3ds_secret_load(const daemoon_env_t *env, char *token,
+                                         size_t token_len, char *device_id,
+                                         size_t device_len);
+daemoon_result_t daemoon_3ds_secret_save(const daemoon_env_t *env, const char *token,
+                                         const char *device_id);
+
 void daemoon_3ds_trace(const char *step, const char *detail);
 void daemoon_3ds_trace_uint(const char *step, unsigned long long value);
 

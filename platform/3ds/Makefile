@@ -23,7 +23,7 @@ RSF         := $(TOPDIR)/app.rsf
 # The shipped app keeps everything on the SD card and needs no save archive. A
 # test build asks for one so the self test has an archive it owns, which is the
 # only archive it may destroy without asking a person first.
-SAVEDATA_SIZE ?= 0K
+SAVEDATA_SIZE ?= 128K
 
 # Stamped into the app so the console can say which build it is running. Without
 # it, "did that install take?" is answered by squinting at behaviour.

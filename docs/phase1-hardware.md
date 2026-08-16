@@ -1,5 +1,8 @@
 # Phase 1 on hardware
 
+> This is the **procedure**. What every hardware run since has actually answered -
+> across all four phases - is in `docs/hardware.md`.
+
 Everything in Phase 1 that a machine can check is checked. What is left needs a
 3DS, and it is the part that matters: whether the CIA's permissions actually reach
 another title's save archive, and what the secure value does to a restored save.

@@ -58,9 +58,16 @@ static struct {
 } g_titles[STUB_MAX_TITLES];
 
 static u64 g_own_title;
-/* One SMDH per title, in the layout the real one uses: an 8 byte header then a
- * 0x200 byte block per language, each starting with a UTF-16 short description. */
-#define STUB_SMDH_SIZE (8 + 12 * 0x200)
+/* One SMDH per title, at the size a real one is: an 8 byte header, a 0x200 byte
+ * block per language each starting with a UTF-16 short description, settings, and
+ * then the two icons.
+ *
+ * The full size matters. The stub used to serve only the names, so a caller that
+ * read the whole file got a short read - and the backend, quite correctly, called
+ * that a title with no icon. A stub smaller than the thing it stands in for fails
+ * the code under test for a reason the console never would. */
+#define STUB_SMDH_SIZE      0x36C0
+#define STUB_SMDH_ICON_OFF  0x24C0
 static struct {
     u64 id;
     int used;
@@ -219,6 +226,10 @@ void daemoon_stub_set_title_name(u64 title_id, int lang, const char *name)
             g_smdh[i].id = title_id;
             memset(g_smdh[i].data, 0, sizeof(g_smdh[i].data));
             memcpy(g_smdh[i].data, "SMDH", 4);
+            /* A recognisable pattern where the large icon lives, so a test can
+             * tell "read the icon" from "read something". */
+            memset(g_smdh[i].data + STUB_SMDH_ICON_OFF, 0xA5,
+                   STUB_SMDH_SIZE - STUB_SMDH_ICON_OFF);
         }
         {
             u16 utf16[0x40];

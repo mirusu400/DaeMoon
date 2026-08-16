@@ -701,36 +701,45 @@ static Result open_smdh(u64 title_id, int media, Handle *out)
     return g_probe.open_direct;
 }
 
-daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
-                                        int lang, unsigned flags, char *out, size_t cap)
+daemoon_result_t daemoon_3ds_smdh_load(int media, unsigned long long title_id, void *out)
 {
-    /* Static rather than on the stack: 6 KiB per call, once per title. */
-    static u8 names[SMDH_NAMES_BYTES];
     Handle handle = 0;
     u32 got = 0;
     Result res;
-    daemoon_result_t r;
-    int i;
 
     res = open_smdh(title_id, media, &handle);
     if (R_FAILED(res)) {
-        out[0] = '\0';
         return from_result(res);
     }
 
-    res = FSFILE_Read(handle, &got, SMDH_TITLE_OFFSET(0), names, sizeof(names));
+    /* From zero, in one piece. The file is decrypted as it is read and a request
+     * that starts anywhere else comes back "not supported" - which is what four
+     * rounds of hardware testing were spent chasing through the wrong half of the
+     * exheader. */
+    res = FSFILE_Read(handle, &got, 0, out, DAEMOON_3DS_SMDH_SIZE);
     (void)FSFILE_Close(handle);
+
     g_probe.read = res;
     g_probe.read_bytes = got;
-    if (R_FAILED(res) || got < 0x200) {
-        out[0] = '\0';
-        return R_FAILED(res) ? from_result(res) : DAEMOON_ERR_NOT_FOUND;
+
+    if (R_FAILED(res)) {
+        return from_result(res);
     }
-    if (got < sizeof(names)) {
-        /* A short read is not an error, but a slot beyond what arrived is not
-         * there to be picked. */
-        memset(names + got, 0, sizeof(names) - got);
+    if (got < DAEMOON_3DS_SMDH_ICON_OFF) {
+        return DAEMOON_ERR_NOT_FOUND;
     }
+    if (got < DAEMOON_3DS_SMDH_SIZE) {
+        memset((u8 *)out + got, 0, DAEMOON_3DS_SMDH_SIZE - got);
+    }
+    return DAEMOON_OK;
+}
+
+daemoon_result_t daemoon_3ds_smdh_name(const void *smdh, int lang, unsigned flags,
+                                       char *out, size_t cap)
+{
+    const u8 *names = (const u8 *)smdh + DAEMOON_3DS_SMDH_NAME_OFF;
+    daemoon_result_t r;
+    int i;
 
     /* The console's language first, then the two that almost every 3DS game
      * carries, then whatever the game does have.
@@ -753,6 +762,20 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
         out[0] = '\0';
     }
     return r;
+}
+
+daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
+                                        int lang, unsigned flags, char *out, size_t cap)
+{
+    /* Static rather than on the stack: fourteen kilobytes, once per title. */
+    static u8 smdh[DAEMOON_3DS_SMDH_SIZE];
+    daemoon_result_t r = daemoon_3ds_smdh_load(media, title_id, smdh);
+
+    if (r != DAEMOON_OK) {
+        out[0] = '\0';
+        return r;
+    }
+    return daemoon_3ds_smdh_name(smdh, lang, flags, out, cap);
 }
 
 /* -------------------------------------------------------------------- titles */

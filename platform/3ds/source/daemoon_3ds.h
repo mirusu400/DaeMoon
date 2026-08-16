@@ -62,6 +62,28 @@ daemoon_result_t daemoon_3ds_read_secure_value(const daemoon_title_t *t,
 daemoon_result_t daemoon_3ds_write_secure_value(const daemoon_title_t *t,
                                                 const daemoon_3ds_secure_value_t *value);
 
+/* A whole SMDH: header, one name per language, then the two icons.
+ *
+ * It is read in one piece from offset zero, because the file it comes from is
+ * decrypted as it is read and a request that starts anywhere else is refused -
+ * which the service reports as "not supported", the same words it uses for a
+ * missing right. That cost four trips to a console.
+ *
+ * One read serves both the name and the icon, which is also why they are loaded
+ * together now. */
+#define DAEMOON_3DS_SMDH_SIZE       0x36C0
+#define DAEMOON_3DS_SMDH_NAME_OFF   0x0008
+#define DAEMOON_3DS_SMDH_NAME_STRIDE 0x200
+#define DAEMOON_3DS_SMDH_ICON_OFF   0x24C0
+#define DAEMOON_3DS_SMDH_ICON_DIM   48
+
+/* Reads a title's SMDH. out must hold DAEMOON_3DS_SMDH_SIZE bytes. */
+daemoon_result_t daemoon_3ds_smdh_load(int media, unsigned long long title_id, void *out);
+
+/* The name the HOME menu shows, out of an SMDH already read. */
+daemoon_result_t daemoon_3ds_smdh_name(const void *smdh, int lang, unsigned flags,
+                                       char *out, size_t cap);
+
 /* The name the HOME menu shows, read from the title's SMDH.
  *
  * lang is an SMDH index, which is also the console's own language numbering. A

@@ -727,6 +727,45 @@ TEST_CASE(the_list_prefers_a_name_the_console_can_draw)
     (void)daemoon_posix_rmtree(root);
 }
 
+/* The read that four rounds of hardware testing were spent on.
+ *
+ * The file an SMDH comes from is decrypted as it is read, so a request that
+ * starts anywhere but zero is refused - and the service reports that with the
+ * same word it uses for a missing permission. Reading the whole thing from the
+ * start is not an optimisation, it is the only thing that works. */
+TEST_CASE(the_smdh_is_read_whole_from_the_start)
+{
+    char root[256];
+    static unsigned char smdh[DAEMOON_3DS_SMDH_SIZE];
+    char name[DAEMOON_NAME_MAX];
+    size_t i;
+    int icon_bytes_present = 0;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-smdh-read"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_ID), 0);
+    daemoon_stub_set_title_name(TEST_TITLE_ID, 1, "Some Game");
+
+    CHECK_OK(daemoon_3ds_smdh_load((int)MEDIATYPE_SD, TEST_TITLE_ID, smdh));
+
+    /* The whole file: the name near the front and the icon near the end both have
+     * to be there, because they are read in one pass and used by two callers. */
+    CHECK_OK(daemoon_3ds_smdh_name(smdh, 1, 0, name, sizeof(name)));
+    CHECK_STR(name, "Some Game");
+
+    for (i = DAEMOON_3DS_SMDH_ICON_OFF; i < DAEMOON_3DS_SMDH_SIZE; ++i) {
+        if (smdh[i] != 0) {
+            icon_bytes_present = 1;
+            break;
+        }
+    }
+    CHECK(icon_bytes_present);
+
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
 void test_3ds_backend(void)
 {
     printf("3ds backend (stubbed libctru)\n");
@@ -743,4 +782,5 @@ void test_3ds_backend(void)
     RUN(titles_are_named_from_their_smdh);
     RUN(a_name_missing_in_the_console_language_falls_back);
     RUN(the_list_prefers_a_name_the_console_can_draw);
+    RUN(the_smdh_is_read_whole_from_the_start);
 }

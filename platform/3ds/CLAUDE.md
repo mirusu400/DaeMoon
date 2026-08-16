@@ -73,9 +73,24 @@ the app's own Survey action):
   for that just as it does for a missing FS right, which is why three rounds went
   into the wrong half of the exheader.
 
-  **Record the raw Result, not the wire code.** A coarse code is right for a user
-  and useless here; `daemoon_result_code` said `unsupported` every time and never
-  once narrowed anything down.
+  And the ARM9 rights were not it either. Recording each step separately - open,
+  fallback open, archive-then-file, read - showed the open had been succeeding all
+  along and the **read** was what failed. An SMDH's file is decrypted as it is
+  read, so a request that starts anywhere but offset zero is refused, and the
+  service reports that with the same word it uses for a missing permission. The
+  name lookup was reading from offset 8 and the icon from 0x24C0. Both now read
+  the whole file from the start, in one pass that serves both.
+
+  **Record the raw Result, not the wire code, and do not let one variable carry
+  two steps.** `daemoon_result_code` said `unsupported` for four rounds. The raw
+  Result narrowed it to fs/usage. Only per-step recording found it, and the first
+  attempt at that overwrote itself between the open and the read - which is how a
+  survey came back claiming both that the lookup failed and that the fallback had
+  not been needed.
+
+  The permissions that were added while chasing this - the full FileSystemAccess
+  list and IoAccessControl - were never the fix. **Narrowing them back down is now
+  the first thing to do**, and the survey makes it measurable.
 - **Secure values are rare.** One title out of sixteen had one. Two Pokemon titles
   sat next to each other in the list and only one of them did. That is the first
   real evidence on the question Phase 7 depends on, and it says the answer is per

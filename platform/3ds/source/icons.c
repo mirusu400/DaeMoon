@@ -42,44 +42,20 @@ static const Tex3DS_SubTexture k_subtexture = {
 daemoon_result_t daemoon_3ds_icon_load(int media, unsigned long long title_id,
                                        daemoon_3ds_icon_t *out)
 {
-    u32 archive_path[4];
-    static const u32 file_path[5] = {
-        0x00000000u, 0x00000000u, 0x00000002u, 0x6E6F6369u /* "icon" */, 0x00000000u
-    };
-    FS_Path archive;
-    FS_Path file;
-    Handle handle = 0;
-    static u8 pixels[SMDH_LARGE_ICON_BYTES];
+    /* One SMDH, read whole, shared with the name lookup. Reading only the icon's
+     * own range is what the service refuses: the file is decrypted as it is read
+     * and a request that starts anywhere but zero comes back "not supported". */
+    static u8 smdh[DAEMOON_3DS_SMDH_SIZE];
+    const u8 *pixels = smdh + DAEMOON_3DS_SMDH_ICON_OFF;
     C3D_Tex *tex;
-    u32 got = 0;
-    Result res;
+    daemoon_result_t r;
     int row;
 
     memset(out, 0, sizeof(*out));
 
-    archive_path[0] = (u32)(title_id & 0xffffffffull);
-    archive_path[1] = (u32)(title_id >> 32);
-    archive_path[2] = (u32)media;
-    archive_path[3] = 0;
-
-    archive.type = PATH_BINARY;
-    archive.size = sizeof(archive_path);
-    archive.data = archive_path;
-
-    file.type = PATH_BINARY;
-    file.size = sizeof(file_path);
-    file.data = file_path;
-
-    res = FSUSER_OpenFileDirectly(&handle, ARCHIVE_SAVEDATA_AND_CONTENT, archive, file,
-                                  FS_OPEN_READ, 0);
-    if (R_FAILED(res)) {
-        return DAEMOON_ERR_NOT_FOUND;
-    }
-
-    res = FSFILE_Read(handle, &got, SMDH_LARGE_ICON_OFFSET, pixels, sizeof(pixels));
-    (void)FSFILE_Close(handle);
-    if (R_FAILED(res) || got != sizeof(pixels)) {
-        return DAEMOON_ERR_NOT_FOUND;
+    r = daemoon_3ds_smdh_load(media, title_id, smdh);
+    if (r != DAEMOON_OK) {
+        return r;
     }
 
     tex = (C3D_Tex *)linearAlloc(sizeof(*tex));

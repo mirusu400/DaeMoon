@@ -330,10 +330,36 @@ void daemoon_3ds_pick_backup_render_check(const daemoon_title_t *title, unsigned
  *
  * Returns not_found when the loop ended without a readable code, user_cancelled
  * when frame_cb said so, and backend_error when the camera would not start. */
+/* The camera frame size, so the preview can be scaled to the screen without the
+ * drawing code guessing at it. */
+#define DAEMOON_3DS_CAM_W 400
+#define DAEMOON_3DS_CAM_H 240
+
+/* Returns 1 to keep scanning, 0 to stop, 2 to switch cameras. */
 typedef int (*daemoon_3ds_qr_frame_cb)(void *user);
 
 daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *user,
                                      char *out, size_t cap);
+
+/* What the last scan saw.
+ *
+ * A scan that fails does so in one of three ways and they need different things
+ * done about them: no frames at all is a camera that never started, frames with a
+ * mean luma near zero is a lens covered or a room dark, and frames with codes seen
+ * but not decoded is a code too small, too far, or out of focus. Without these
+ * three numbers all of it is "the scan did not work". */
+typedef struct {
+    unsigned frames;
+    unsigned mean_luma;
+    int      codes_seen;
+    unsigned decode_failures;
+    unsigned receive_failures;
+    unsigned timeouts;
+    int      last_decode_error;
+    int      camera; /* 0 outer, 1 inner */
+} daemoon_3ds_qr_stats_t;
+
+const daemoon_3ds_qr_stats_t *daemoon_3ds_qr_last_stats(void);
 
 /* The console UI keeps a little state: which line is selected, what to draw. */
 typedef struct {

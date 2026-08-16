@@ -602,10 +602,88 @@ TEST_CASE(an_empty_save_is_never_uploaded)
     fixture_close(&f);
 }
 
+/* The console knows what a game is called and the server has no other way to find
+ * out. A page listing 0004000000055D00 beside AZLK_GIRLSMODE is a page nobody can
+ * read, and the name was missing for one reason: nothing sent it.
+ *
+ * Optional on the way in as well - a package written before this existed has no
+ * name, and that is a package to read rather than one to refuse. */
+TEST_CASE(a_package_carries_the_name_the_console_shows)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+    const fake_version_t *v;
+    daemoon_manifest_t m;
+    char json[DAEMOON_MANIFEST_MAX_BYTES];
+    size_t len = 0;
+
+    CHECK_EQ_INT(fixture_open(&f, "title-name"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    CHECK_EQ_INT(fixture_write_save_file(&f, t, "main.sav", "player data"), 0);
+
+    memset(&stats, 0, sizeof(stats));
+    CHECK_OK(daemoon_sync_title(&f.env, &f.actx, t, &stats));
+    CHECK_EQ_INT(stats.uploaded, 1);
+
+    v = fake_server_latest(&f.server, DAEMOON_PLATFORM_3DS, "0004000000055D00");
+    CHECK(v != NULL);
+
+    /* The name the backend gave the title is what the manifest carries. */
+    daemoon_manifest_init(&m);
+    m.platform = DAEMOON_PLATFORM_3DS;
+    m.save_type = DAEMOON_SAVE_SAVEDATA;
+    CHECK_OK(daemoon_strlcpy(m.title_id, sizeof(m.title_id), "0004000000055D00"));
+    CHECK_OK(daemoon_strlcpy(m.sha256, sizeof(m.sha256),
+                             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"));
+    CHECK_OK(daemoon_strlcpy(m.device_label, sizeof(m.device_label), "test console"));
+    CHECK_OK(daemoon_strlcpy(m.created_at, sizeof(m.created_at),
+                             "2026-01-01T00:00:00Z"));
+    CHECK_OK(daemoon_strlcpy(m.title_name, sizeof(m.title_name), "포켓몬스터 Y"));
+
+    CHECK_OK(daemoon_manifest_write(&m, json, sizeof(json), &len));
+    CHECK(strstr(json, "\"title_name\":\"포켓몬스터 Y\"") != NULL);
+
+    {
+        daemoon_manifest_t back;
+
+        CHECK_OK(daemoon_manifest_parse(json, len, &back));
+        CHECK_STR(back.title_name, "포켓몬스터 Y");
+    }
+
+    /* And a manifest from before the field existed still parses, with no name. */
+    {
+        static const char old[] =
+            "{\"format_version\":1,\"platform\":\"3ds\","
+            "\"title_id\":\"0004000000055D00\",\"save_type\":\"savedata\","
+            "\"version\":0,\"parent_version\":null,"
+            "\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\","
+            "\"size\":0,\"device_label\":\"3DS\","
+            "\"created_at\":\"1970-01-01T00:00:00Z\"}";
+        daemoon_manifest_t back;
+
+        CHECK_OK(daemoon_manifest_parse(old, strlen(old), &back));
+        CHECK_STR(back.title_name, "");
+    }
+
+    /* A name with no room is a name not sent, not a backup refused. */
+    {
+        daemoon_manifest_t big = m;
+        char json2[DAEMOON_MANIFEST_MAX_BYTES];
+
+        memset(big.title_name, 'A', sizeof(big.title_name) - 1);
+        big.title_name[sizeof(big.title_name) - 1] = '\0';
+        CHECK_OK(daemoon_manifest_write(&big, json2, sizeof(json2), &len));
+    }
+
+    fixture_close(&f);
+}
+
 void test_sync(void)
 {
     printf("sync\n");
     RUN(an_empty_save_is_never_uploaded);
+    RUN(a_package_carries_the_name_the_console_shows);
     RUN(decide_covers_every_case);
     RUN(decide_never_consults_a_clock);
     RUN(dirty_tracking);

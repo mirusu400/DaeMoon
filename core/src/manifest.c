@@ -138,6 +138,10 @@ daemoon_result_t daemoon_manifest_parse(const char *json, size_t len, daemoon_ma
     DAEMOON_TRY(daemoon_json_get_str(json, toks, ntok, 0, "sha256", m.sha256, sizeof(m.sha256)));
     DAEMOON_TRY(daemoon_json_get_str(json, toks, ntok, 0, "device_label", m.device_label,
                                      sizeof(m.device_label)));
+    /* Optional, and absent from every package written before it existed. A missing
+     * name is a package to read, not a package to refuse. */
+    (void)daemoon_json_get_str(json, toks, ntok, 0, "title_name", m.title_name,
+                               sizeof(m.title_name));
 
     DAEMOON_TRY(daemoon_json_get_uint(json, toks, ntok, 0, "version", &n));
     if (n > 0xffffffffull) {
@@ -215,6 +219,13 @@ daemoon_result_t daemoon_manifest_write(const daemoon_manifest_t *m, char *buf, 
 
     daemoon_strbuf_add(&sb, "\",\"created_at\":\"");
     daemoon_strbuf_add_json(&sb, m->created_at);
+
+    /* Written only when there is one, so a package from a backend that has no
+     * names is byte identical to what it always was. */
+    if (m->title_name[0] != '\0') {
+        daemoon_strbuf_add(&sb, "\",\"title_name\":\"");
+        daemoon_strbuf_add_json(&sb, m->title_name);
+    }
     daemoon_strbuf_add(&sb, "\"}");
 
     DAEMOON_TRY(daemoon_strbuf_result(&sb));

@@ -25,4 +25,8 @@ typedef struct {
 daemoon_result_t daemoon_3ds_icon_upload(const void *pixels, daemoon_3ds_icon_t *out);
 void daemoon_3ds_icon_free(daemoon_3ds_icon_t *icon);
 
+/* The live camera frame while a scan is running, or NULL. Declared here because
+ * this is the header that is allowed to know a GPU exists. */
+const C2D_Image *daemoon_3ds_qr_preview(void);
+
 #endif /* DAEMOON_3DS_ICONS_H */

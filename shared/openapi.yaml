@@ -186,6 +186,11 @@ paths:
         is repeated as a query parameter so the conflict check can run before the body
         is read.
 
+        The manifest may carry an optional `title_name` - what the console calls the
+        game. Nothing is keyed by it and a package without one is stored unchanged;
+        it exists so a server that has only ever seen title ids can show something a
+        person can read.
+
         `parent_version == latest` accepts and issues `latest + 1`.
         Anything else is `409 version_conflict`; **both versions are retained** and the
         409 body carries what the client needs for `ui->choose()`.

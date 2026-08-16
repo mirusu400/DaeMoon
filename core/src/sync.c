@@ -318,6 +318,10 @@ static daemoon_result_t pack_title_to(const daemoon_env_t *env, daemoon_archive_
     m.parent_version = parent_version;
     DAEMOON_TRY(daemoon_strlcpy(m.title_id, sizeof(m.title_id), title->id));
     DAEMOON_TRY(daemoon_strlcpy(m.device_label, sizeof(m.device_label), env->device_label));
+    /* The console knows what this game is called and the server has no other way to
+     * find out. Best effort: a name too long for the field is a name not sent, not
+     * a backup refused. */
+    (void)daemoon_strlcpy(m.title_name, sizeof(m.title_name), title->name);
     DAEMOON_TRY(fill_created_at(env, m.created_at, sizeof(m.created_at)));
 
     daemoon_strbuf_init(&sb, tmp, sizeof(tmp));

@@ -382,6 +382,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		Platform:      string(manifest.Platform),
 		TitleID:       manifest.TitleID,
 		SaveType:      string(manifest.SaveType),
+		TitleName:     manifest.TitleName,
 		ParentVersion: uint32(parent),
 		SHA256:        manifest.SHA256,
 		Size:          manifest.Size,

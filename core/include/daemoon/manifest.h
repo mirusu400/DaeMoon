@@ -49,6 +49,15 @@ typedef struct {
     char                sha256[DAEMOON_SHA256_HEX]; /* payload digest, see archive.h */
     unsigned long long  size;                       /* uncompressed payload bytes */
     char                device_label[DAEMOON_LABEL_MAX];
+    /* What the console calls this game, in whatever script it uses. Optional and
+     * informational: a title id is what everything is keyed by, and a name that
+     * disagreed with one would still name the same save.
+     *
+     * It is here because a server that only ever sees ids cannot show anything
+     * else, and a page listing 0004000000055D00 beside AZLK_GIRLSMODE is a page
+     * nobody can read. The console already knows the name; not sending it was the
+     * only reason it was missing. */
+    char                title_name[DAEMOON_NAME_MAX];
     char                created_at[DAEMOON_TIMESTAMP_MAX]; /* ISO 8601, informational only */
 } daemoon_manifest_t;
 

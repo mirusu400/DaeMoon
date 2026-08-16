@@ -100,6 +100,10 @@ type Manifest struct {
 	SHA256        string  `json:"sha256"`
 	Size          uint64  `json:"size"`
 	DeviceLabel   string  `json:"device_label"`
+	// TitleName is what the console calls the game. Optional and informational:
+	// everything is keyed by the title id, and a package written before consoles
+	// sent one has none.
+	TitleName string `json:"title_name,omitempty"`
 	// CreatedAt is informational and never used for ordering: the console RTC is
 	// user settable.
 	CreatedAt string `json:"created_at"`
@@ -146,6 +150,11 @@ func (m *Manifest) Validate() error {
 	}
 	if len(m.DeviceLabel) > 64 {
 		return fmt.Errorf("%w: device_label too long", ErrManifest)
+	}
+	// Bounded like every other field that reaches a database, but never required:
+	// a package with no name is a package to store, not one to refuse.
+	if len(m.TitleName) > 128 {
+		return fmt.Errorf("%w: title_name too long", ErrManifest)
 	}
 	// Versions are server issued and strictly increase.
 	if m.Version != 0 && m.Parent() >= m.Version {

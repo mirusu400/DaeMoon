@@ -24,7 +24,11 @@
     },
     "platform": {
       "type": "string",
-      "enum": ["3ds", "nx", "nds"]
+      "enum": [
+        "3ds",
+        "nx",
+        "nds"
+      ]
     },
     "title_id": {
       "type": "string",
@@ -33,7 +37,11 @@
     },
     "save_type": {
       "type": "string",
-      "enum": ["savedata", "extdata", "nds"]
+      "enum": [
+        "savedata",
+        "extdata",
+        "nds"
+      ]
     },
     "version": {
       "type": "integer",
@@ -41,7 +49,10 @@
       "description": "Server issued. Monotonically increasing per title. 0 means never uploaded."
     },
     "parent_version": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0,
       "default": null,
       "description": "The version this package was derived from. null for a first upload."
@@ -73,7 +84,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["path", "size", "sha256"],
+        "required": [
+          "path",
+          "size",
+          "sha256"
+        ],
         "properties": {
           "path": {
             "type": "string",
@@ -81,10 +96,21 @@
             "maxLength": 255,
             "pattern": "^(?!/)(?!.*\\.\\.)[^\\\\:*?\"<>|]+$"
           },
-          "size": { "type": "integer", "minimum": 0 },
-          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
         }
       }
+    },
+    "title_name": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "What the console calls the game, in whatever script it uses. Optional and informational: everything is keyed by title_id, and a package written before consoles sent one has none."
     }
   }
 }

@@ -1068,34 +1068,57 @@ static int pair_with_typed_code(void)
  * the only way out of a screen that is otherwise waiting on hardware. */
 static int scan_frame(void *user)
 {
-    unsigned *frames = (unsigned *)user;
+    const C2D_Image *preview;
+    const daemoon_3ds_qr_stats_t *st;
+    char line[128];
     u32 down;
 
+    (void)user;
     if (!aptMainLoop()) {
         return 0;
     }
     hidScanInput();
     down = hidKeysDown();
 
+    preview = daemoon_3ds_qr_preview();
+    st = daemoon_3ds_qr_last_stats();
+
     daemoon_gfx_frame_begin();
     daemoon_gfx_top();
-    daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
-    daemoon_gfx_text(12.0f, 6.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_PAIR_SCAN));
-    (void)daemoon_gfx_text_wrapped(14.0f, 90.0f, GFX_TOP_W - 28.0f, 0.45f, GFX_TEXT,
-                                   daemoon_str(DAEMOON_STR_PAIR_AIM));
-    daemoon_gfx_bottom();
-    {
-        /* The camera owns the top screen's frames and there is nothing to preview
-         * here, so the bottom one carries a sign of life. A still screen through a
-         * scan that is working is indistinguishable from one that has hung. */
-        float w = (float)((*frames)++ % 60u) / 60.0f * (GFX_BOTTOM_W - 40.0f);
-
-        daemoon_gfx_rect(20.0f, 120.0f, GFX_BOTTOM_W - 40.0f, 4.0f, GFX_PANEL);
-        daemoon_gfx_rect(20.0f, 120.0f, w, 4.0f, GFX_ACCENT);
+    if (preview != NULL && st->frames > 0) {
+        /* What the camera sees, filling the screen. Without this a scan cannot be
+         * aimed, and a scan that cannot be aimed does not work - which is exactly
+         * how the first version of this failed. */
+        C2D_DrawImageAt(*preview, 0.0f, 0.0f, 0.0f, NULL,
+                        GFX_TOP_W / (float)DAEMOON_3DS_CAM_W,
+                        GFX_SCREEN_H / (float)DAEMOON_3DS_CAM_H);
+    } else {
+        daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, GFX_SCREEN_H, GFX_PANEL);
     }
+    daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 22.0f, GFX_ACCENT_D);
+    daemoon_gfx_text(10.0f, 4.0f, 0.45f, GFX_TEXT, daemoon_str(DAEMOON_STR_PAIR_SCAN));
+
+    daemoon_gfx_bottom();
+    (void)daemoon_gfx_text_wrapped(10.0f, 14.0f, GFX_BOTTOM_W - 20.0f, 0.42f, GFX_TEXT,
+                                   daemoon_str(DAEMOON_STR_PAIR_AIM));
+    /* The three numbers that tell the failures apart, on screen rather than only in
+     * a file: no frames is a camera that never started, a mean near zero is a lens
+     * covered, and codes seen without a decode is a code too far or out of focus. */
+    (void)snprintf(line, sizeof(line), "frames %u   light %u   codes %d   %s",
+                   st->frames, st->mean_luma, st->codes_seen,
+                   st->camera ? "inner" : "outer");
+    daemoon_gfx_text(10.0f, GFX_SCREEN_H - 40.0f, 0.38f, GFX_TEXT_DIM, line);
+    daemoon_gfx_text(10.0f, GFX_SCREEN_H - 20.0f, 0.36f, GFX_TEXT_DIM,
+                     daemoon_str(DAEMOON_STR_PAIR_SWITCH));
     daemoon_gfx_frame_end();
 
-    return (down & KEY_B) ? 0 : 1;
+    if (down & KEY_B) {
+        return 0;
+    }
+    if (down & (KEY_L | KEY_R | KEY_X)) {
+        return 2;
+    }
+    return 1;
 }
 
 static int pair_by_scanning(void)
@@ -1103,10 +1126,8 @@ static int pair_by_scanning(void)
     char payload[512];
     daemoon_pair_payload_t parsed;
     daemoon_result_t r;
-    unsigned frames = 0;
-
     daemoon_3ds_trace("pair/scan", NULL);
-    r = daemoon_3ds_qr_scan(scan_frame, &frames, payload, sizeof(payload));
+    r = daemoon_3ds_qr_scan(scan_frame, NULL, payload, sizeof(payload));
     daemoon_3ds_trace("pair/scan-done", daemoon_result_code(r));
 
     if (r == DAEMOON_ERR_USER_CANCELLED) {

@@ -129,5 +129,6 @@
   "pair.scan": "QR 코드 스캔",
   "pair.aim": "웹 페이지의 코드에 카메라를 맞추세요.   B 취소",
   "pair.no_camera": "카메라를 시작하지 못했습니다.",
-  "pair.wrong_code": "DaeMoon 연결 코드가 아닙니다."
+  "pair.wrong_code": "DaeMoon 연결 코드가 아닙니다.",
+  "pair.switch": "L/R 또는 X 카메라 전환   B 취소"
 }

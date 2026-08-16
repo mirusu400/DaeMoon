@@ -214,15 +214,20 @@ func (s *Store) RevokeDevice(ctx context.Context, userID, deviceID string) error
 // ----------------------------------------------------------------- titles
 
 type TitleSummary struct {
-	TitleID       string `json:"title_id"`
-	Platform      string `json:"platform"`
-	SaveType      string `json:"save_type"`
+	TitleID  string `json:"title_id"`
+	Platform string `json:"platform"`
+	SaveType string `json:"save_type"`
+	// TitleName is what the console calls the game, when it said. Omitted from the
+	// wire when unknown: informational, never keyed by, and absent from every title
+	// synced before consoles started sending it.
+	TitleName     string `json:"title_name,omitempty"`
 	LatestVersion uint32 `json:"latest_version"`
 	UpdatedAt     string `json:"updated_at"`
 }
 
 func (s *Store) ListTitles(ctx context.Context, userID, platform string) ([]TitleSummary, error) {
-	query := `SELECT title_id, platform, save_type, latest_version, updated_at
+	query := `SELECT title_id, platform, save_type, title_name, latest_version,
+	                 updated_at
 	          FROM titles WHERE user_id = ?`
 	args := []any{userID}
 	if platform != "" {
@@ -240,10 +245,13 @@ func (s *Store) ListTitles(ctx context.Context, userID, platform string) ([]Titl
 	out := []TitleSummary{}
 	for rows.Next() {
 		var t TitleSummary
-		if err := rows.Scan(&t.TitleID, &t.Platform, &t.SaveType, &t.LatestVersion,
-			&t.UpdatedAt); err != nil {
+		var name sql.NullString
+
+		if err := rows.Scan(&t.TitleID, &t.Platform, &t.SaveType, &name,
+			&t.LatestVersion, &t.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan title: %w", err)
 		}
+		t.TitleName = name.String
 		out = append(out, t)
 	}
 	if err := rows.Err(); err != nil {
@@ -335,6 +343,9 @@ type PutRequest struct {
 	ParentVersion uint32
 	SHA256        string
 	Size          uint64
+	// TitleName is what the console calls the game. Optional: a package written
+	// before consoles sent one has none, and a backend with no names never will.
+	TitleName string
 
 	Body io.Reader
 }
@@ -368,9 +379,11 @@ func (s *Store) Put(ctx context.Context, req PutRequest) (VersionMeta, error) {
 			return out, ErrConflict
 		}
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO titles (user_id, title_id, platform, save_type, latest_version, updated_at)
-			 VALUES (?, ?, ?, ?, 0, ?)`,
-			req.UserID, req.TitleID, req.Platform, req.SaveType, s.timestamp())
+			`INSERT INTO titles (user_id, title_id, platform, save_type, title_name,
+			                     latest_version, updated_at)
+			 VALUES (?, ?, ?, ?, ?, 0, ?)`,
+			req.UserID, req.TitleID, req.Platform, req.SaveType,
+			nullIfEmpty(req.TitleName), s.timestamp())
 		if err != nil {
 			return out, fmt.Errorf("create title %s/%s: %w", req.Platform, req.TitleID, err)
 		}
@@ -385,6 +398,17 @@ func (s *Store) Put(ctx context.Context, req PutRequest) (VersionMeta, error) {
 
 	if req.ParentVersion != latest {
 		return out, ErrConflict
+	}
+
+	// A name that arrives later fills one in, and a package without one leaves
+	// whatever is there. A console that has learned a game's name should not have
+	// to be the first to sync it for the server to know.
+	if req.TitleName != "" {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE titles SET title_name = ? WHERE id = ?`,
+			req.TitleName, titleRowID); err != nil {
+			return out, fmt.Errorf("record title name: %w", err)
+		}
 	}
 
 	blobID, err := s.insertBlob(ctx, tx, req)

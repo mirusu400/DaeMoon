@@ -6,7 +6,14 @@
   <tr><th>Title</th><th>Platform</th><th>Kind</th><th class="num">Version</th><th>Updated</th></tr>
   {{range .Titles}}
   <tr>
-    <td><a class="mono" href="/titles/{{.Platform}}/{{.TitleID}}">{{.TitleID}}</a></td>
+    <td>
+      {{if .TitleName}}
+        <a href="/titles/{{.Platform}}/{{.TitleID}}">{{.TitleName}}</a>
+        <div class="muted mono" style="font-size:.75rem">{{.TitleID}}</div>
+      {{else}}
+        <a class="mono" href="/titles/{{.Platform}}/{{.TitleID}}">{{.TitleID}}</a>
+      {{end}}
+    </td>
     <td>{{.Platform}}</td>
     <td class="muted">{{.SaveType}}</td>
     <td class="num">{{.LatestVersion}}</td>

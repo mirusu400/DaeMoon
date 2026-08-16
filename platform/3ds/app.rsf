@@ -53,29 +53,20 @@ AccessControlInfo:
   # so narrowing this back down is a measurable experiment rather than a guess,
   # and it should be done. Every right here is one more thing an application that
   # writes to save data can get wrong.
+  # Reaching other titles' save archives, and the SD card for backups.
+  #
+  # This was briefly every filesystem right there is, while the SMDH read was
+  # being chased through the wrong half of the exheader. The actual cause was a
+  # read that started at a non-zero offset, so none of those rights were the fix
+  # and they are gone again.
+  #
+  # An application that rewrites save data holds the narrowest set that does the
+  # job. If a name or an icon stops loading with this set, the survey records the
+  # raw Result for every step, so what is missing is a fact rather than a guess.
   FileSystemAccess:
     - CategorySystemApplication
-    - CategoryHardwareCheck
-    - CategoryFileSystemTool
-    - Debug
-    - TwlCardBackup
-    - TwlNandData
-    - Boss
     - DirectSdmc
-    - Core
-    - CtrNandRo
-    - CtrNandRw
-    - CtrNandRoWrite
-    - CategorySystemSettings
-    - CardBoard
-    - ExportImportIvs
     - DirectSdmcWrite
-    - SwitchCleanup
-    - SaveDataMove
-    - Shop
-    - Shell
-    - CategoryHomeMenu
-    - SeedDB
 
   IdealProcessor          : 0
   AffinityMask            : 1
@@ -97,26 +88,6 @@ AccessControlInfo:
   SpecialMemoryArrange    : false
   HandleTableSize         : 512
   ResourceLimitCategory   : Application
-
-  # ARM9 access.
-  #
-  # Reading another title's content is not purely an ARM11 filesystem operation:
-  # the NCCH is decrypted by the ARM9, and without these the request comes back
-  # as fs/not_supported (0xE0C046F8) no matter how many FileSystemAccess bits are
-  # set. That is what sixteen titles' worth of product codes turned out to mean.
-  #
-  # As with the filesystem list above, this matches a reference that works and is
-  # wider than this project wants to end up. Narrowing both is one experiment,
-  # and the survey records the raw Result that makes it measurable.
-  IoAccessControl:
-    - FsMountNand
-    - FsMountNandRoWrite
-    - FsMountTwln
-    - FsMountWnand
-    - FsMountCardSpi
-    - UseSdif3
-    - CreateSeed
-    - UseCardSpi
 
   # The conventional homebrew syscall set. It is not tuned: trimming it would take
   # measuring what libctru actually issues, and a missing syscall is a crash on

@@ -5,6 +5,31 @@
 This file exists so the decision has somewhere to land, and so it is obvious it has
 not been made yet.
 
+## What one Korean console actually showed
+
+From `sdmc:/DaeMoon/survey.txt`, sixteen titles:
+
+| | |
+|---|---|
+| names read from the SMDH | 16 of 16 |
+| carrying only a Korean name | **13** |
+| carrying an English name | 3 |
+| icons loaded | 16 of 16 |
+| font loaded | none - the built in one |
+
+So this is not a rare case to plan for later. On a Korean console, most of the
+library is Korean-only, and the built in font cannot draw any of it.
+`C2D_FontLoadSystem` was asked for the Korean region font and then for the
+console's own region font, and both came back empty on a console whose HOME menu
+displays those names perfectly well.
+
+The icons are what keeps the application usable in the meantime: a person
+recognises a game from its icon in under a second, and thirteen of sixteen rows
+currently say `CTR-P-EKJA` next to a picture that says Pokemon.
+
+That is the state, and it is worse than the section below assumed: the workaround
+fails on the majority of a real library rather than at the edges.
+
 ## The question
 
 Can DaeMoon render Korean, Japanese and both Chinese scripts on a 3DS without

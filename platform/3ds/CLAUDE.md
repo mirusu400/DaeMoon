@@ -89,8 +89,16 @@ the app's own Survey action):
   not been needed.
 
   The permissions that were added while chasing this - the full FileSystemAccess
-  list and IoAccessControl - were never the fix. **Narrowing them back down is now
-  the first thing to do**, and the survey makes it measurable.
+  list and IoAccessControl - were never the fix, and have been taken back out. The
+  set is the original three again. If a name or an icon stops loading, the survey
+  records the raw Result for every step, so what is missing will be a fact.
+
+- **Names are read; most of them cannot be drawn.** Thirteen of sixteen titles on
+  the surveyed console carry only a Korean name, and `C2D_FontLoadSystem` returned
+  nothing for the Korean region or the console's own region. The list shows their
+  product code beside a correct icon. See `docs/fonts.md`: this is the Phase 3
+  font question, and it turns out to affect most of a real library rather than the
+  edges of one.
 - **Secure values are rare.** One title out of sixteen had one. Two Pokemon titles
   sat next to each other in the list and only one of them did. That is the first
   real evidence on the question Phase 7 depends on, and it says the answer is per

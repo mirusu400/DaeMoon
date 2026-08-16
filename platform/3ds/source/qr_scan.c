@@ -82,19 +82,22 @@ static unsigned frame_to_luma(const u16 *src, u8 *dst, size_t pixels)
     return (unsigned)(total / (unsigned long long)pixels);
 }
 
-/* Linear frame to tiled texture, on the GPU. Doing this with the CPU would be a
- * hundred thousand pixel swizzles per frame on a processor that has quirc to run. */
+/* Frame to texture, on the CPU.
+ *
+ * GX_DisplayTransfer would do this on the GPU and is what most homebrew uses. It
+ * drew noise here, and the reason it was not worth chasing is that three guesses -
+ * the buffer dimensions, the orientation, the subtexture - all fail the same way,
+ * and the only way to look at the result was to photograph a console. The tiling
+ * this uses instead has a desktop test that checks specific pixels against a table
+ * written out by hand.
+ *
+ * Ninety six thousand pixels a frame, which is far less than quirc costs on the
+ * same frame. */
 static void frame_to_texture(void)
 {
-    GSPGPU_FlushDataCache(g_frame, CAM_BYTES);
-    GX_DisplayTransfer((u32 *)g_frame, GX_BUFFER_DIM(CAM_W, CAM_H),
-                       (u32 *)g_preview.data, GX_BUFFER_DIM(TEX_W, TEX_H),
-                       GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(1) |
-                           GX_TRANSFER_RAW_COPY(0) |
-                           GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB565) |
-                           GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB565) |
-                           GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
-    gspWaitForPPF();
+    daemoon_3ds_cam_to_tiled(g_frame, CAM_W, CAM_H, (u16 *)g_preview.data,
+                             TEX_W, TEX_H);
+    C3D_TexFlush(&g_preview);
 }
 
 static int preview_open(void)
@@ -105,15 +108,14 @@ static int preview_open(void)
     C3D_TexSetFilter(&g_preview, GPU_LINEAR, GPU_LINEAR);
     memset(g_preview.data, 0, g_preview.size);
 
-    /* The camera frame lands rotated: what the sensor calls a row is a column on
-     * screen. The subtexture is what turns it back, so the person sees what the
-     * camera sees rather than a picture on its side. */
-    g_preview_sub.width = CAM_H;
-    g_preview_sub.height = CAM_W;
+    /* The rotation is handled while tiling, so what is in the texture is already
+     * the right way up: a 400x240 image at the origin of a 512x256 texture. */
+    g_preview_sub.width = CAM_W;
+    g_preview_sub.height = CAM_H;
     g_preview_sub.left = 0.0f;
     g_preview_sub.top = 1.0f;
-    g_preview_sub.right = (float)CAM_H / (float)TEX_W;
-    g_preview_sub.bottom = 1.0f - (float)CAM_W / (float)TEX_H;
+    g_preview_sub.right = (float)CAM_W / (float)TEX_W;
+    g_preview_sub.bottom = 1.0f - (float)CAM_H / (float)TEX_H;
 
     g_preview_image.tex = &g_preview;
     g_preview_image.subtex = &g_preview_sub;

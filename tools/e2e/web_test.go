@@ -228,6 +228,69 @@ func TestTheLastAdministratorStays(t *testing.T) {
 	}
 }
 
+// Pairing a console twice leaves two live tokens and two rows a person cannot tell
+// apart. Nobody but the console can connect them: the server sees two pairings, and
+// the only thing that would tie them together is a hardware id, which this project
+// will not send. So the console spends the old credential on itself.
+//
+// Checked here rather than only on a console because it is the part that can be:
+// what the 3DS does is call the same endpoint with the same two values.
+func TestPairingAgainRetiresTheOldToken(t *testing.T) {
+	e := start(t)
+	p := newPanel(t, e)
+
+	if status, _ := p.post("/setup", url.Values{
+		"username": {"mirusu"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("setup: %d", status)
+	}
+
+	newCode := func() string {
+		_, body := p.post("/pair", url.Values{"platform": {"3ds"}})
+		m := codeRe.FindStringSubmatch(body)
+		if m == nil {
+			t.Fatalf("no pairing code:\n%s", body)
+		}
+		return m[1]
+	}
+
+	c := e.console("console", "3DS")
+	c.pair(newCode())
+	first, firstID := c.token, c.deviceID
+
+	c.pair(newCode())
+	second := c.token
+	if second == first {
+		t.Fatal("the second pairing reused the first token")
+	}
+
+	// What the console does next: retire the old one, authenticated as itself.
+	e.revoke(first, firstID)
+
+	// The old token is dead and the new one still works, which is the property that
+	// matters - retiring the wrong one would lock the console out.
+	c.token = first
+	out, _ := c.run("", "list")
+	if !strings.Contains(out, "device_revoked") {
+		t.Fatalf("the retired token still works:\n%s", out)
+	}
+	c.token = second
+	out, err := c.run("", "list")
+	if err != nil || strings.Contains(out, "device_revoked") {
+		t.Fatalf("the current token stopped working: %v\n%s", err, out)
+	}
+
+	// And the panel shows the history rather than two live consoles: two rows, one
+	// of them marked.
+	_, body := p.get("/devices")
+	if n := strings.Count(body, `pill revoked`); n != 1 {
+		t.Fatalf("expected exactly one revoked console, found %d:\n%s", n, body)
+	}
+	if n := strings.Count(body, `class="danger">Revoke`); n != 1 {
+		t.Fatalf("expected exactly one console still live, found %d:\n%s", n, body)
+	}
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

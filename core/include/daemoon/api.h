@@ -76,6 +76,21 @@ daemoon_result_t daemoon_api_pair(const daemoon_env_t *env, const char *grant, c
                                   char *out_token, size_t token_len,
                                   char *out_device_id, size_t device_id_len);
 
+/* DELETE /v1/devices/{id}, authenticated as the device being revoked.
+ *
+ * A console calls this on itself when it pairs again: pairing mints a new token
+ * and the old one stays valid otherwise, so a console paired three times would be
+ * three live credentials and three rows on a web page nobody can tell apart. The
+ * console is the only party that knows the old token is its own - the server
+ * cannot be told, because the only thing that would identify a console across
+ * pairings is a hardware id, and those are not secret and follow a person across
+ * services.
+ *
+ * not_found for a device already gone, which is a success for the caller's
+ * purposes. */
+daemoon_result_t daemoon_api_revoke_device(const daemoon_env_t *env, const char *token,
+                                           const char *device_id);
+
 /* What a pairing QR code holds, once it has been read off a camera.
  *
  * `DAEMOON|1|<server>|<code>` - a tag, a format version, the server to talk to,

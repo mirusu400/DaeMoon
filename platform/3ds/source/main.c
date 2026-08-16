@@ -1034,7 +1034,25 @@ static int finish_pairing(const char *grant, const char *code)
         return 0;
     }
 
+    /* Retire the credential this console was holding, using that credential.
+     *
+     * Pairing mints a new token and leaves the old one working, so pairing twice
+     * leaves two live tokens and two rows on a web page that name the same
+     * console. Nobody else can connect them: the server sees two pairings, and the
+     * only thing that would tie them together is a hardware id, which this project
+     * will not send. The console knows, so the console does it.
+     *
+     * Best effort. A failure here is an old token left alive, which the person can
+     * revoke from the panel - losing the new one instead would be worse. */
+    if (g_config.token[0] != '\0' && g_config.device_id[0] != '\0') {
+        daemoon_result_t rr = daemoon_api_revoke_device(&g_env, g_config.token,
+                                                        g_config.device_id);
+
+        daemoon_3ds_trace("pair/retired-old", daemoon_result_code(rr));
+    }
+
     (void)daemoon_strlcpy(g_config.token, sizeof(g_config.token), token);
+    (void)daemoon_strlcpy(g_config.device_id, sizeof(g_config.device_id), device_id);
     g_env.token = g_config.token;
 
     r = daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
@@ -1613,7 +1631,13 @@ static void run_autopair(void)
             daemoon_strbuf_add(&sb, daemoon_result_code(r));
 
             if (r == DAEMOON_OK) {
+                if (g_config.token[0] != '\0' && g_config.device_id[0] != '\0') {
+                    (void)daemoon_api_revoke_device(&g_env, g_config.token,
+                                                    g_config.device_id);
+                }
                 (void)daemoon_strlcpy(g_config.token, sizeof(g_config.token), token);
+                (void)daemoon_strlcpy(g_config.device_id, sizeof(g_config.device_id),
+                                      device_id);
                 g_env.token = g_config.token;
                 r = daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
                 daemoon_strbuf_add(&sb, " save=");

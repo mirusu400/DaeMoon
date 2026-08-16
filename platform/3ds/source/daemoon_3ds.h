@@ -99,6 +99,14 @@ typedef struct {
     char token[DAEMOON_TOKEN_MAX];
     char device_label[DAEMOON_LABEL_MAX];
     char ca_bundle[DAEMOON_PATH_MAX];
+    /* The id the server gave this console's current token.
+     *
+     * Kept so that pairing again can retire the token before it. Pairing mints a
+     * new one and leaves the old one working, so a console paired three times is
+     * three live credentials and three rows a person cannot tell apart - and the
+     * console is the only party that could know they are the same console, because
+     * the alternative is a hardware id and those follow somebody across services. */
+    char device_id[DAEMOON_DEVICE_ID_MAX];
     /* A language code, or empty for "whatever the console is set to".
      *
      * Empty is the default and is not the same as "en": a console that is later
@@ -360,6 +368,17 @@ typedef struct {
 } daemoon_3ds_qr_stats_t;
 
 const daemoon_3ds_qr_stats_t *daemoon_3ds_qr_last_stats(void);
+
+/* A camera frame, rotated and tiled into something the GPU can sample.
+ *
+ * Kept out of the scanner and free of citro2d so the swizzle and the rotation can
+ * be checked on a desktop. A wrong swizzle does not fail - it draws noise, and
+ * noise on a console is a photograph and a guess. */
+size_t daemoon_3ds_tile_index(unsigned x, unsigned y, unsigned tex_w);
+size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_h);
+void   daemoon_3ds_cam_to_tiled(const unsigned short *frame, unsigned cam_w,
+                                unsigned cam_h, unsigned short *tex, unsigned tex_w,
+                                unsigned tex_h);
 
 /* The console UI keeps a little state: which line is selected, what to draw. */
 typedef struct {

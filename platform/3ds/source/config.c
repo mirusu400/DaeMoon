@@ -93,6 +93,8 @@ daemoon_result_t daemoon_3ds_config_load(const char *path, daemoon_3ds_config_t 
                 (void)daemoon_strlcpy(cfg->device_label, sizeof(cfg->device_label),
                                       value);
             }
+        } else if (strcmp(key, "device") == 0) {
+            (void)daemoon_strlcpy(cfg->device_id, sizeof(cfg->device_id), value);
         } else if (strcmp(key, "language") == 0) {
             daemoon_lang_t parsed;
 
@@ -139,6 +141,9 @@ daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_con
     }
     ok = fprintf(fp, "server = %s\ntoken = %s\nlabel = %s\n", cfg->server_url,
                  cfg->token, cfg->device_label) > 0;
+    if (ok && cfg->device_id[0] != '\0') {
+        ok = fprintf(fp, "device = %s\n", cfg->device_id) > 0;
+    }
     if (ok && cfg->language[0] != '\0') {
         /* Absent rather than empty when unset, so the file says "follow the
          * console" by not mentioning it. */

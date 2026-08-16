@@ -1902,6 +1902,81 @@ TEST_CASE(a_saved_config_is_read_back_exactly)
     (void)daemoon_posix_rmtree(root);
 }
 
+/* ---------------------------------------------------------- camera preview */
+
+/* The camera frame, rotated and tiled for the GPU.
+ *
+ * The first attempt used GX_DisplayTransfer and drew noise, and there was no way
+ * to tell which of three guesses was wrong - buffer dimensions, orientation, or
+ * subtexture - because looking at the result meant photographing a console. Here
+ * it can be wrong for the price of a line of output.
+ *
+ * The tiling is checked against the same hand written Morton table the nds icons
+ * use, and the rotation against a frame whose corners are all different.
+ */
+TEST_CASE(a_camera_frame_is_rotated_and_tiled)
+{
+    enum { CW = 16, CH = 8, TW = 16, TH = 16 };
+    static unsigned short frame[CW * CH];
+    static unsigned short tex[TW * TH];
+    unsigned x;
+    unsigned y;
+
+    /* Each pixel encodes where it came from, so a mapping that is off by a row, a
+     * column, or a flip is a different value rather than a similar picture. */
+    for (y = 0; y < CH; ++y) {
+        for (x = 0; x < CW; ++x) {
+            frame[daemoon_3ds_cam_index(x, y, CH)] =
+                (unsigned short)(0x1000u + y * 0x40u + x);
+        }
+    }
+
+    daemoon_3ds_cam_to_tiled(frame, CW, CH, tex, TW, TH);
+
+    for (y = 0; y < CH; ++y) {
+        for (x = 0; x < CW; ++x) {
+            unsigned short want = (unsigned short)(0x1000u + y * 0x40u + x);
+            size_t at = ((size_t)(y / 8) * (TW / 8) + (x / 8)) * 64u +
+                        k_morton8[y % 8][x % 8];
+
+            if (tex[at] != want) {
+                printf("  (%u,%u): tex[%u] = %04X, want %04X\n", x, y,
+                       (unsigned)at, tex[at], want);
+            }
+            CHECK_EQ_INT((int)tex[at], (int)want);
+        }
+    }
+
+    /* And everything outside the frame is cleared, so a smaller frame in a larger
+     * texture does not leave the previous one showing around the edges. */
+    {
+        int stale = 0;
+        size_t i;
+
+        for (i = 0; i < (size_t)TW * TH; ++i) {
+            if (tex[i] != 0 && (tex[i] < 0x1000u || tex[i] > 0x1000u + 8 * 0x40u)) {
+                stale = 1;
+            }
+        }
+        CHECK_EQ_INT(stale, 0);
+    }
+}
+
+/* The camera keeps a frame in columns from the bottom left, the same layout the
+ * framebuffer uses. Getting that backwards is what turns a preview into diagonal
+ * stripes, which is exactly what a console showed. */
+TEST_CASE(the_camera_layout_is_columns_from_the_bottom)
+{
+    /* Screen top left is the last pixel of the first column. */
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(0, 0, 240), 239);
+    /* Screen bottom left is the first. */
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(0, 239, 240), 0);
+    /* One step right is a whole column further on. */
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(1, 239, 240), 240);
+    /* And the last pixel of the frame is the last index. */
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(399, 0, 240), 399 * 240 + 239);
+}
+
 void test_3ds_backend(void)
 {
     printf("3ds backend (stubbed libctru)\n");
@@ -1924,6 +1999,10 @@ void test_3ds_backend(void)
     RUN(the_backup_list_reads_each_package_and_marks_the_current_one);
     RUN(a_damaged_package_is_a_row_rather_than_a_crash);
     RUN(more_backups_than_the_screen_holds_are_not_written_past);
+
+    printf("camera preview\n");
+    RUN(a_camera_frame_is_rotated_and_tiled);
+    RUN(the_camera_layout_is_columns_from_the_bottom);
 
     printf("name and icon cache\n");
     RUN(a_cached_name_does_not_read_the_smdh_again);

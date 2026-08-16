@@ -648,3 +648,64 @@ daemoon_result_t daemoon_pair_parse(const char *text, size_t len,
 
     return DAEMOON_OK;
 }
+
+/* ------------------------------------------------------------ revocation */
+
+daemoon_result_t daemoon_api_revoke_device(const daemoon_env_t *env, const char *token,
+                                           const char *device_id)
+{
+    char url[API_URL_MAX];
+    char errbuf[API_ERRBUF_MAX];
+    char okbuf[16];
+    daemoon_strbuf_t sb;
+    daemoon_http_req_t req;
+    daemoon_http_resp_t resp;
+    api_headers_t headers;
+    api_sink_t sink;
+    daemoon_env_t as_old;
+
+    if (env == NULL || token == NULL || device_id == NULL ||
+        token[0] == '\0' || device_id[0] == '\0') {
+        return DAEMOON_ERR_INVALID_REQUEST;
+    }
+
+    DAEMOON_TRY(build_base(env, &sb, url, sizeof(url)));
+    daemoon_strbuf_add(&sb, "/v1/devices/");
+    daemoon_strbuf_add_urlenc(&sb, device_id);
+    DAEMOON_TRY(daemoon_strbuf_result(&sb));
+
+    /* Authenticated as the token being retired rather than as whatever the caller
+     * is holding now. The whole point is to spend the old credential on itself,
+     * and by the time this is called the environment already carries the new one. */
+    as_old = *env;
+    as_old.token = token;
+    headers_init(&headers, &as_old, NULL);
+
+    memset(&req, 0, sizeof(req));
+    req.method = "DELETE";
+    req.url = url;
+    req.headers = headers.items;
+    req.nheaders = headers.count;
+    req.body_len = -1;
+    req.timeout_ms = DAEMOON_DEFAULT_TIMEOUT_MS;
+
+    memset(&resp, 0, sizeof(resp));
+    memset(&sink, 0, sizeof(sink));
+    sink.resp = &resp;
+    membuf_init(&sink.ok_body, okbuf, sizeof(okbuf));
+    membuf_init(&sink.err_body, errbuf, sizeof(errbuf));
+    resp.body_write = api_body_write;
+    resp.body_ctx = &sink;
+
+    DAEMOON_TRY(api_do(&as_old, &req, &sink, &resp));
+
+    if (resp.status == 404) {
+        /* Already gone. The caller wanted it gone. */
+        return DAEMOON_OK;
+    }
+    if (resp.status < 200 || resp.status >= 300) {
+        return daemoon_api_parse_error(sink.err_body.buf, sink.err_body.len,
+                                       resp.status, NULL);
+    }
+    return DAEMOON_OK;
+}

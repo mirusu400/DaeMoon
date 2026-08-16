@@ -1034,23 +1034,14 @@ static int finish_pairing(const char *grant, const char *code)
         return 0;
     }
 
-    /* Retire the credential this console was holding, using that credential.
+    /* The token this console was already holding went out with the request, as an
+     * ordinary bearer header, and that is deliberate: it is how the server knows
+     * this is the same console pairing again rather than a new one. It rotates the
+     * existing device in place, so one console stays one row and the old credential
+     * stops working the moment the new one is issued.
      *
-     * Pairing mints a new token and leaves the old one working, so pairing twice
-     * leaves two live tokens and two rows on a web page that name the same
-     * console. Nobody else can connect them: the server sees two pairings, and the
-     * only thing that would tie them together is a hardware id, which this project
-     * will not send. The console knows, so the console does it.
-     *
-     * Best effort. A failure here is an old token left alive, which the person can
-     * revoke from the panel - losing the new one instead would be worse. */
-    if (g_config.token[0] != '\0' && g_config.device_id[0] != '\0') {
-        daemoon_result_t rr = daemoon_api_revoke_device(&g_env, g_config.token,
-                                                        g_config.device_id);
-
-        daemoon_3ds_trace("pair/retired-old", daemoon_result_code(rr));
-    }
-
+     * A console with no token, or one the server does not know, becomes a new
+     * device - which is right for a fresh SD card. */
     (void)daemoon_strlcpy(g_config.token, sizeof(g_config.token), token);
     (void)daemoon_strlcpy(g_config.device_id, sizeof(g_config.device_id), device_id);
     g_env.token = g_config.token;
@@ -1643,10 +1634,6 @@ static void run_autopair(void)
             daemoon_strbuf_add(&sb, daemoon_result_code(r));
 
             if (r == DAEMOON_OK) {
-                if (g_config.token[0] != '\0' && g_config.device_id[0] != '\0') {
-                    (void)daemoon_api_revoke_device(&g_env, g_config.token,
-                                                    g_config.device_id);
-                }
                 (void)daemoon_strlcpy(g_config.token, sizeof(g_config.token), token);
                 (void)daemoon_strlcpy(g_config.device_id, sizeof(g_config.device_id),
                                       device_id);

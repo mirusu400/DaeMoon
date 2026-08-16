@@ -228,14 +228,19 @@ func TestTheLastAdministratorStays(t *testing.T) {
 	}
 }
 
-// Pairing a console twice leaves two live tokens and two rows a person cannot tell
-// apart. Nobody but the console can connect them: the server sees two pairings, and
-// the only thing that would tie them together is a hardware id, which this project
-// will not send. So the console spends the old credential on itself.
+// Pairing a console twice must leave one console.
 //
-// Checked here rather than only on a console because it is the part that can be:
-// what the 3DS does is call the same endpoint with the same two values.
-func TestPairingAgainRetiresTheOldToken(t *testing.T) {
+// Every pairing used to mint a device, so a console paired three times was three
+// live credentials and three rows nobody could tell apart - which is exactly what a
+// console reported. Nothing but the console can connect them: the server sees three
+// pairings, and the only thing that would tie them to one machine is a hardware id,
+// which is not secret, follows a person across services, and the rules refuse.
+//
+// So the console proves it. It presents the token it holds, and the server rotates
+// that device rather than creating another. The pairing code says a person
+// approved; the bearer says which console is asking; both are required, or anybody
+// with a code could take over an existing device.
+func TestPairingAgainRotatesTheSameDevice(t *testing.T) {
 	e := start(t)
 	p := newPanel(t, e)
 
@@ -259,35 +264,63 @@ func TestPairingAgainRetiresTheOldToken(t *testing.T) {
 	first, firstID := c.token, c.deviceID
 
 	c.pair(newCode())
-	second := c.token
-	if second == first {
-		t.Fatal("the second pairing reused the first token")
+	if c.deviceID != firstID {
+		t.Fatalf("a second pairing made a new device: %s then %s", firstID, c.deviceID)
+	}
+	if c.token == first {
+		t.Fatal("the token was not rotated")
 	}
 
-	// What the console does next: retire the old one, authenticated as itself.
-	e.revoke(first, firstID)
-
-	// The old token is dead and the new one still works, which is the property that
-	// matters - retiring the wrong one would lock the console out.
+	// The old one is dead the moment the new one is issued - not later, and not
+	// only if something remembers to clean up.
 	c.token = first
-	out, _ := c.run("", "list")
-	if !strings.Contains(out, "device_revoked") {
-		t.Fatalf("the retired token still works:\n%s", out)
+	if out, _ := c.run("", "list"); !strings.Contains(out, "unauthorized") &&
+		!strings.Contains(out, "device_revoked") {
+		t.Fatalf("the old token still works:\n%s", out)
 	}
-	c.token = second
-	out, err := c.run("", "list")
-	if err != nil || strings.Contains(out, "device_revoked") {
-		t.Fatalf("the current token stopped working: %v\n%s", err, out)
+	c.token = c.deviceID // deliberately wrong, to prove the check is not vacuous
+	if out, _ := c.run("", "list"); !strings.Contains(out, "unauthorized") {
+		t.Fatalf("a nonsense token was accepted:\n%s", out)
 	}
 
-	// And the panel shows the history rather than two live consoles: two rows, one
-	// of them marked.
+	// One console, one row, still live.
 	_, body := p.get("/devices")
-	if n := strings.Count(body, `pill revoked`); n != 1 {
-		t.Fatalf("expected exactly one revoked console, found %d:\n%s", n, body)
-	}
 	if n := strings.Count(body, `class="danger">Revoke`); n != 1 {
-		t.Fatalf("expected exactly one console still live, found %d:\n%s", n, body)
+		t.Fatalf("expected one live console, found %d:\n%s", n, body)
+	}
+	if strings.Contains(body, "pill revoked") {
+		t.Fatalf("rotation left a revoked row behind:\n%s", body)
+	}
+}
+
+// A pairing code alone must not be enough to take over somebody's console. The
+// bearer is what says which console is asking, and a wrong one makes a new device
+// rather than seizing an existing one.
+func TestAStrangerWithACodeGetsTheirOwnDevice(t *testing.T) {
+	e := start(t)
+	p := newPanel(t, e)
+
+	if status, _ := p.post("/setup", url.Values{
+		"username": {"mirusu"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("setup: %d", status)
+	}
+	first := e.console("first", "living room 3DS")
+	_, body := p.post("/pair", url.Values{"platform": {"3ds"}})
+	first.pair(codeRe.FindStringSubmatch(body)[1])
+
+	other := e.console("other", "somebody else")
+	other.token = "not-a-real-token"
+	_, body = p.post("/pair", url.Values{"platform": {"3ds"}})
+	other.pair(codeRe.FindStringSubmatch(body)[1])
+
+	if other.deviceID == first.deviceID {
+		t.Fatal("an unrecognised token took over an existing device")
+	}
+	// And the first console is untouched.
+	if out, err := first.run("", "list"); err != nil ||
+		strings.Contains(out, "unauthorized") {
+		t.Fatalf("the first console lost its token: %v\n%s", err, out)
 	}
 }
 

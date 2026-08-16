@@ -56,6 +56,14 @@ paths:
         console keyboard: it is scanned by camera (3DS, `quirc`) or approved from a
         phone or PC (device code flow, the Switch path).
 
+        A console that already holds a token may present it as an ordinary bearer.
+        The server then **rotates that device's token in place** instead of creating
+        another: one console stays one row, and the previous token stops working
+        immediately. Both are required - the code says a person approved, the bearer
+        says which console is asking - so a code alone cannot take over somebody
+        else's device. An absent, unknown or revoked token makes a new device, which
+        is what a console with a fresh SD card should get.
+
         While the user has not approved yet the server answers `400 pairing_pending`
         with `detail.interval`, the minimum seconds before polling again.
       security: []

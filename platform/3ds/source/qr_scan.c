@@ -335,6 +335,12 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
 
         if (ready != NULL) {
             t0 = osGetTime();
+            /* The previous frame may still be in the GPU's hands, and this texture
+             * is what it is drawing from. Overwriting it mid draw is a picture with
+             * a band of the next frame in it, or none at all - which is the black
+             * flicker a console showed. citro2d's own frame start waits for the
+             * previous draw, but that happens inside the callback, after this. */
+            C3D_FrameSync();
             frame_to_texture(ready);
             g_stats.ms_tile = (unsigned)(osGetTime() - t0);
         }

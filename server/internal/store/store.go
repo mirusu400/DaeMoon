@@ -184,6 +184,30 @@ func (s *Store) DeviceByTokenHash(ctx context.Context, tokenHash string) (Device
 
 // RevokeDevice is idempotent: revoking twice is not an error, because a console
 // that lost its SD card may be revoked from two places at once.
+// RotateDeviceToken replaces a device's token in place.
+//
+// A console pairing again is the same console, and this keeps it as one row rather
+// than a new one beside the old. The previous token stops working the moment this
+// commits - which is the point: two live credentials for one console is a thing
+// nobody asked for and cannot see.
+//
+// The label comes along because it is the console's own name for itself and may
+// have changed since the last pairing.
+func (s *Store) RotateDeviceToken(ctx context.Context, deviceID, tokenHash,
+	label string) error {
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE devices SET token_hash = ?, label = ?, revoked_at = NULL
+		  WHERE id = ?`,
+		tokenHash, label, deviceID)
+	if err != nil {
+		return fmt.Errorf("rotate device token: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *Store) RevokeDevice(ctx context.Context, userID, deviceID string) error {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE devices SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL`,

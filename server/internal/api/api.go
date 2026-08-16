@@ -165,6 +165,38 @@ func (s *Server) pairDevice(w http.ResponseWriter, r *http.Request) {
 		apierr.Write(w, r, apierr.Wrap(apierr.InternalError, err))
 		return
 	}
+
+	// A console that is already paired and pairing again is the same console, and
+	// it can prove it: it presents the token it holds. Rotating that device's token
+	// keeps one row for one console instead of leaving a trail of live credentials
+	// that nobody can tell apart.
+	//
+	// It has to prove it. The pairing code says a person approved something; the
+	// bearer says which console is asking. Without both this would let anybody
+	// holding a code take over an existing device.
+	//
+	// Nothing else could connect the two. The server sees two pairings, and the
+	// only thing that would tie them to one console is a hardware id - which is not
+	// secret, follows a person across services, and the rules refuse it.
+	if old := auth.BearerOf(r); old != "" {
+		existing, lookupErr := s.store.DeviceByTokenHash(r.Context(), auth.HashToken(old))
+		if lookupErr == nil && !existing.Revoked && existing.UserID == pairing.UserID {
+			if err := s.store.RotateDeviceToken(r.Context(), existing.ID,
+				auth.HashToken(token), req.Label); err != nil {
+				apierr.Write(w, r, apierr.Wrap(apierr.InternalError, err))
+				return
+			}
+			writeJSON(w, r, http.StatusOK, map[string]string{
+				"device_id": existing.ID,
+				"token":     token,
+			})
+			return
+		}
+		// A token that is unknown, revoked, or somebody else's is not a claim to an
+		// existing device. It becomes a new one, which is what a console with a
+		// fresh SD card should get.
+	}
+
 	deviceID, err := auth.NewID()
 	if err != nil {
 		apierr.Write(w, r, apierr.Wrap(apierr.InternalError, err))

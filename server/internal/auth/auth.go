@@ -114,6 +114,20 @@ func MustDevice(ctx context.Context) store.Device {
 	return d
 }
 
+// BearerOf returns the bearer token on a request, or "".
+//
+// Separate from Middleware because the pairing endpoint is unauthenticated and yet
+// wants to look: a console that already holds a token is the same console pairing
+// again, and saying so is what keeps one row for one console. An absent or
+// unusable token is not an error there, it is a first pairing.
+func BearerOf(r *http.Request) string {
+	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(token)
+}
+
 // Middleware resolves the bearer token. A revoked device is told so explicitly:
 // "unauthorized" would send the user to pair again, and pairing again is exactly
 // the wrong response when the point was to cut a lost SD card off.

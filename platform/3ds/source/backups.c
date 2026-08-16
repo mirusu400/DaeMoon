@@ -157,7 +157,7 @@ static void draw_list(const daemoon_3ds_backup_row_t *rows, size_t count, size_t
     }
 
     daemoon_gfx_text(8.0f, GFX_SCREEN_H - 18.0f, 0.36f, GFX_TEXT_DIM,
-                     "A restore   X delete   B back");
+                     daemoon_str(DAEMOON_STR_HINT_BACKUPS));
 }
 
 /* Draws both halves of this screen, with no input, for the unattended test.

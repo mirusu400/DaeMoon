@@ -11,6 +11,7 @@
  */
 #include "daemoon_3ds.h"
 
+#include <daemoon/i18n.h>
 #include <daemoon/util/strbuf.h>
 #include <daemoon/util/utf8.h>
 
@@ -92,6 +93,14 @@ daemoon_result_t daemoon_3ds_config_load(const char *path, daemoon_3ds_config_t 
                 (void)daemoon_strlcpy(cfg->device_label, sizeof(cfg->device_label),
                                       value);
             }
+        } else if (strcmp(key, "language") == 0) {
+            daemoon_lang_t parsed;
+
+            /* Kept only if this build knows it. A typo here would otherwise be a
+             * console that silently ignores the setting and shows English. */
+            if (daemoon_i18n_language_from_code(value, &parsed) == DAEMOON_OK) {
+                (void)daemoon_strlcpy(cfg->language, sizeof(cfg->language), value);
+            }
         } else if (strcmp(key, "ca_bundle") == 0) {
             (void)daemoon_strlcpy(cfg->ca_bundle, sizeof(cfg->ca_bundle), value);
         }
@@ -130,6 +139,11 @@ daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_con
     }
     ok = fprintf(fp, "server = %s\ntoken = %s\nlabel = %s\n", cfg->server_url,
                  cfg->token, cfg->device_label) > 0;
+    if (ok && cfg->language[0] != '\0') {
+        /* Absent rather than empty when unset, so the file says "follow the
+         * console" by not mentioning it. */
+        ok = fprintf(fp, "language = %s\n", cfg->language) > 0;
+    }
     if (ok && cfg->ca_bundle[0] != '\0') {
         ok = fprintf(fp, "ca_bundle = %s\n", cfg->ca_bundle) > 0;
     }

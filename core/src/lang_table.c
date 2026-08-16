@@ -44,6 +44,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "The server rejected the request.", /* err.invalid_request */
         "Could not read or write the save.", /* err.io_error */
         "Could not reach the server.", /* err.network_error */
+        "No server is set. Open Settings and enter the address and the token.", /* err.no_server */
         "Not enough space on the SD card.", /* err.no_space */
         "Not found on the server.", /* err.not_found */
         "Not enough memory.", /* err.out_of_memory */
@@ -54,19 +55,52 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "The save is larger than the server allows.", /* err.save_too_large */
         "This share code has expired.", /* err.share_expired */
         "The server did not answer in time.", /* err.timeout */
+        "The list of titles could not be read.", /* err.title_list */
         "The server's certificate could not be verified.", /* err.tls_error */
         "This console is not signed in. Pair it again.", /* err.unauthorized */
         "This is not supported.", /* err.unsupported */
         "This console is not supported by the server.", /* err.unsupported_platform */
         "Cancelled.", /* err.user_cancelled */
         "The server has a newer save. Choose which version to keep.", /* err.version_conflict */
+        "No titles with save data were found.", /* grid.empty */
+        "nothing selected", /* grid.nothing_selected */
+        "{0} saves", /* grid.saves */
+        "A restore   X delete   B back", /* hint.backups */
+        "A select   B back   up/down move", /* hint.choose */
+        "A continue", /* hint.continue */
+        "A edit   B back   up/down move", /* hint.edit */
+        "A back up   Y restore   X survey   L/R library   START exit", /* hint.grid */
         "English", /* lang.name */
+        "3DS titles", /* lib.3ds */
+        "nds-bootstrap saves", /* lib.nds */
+        "Reading backups", /* loading.backups */
+        "Reading icons", /* loading.icons */
+        "Reading titles", /* loading.titles */
+        "Back up this save", /* menu.backup */
+        "Restore from a backup", /* menu.restore */
+        "Self test (destroys this save)", /* menu.selftest */
+        "Settings", /* menu.settings */
+        "Survey every title to the SD card", /* menu.survey */
+        "Sync with the server", /* menu.sync */
+        "Backup", /* op.backup */
+        "Restore", /* op.restore */
+        "Secure value", /* op.secure_value */
+        "Survey", /* op.survey */
+        "Sync", /* op.sync */
         "Downloading", /* progress.downloading */
         "Packing save data", /* progress.packing */
         "Unpacking save data", /* progress.unpacking */
         "Uploading", /* progress.uploading */
         "Verifying", /* progress.verifying */
+        "{0} failed. {1}", /* report.failed */
+        "{0}: done.", /* report.ok */
+        "This build has no save archive of its own. Build it with SAVEDATA_SIZE=128K.", /* selftest.no_archive */
+        "DaeMoon itself", /* selftest.self */
+        "This DESTROYS the save of {0}. Use a dummy title. A backup is made first, but do not rely on it.", /* selftest.warning */
         "This console's name", /* settings.label */
+        "Language", /* settings.language */
+        "From the console ({0})", /* settings.language_auto */
+        "This console has no font for {0}, so the text would be blank. The language was not changed.", /* settings.no_font */
         "The settings could not be written to the SD card.", /* settings.save_failed */
         "Saved. This console will use these from now on.", /* settings.saved */
         "Server address", /* settings.server */
@@ -78,7 +112,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Up to date", /* sync.action_none */
         "Upload", /* sync.action_upload */
         "Sync finished. {0} updated, {1} skipped.", /* sync.done */
+        "{0} uploaded, {1} downloaded, {2} unchanged, {3} conflicts.", /* sync.result */
         "{0} is already up to date.", /* sync.up_to_date */
+        "no secure value", /* title.no_secure_value */
+        "secure value {0}", /* title.secure_value */
         "Checksum does not match. The restore was aborted and nothing was changed.", /* verify.failed */
         "Running in applet mode with limited memory. Launch the app over a game to enable every feature.", /* warn.applet_mode */
         "Close the game before syncing. Syncing while a game is running corrupts the save.", /* warn.game_running */
@@ -120,6 +157,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "서버가 요청을 거부했습니다.", /* err.invalid_request */
         "세이브를 읽거나 쓰지 못했습니다.", /* err.io_error */
         "서버에 연결하지 못했습니다.", /* err.network_error */
+        "서버가 설정되지 않았습니다. 설정에서 주소와 토큰을 입력하세요.", /* err.no_server */
         "SD 카드 공간이 부족합니다.", /* err.no_space */
         "서버에서 찾을 수 없습니다.", /* err.not_found */
         "메모리가 부족합니다.", /* err.out_of_memory */
@@ -130,19 +168,52 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "세이브가 서버 허용 크기보다 큽니다.", /* err.save_too_large */
         "이 공유 코드는 만료되었습니다.", /* err.share_expired */
         "서버가 제때 응답하지 않았습니다.", /* err.timeout */
+        "타이틀 목록을 읽지 못했습니다.", /* err.title_list */
         "서버 인증서를 확인하지 못했습니다.", /* err.tls_error */
         "이 본체가 로그인되어 있지 않습니다. 다시 연결하세요.", /* err.unauthorized */
         "지원하지 않는 기능입니다.", /* err.unsupported */
         "서버가 이 본체를 지원하지 않습니다.", /* err.unsupported_platform */
         "취소되었습니다.", /* err.user_cancelled */
         "서버에 더 새로운 세이브가 있습니다. 사용할 버전을 선택하세요.", /* err.version_conflict */
+        "세이브 데이터가 있는 타이틀을 찾지 못했습니다.", /* grid.empty */
+        "선택된 항목 없음", /* grid.nothing_selected */
+        "세이브 {0}개", /* grid.saves */
+        "A 복원   X 삭제   B 뒤로", /* hint.backups */
+        "A 선택   B 뒤로   위/아래 이동", /* hint.choose */
+        "A 계속", /* hint.continue */
+        "A 편집   B 뒤로   위/아래 이동", /* hint.edit */
+        "A 백업   Y 복원   X 조사   L/R 라이브러리   START 종료", /* hint.grid */
         "한국어", /* lang.name */
+        "3DS 타이틀", /* lib.3ds */
+        "nds-bootstrap 세이브", /* lib.nds */
+        "백업 읽는 중", /* loading.backups */
+        "아이콘 읽는 중", /* loading.icons */
+        "타이틀 목록 읽는 중", /* loading.titles */
+        "이 세이브 백업", /* menu.backup */
+        "백업에서 복원", /* menu.restore */
+        "자체 검사 (이 세이브를 파괴함)", /* menu.selftest */
+        "설정", /* menu.settings */
+        "모든 타이틀 조사해 SD 카드에 기록", /* menu.survey */
+        "서버와 동기화", /* menu.sync */
+        "백업", /* op.backup */
+        "복원", /* op.restore */
+        "보안 값", /* op.secure_value */
+        "조사", /* op.survey */
+        "동기화", /* op.sync */
         "다운로드 중", /* progress.downloading */
         "세이브 데이터 압축 중", /* progress.packing */
         "세이브 데이터 푸는 중", /* progress.unpacking */
         "업로드 중", /* progress.uploading */
         "검증 중", /* progress.verifying */
+        "{0} 실패. {1}", /* report.failed */
+        "{0}: 완료했습니다.", /* report.ok */
+        "이 빌드에는 자체 세이브 아카이브가 없습니다. SAVEDATA_SIZE=128K로 빌드하세요.", /* selftest.no_archive */
+        "DaeMoon 자신", /* selftest.self */
+        "{0}의 세이브를 파괴합니다. 더미 타이틀에만 사용하세요. 백업을 먼저 만들지만 그것에 의존하지 마세요.", /* selftest.warning */
         "이 본체의 이름", /* settings.label */
+        "언어", /* settings.language */
+        "본체 설정 따름 ({0})", /* settings.language_auto */
+        "이 본체에는 {0} 글꼴이 없어 글자가 비어 보입니다. 언어를 바꾸지 않았습니다.", /* settings.no_font */
         "설정을 SD 카드에 쓰지 못했습니다.", /* settings.save_failed */
         "저장했습니다. 이제부터 이 설정을 사용합니다.", /* settings.saved */
         "서버 주소", /* settings.server */
@@ -154,7 +225,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "최신 상태", /* sync.action_none */
         "업로드", /* sync.action_upload */
         "동기화를 마쳤습니다. {0}개 갱신, {1}개 건너뜀.", /* sync.done */
+        "업로드 {0}개, 다운로드 {1}개, 변경 없음 {2}개, 충돌 {3}개.", /* sync.result */
         "{0}은(는) 이미 최신 상태입니다.", /* sync.up_to_date */
+        "보안 값 없음", /* title.no_secure_value */
+        "보안 값 {0}", /* title.secure_value */
         "체크섬이 일치하지 않습니다. 복원을 중단했으며 변경된 내용은 없습니다.", /* verify.failed */
         "메모리가 제한된 애플릿 모드입니다. 모든 기능을 쓰려면 게임 위에서 실행하세요.", /* warn.applet_mode */
         "동기화 전에 게임을 종료하세요. 게임 실행 중 동기화하면 세이브가 손상됩니다.", /* warn.game_running */
@@ -196,6 +270,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "サーバーがリクエストを拒否しました。", /* err.invalid_request */
         "セーブの読み書きができませんでした。", /* err.io_error */
         "サーバーに接続できませんでした。", /* err.network_error */
+        "サーバーが設定されていません。設定でアドレスとトークンを入力してください。", /* err.no_server */
         "SD カードの空き容量が足りません。", /* err.no_space */
         "サーバー上に見つかりません。", /* err.not_found */
         "メモリが足りません。", /* err.out_of_memory */
@@ -206,19 +281,52 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "セーブがサーバーの上限を超えています。", /* err.save_too_large */
         "この共有コードは期限切れです。", /* err.share_expired */
         "サーバーが時間内に応答しませんでした。", /* err.timeout */
+        "タイトル一覧を読み込めませんでした。", /* err.title_list */
         "サーバーの証明書を確認できませんでした。", /* err.tls_error */
         "この本体はサインインしていません。もう一度ペアリングしてください。", /* err.unauthorized */
         "対応していません。", /* err.unsupported */
         "この本体はサーバーに対応していません。", /* err.unsupported_platform */
         "キャンセルしました。", /* err.user_cancelled */
         "サーバーに新しいセーブがあります。使うバージョンを選んでください。", /* err.version_conflict */
+        "セーブデータのあるタイトルが見つかりませんでした。", /* grid.empty */
+        "未選択", /* grid.nothing_selected */
+        "セーブ {0} 件", /* grid.saves */
+        "A 復元   X 削除   B もどる", /* hint.backups */
+        "A 決定   B もどる   上下 移動", /* hint.choose */
+        "A つづける", /* hint.continue */
+        "A 編集   B もどる   上下 移動", /* hint.edit */
+        "A バックアップ   Y 復元   X 調査   L/R ライブラリ   START 終了", /* hint.grid */
         "日本語", /* lang.name */
+        "3DS タイトル", /* lib.3ds */
+        "nds-bootstrap のセーブ", /* lib.nds */
+        "バックアップを読み込み中", /* loading.backups */
+        "アイコンを読み込み中", /* loading.icons */
+        "タイトルを読み込み中", /* loading.titles */
+        "このセーブをバックアップ", /* menu.backup */
+        "バックアップから復元", /* menu.restore */
+        "セルフテスト（このセーブを破壊します）", /* menu.selftest */
+        "設定", /* menu.settings */
+        "すべてのタイトルを調べて SD カードに記録", /* menu.survey */
+        "サーバーと同期", /* menu.sync */
+        "バックアップ", /* op.backup */
+        "復元", /* op.restore */
+        "セキュア値", /* op.secure_value */
+        "調査", /* op.survey */
+        "同期", /* op.sync */
         "ダウンロード中", /* progress.downloading */
         "セーブデータを圧縮中", /* progress.packing */
         "セーブデータを展開中", /* progress.unpacking */
         "アップロード中", /* progress.uploading */
         "検証中", /* progress.verifying */
+        "{0} に失敗しました。{1}", /* report.failed */
+        "{0}: 完了しました。", /* report.ok */
+        "このビルドには自分のセーブ領域がありません。SAVEDATA_SIZE=128K でビルドしてください。", /* selftest.no_archive */
+        "DaeMoon 自身", /* selftest.self */
+        "{0} のセーブデータを破壊します。ダミータイトルで使ってください。先にバックアップを作りますが、それを当てにしないでください。", /* selftest.warning */
         "この本体の名前", /* settings.label */
+        "言語", /* settings.language */
+        "本体の設定に従う（{0}）", /* settings.language_auto */
+        "この本体には {0} のフォントがないため、文字が表示されません。言語は変更しませんでした。", /* settings.no_font */
         "設定を SD カードに書き込めませんでした。", /* settings.save_failed */
         "保存しました。これ以降はこの設定を使います。", /* settings.saved */
         "サーバーのアドレス", /* settings.server */
@@ -230,7 +338,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "最新", /* sync.action_none */
         "アップロード", /* sync.action_upload */
         "同期が終わりました。{0} 件更新、{1} 件スキップ。", /* sync.done */
+        "アップロード {0}、ダウンロード {1}、変更なし {2}、競合 {3}。", /* sync.result */
         "{0} はすでに最新です。", /* sync.up_to_date */
+        "セキュア値なし", /* title.no_secure_value */
+        "セキュア値 {0}", /* title.secure_value */
         "チェックサムが一致しません。復元を中止し、変更はありません。", /* verify.failed */
         "メモリが制限されたアプレットモードです。すべての機能を使うにはゲーム上から起動してください。", /* warn.applet_mode */
         "同期の前にゲームを終了してください。ゲーム実行中の同期はセーブを壊します。", /* warn.game_running */
@@ -272,6 +383,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "服务器拒绝了该请求。", /* err.invalid_request */
         "无法读取或写入存档。", /* err.io_error */
         "无法连接服务器。", /* err.network_error */
+        "未设置服务器。请在设置中填写地址和令牌。", /* err.no_server */
         "SD 卡空间不足。", /* err.no_space */
         "服务器上找不到。", /* err.not_found */
         "内存不足。", /* err.out_of_memory */
@@ -282,19 +394,52 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "存档超过服务器允许的大小。", /* err.save_too_large */
         "该分享码已过期。", /* err.share_expired */
         "服务器未在规定时间内响应。", /* err.timeout */
+        "无法读取游戏列表。", /* err.title_list */
         "无法验证服务器证书。", /* err.tls_error */
         "本机尚未登录，请重新配对。", /* err.unauthorized */
         "不支持该操作。", /* err.unsupported */
         "服务器不支持该主机。", /* err.unsupported_platform */
         "已取消。", /* err.user_cancelled */
         "服务器上有更新的存档，请选择要保留的版本。", /* err.version_conflict */
+        "没有找到带存档的游戏。", /* grid.empty */
+        "未选择", /* grid.nothing_selected */
+        "{0} 个存档", /* grid.saves */
+        "A 恢复   X 删除   B 返回", /* hint.backups */
+        "A 选择   B 返回   上下 移动", /* hint.choose */
+        "A 继续", /* hint.continue */
+        "A 编辑   B 返回   上下 移动", /* hint.edit */
+        "A 备份   Y 恢复   X 调查   L/R 库   START 退出", /* hint.grid */
         "简体中文", /* lang.name */
+        "3DS 游戏", /* lib.3ds */
+        "nds-bootstrap 存档", /* lib.nds */
+        "正在读取备份", /* loading.backups */
+        "正在读取图标", /* loading.icons */
+        "正在读取游戏列表", /* loading.titles */
+        "备份此存档", /* menu.backup */
+        "从备份恢复", /* menu.restore */
+        "自检（会销毁此存档）", /* menu.selftest */
+        "设置", /* menu.settings */
+        "调查所有游戏并写入 SD 卡", /* menu.survey */
+        "与服务器同步", /* menu.sync */
+        "备份", /* op.backup */
+        "恢复", /* op.restore */
+        "安全值", /* op.secure_value */
+        "调查", /* op.survey */
+        "同步", /* op.sync */
         "正在下载", /* progress.downloading */
         "正在打包存档", /* progress.packing */
         "正在解包存档", /* progress.unpacking */
         "正在上传", /* progress.uploading */
         "正在校验", /* progress.verifying */
+        "{0}失败。{1}", /* report.failed */
+        "{0}：已完成。", /* report.ok */
+        "此版本没有自己的存档区。请用 SAVEDATA_SIZE=128K 构建。", /* selftest.no_archive */
+        "DaeMoon 自身", /* selftest.self */
+        "这会销毁 {0} 的存档。请只用于测试用游戏。会先做备份，但不要依赖它。", /* selftest.warning */
         "这台主机的名称", /* settings.label */
+        "语言", /* settings.language */
+        "跟随主机设置（{0}）", /* settings.language_auto */
+        "这台主机没有{0}字体，文字会是空白。语言未更改。", /* settings.no_font */
         "无法把设置写入 SD 卡。", /* settings.save_failed */
         "已保存。此后将使用这些设置。", /* settings.saved */
         "服务器地址", /* settings.server */
@@ -306,7 +451,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "已是最新", /* sync.action_none */
         "上传", /* sync.action_upload */
         "同步完成。已更新 {0} 个，跳过 {1} 个。", /* sync.done */
+        "上传 {0}，下载 {1}，无变化 {2}，冲突 {3}。", /* sync.result */
         "{0} 已是最新。", /* sync.up_to_date */
+        "无安全值", /* title.no_secure_value */
+        "安全值 {0}", /* title.secure_value */
         "校验值不匹配。已中止恢复，未做任何更改。", /* verify.failed */
         "当前为内存受限的小程序模式。请在游戏之上启动本应用以使用全部功能。", /* warn.applet_mode */
         "同步前请先关闭游戏。游戏运行时同步会损坏存档。", /* warn.game_running */
@@ -348,6 +496,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "伺服器拒絕了該請求。", /* err.invalid_request */
         "無法讀取或寫入存檔。", /* err.io_error */
         "無法連線到伺服器。", /* err.network_error */
+        "未設定伺服器。請在設定中填寫位址與權杖。", /* err.no_server */
         "SD 卡空間不足。", /* err.no_space */
         "伺服器上找不到。", /* err.not_found */
         "記憶體不足。", /* err.out_of_memory */
@@ -358,19 +507,52 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "存檔超過伺服器允許的大小。", /* err.save_too_large */
         "此分享碼已過期。", /* err.share_expired */
         "伺服器未在時間內回應。", /* err.timeout */
+        "無法讀取遊戲清單。", /* err.title_list */
         "無法驗證伺服器憑證。", /* err.tls_error */
         "本機尚未登入，請重新配對。", /* err.unauthorized */
         "不支援此操作。", /* err.unsupported */
         "伺服器不支援這台主機。", /* err.unsupported_platform */
         "已取消。", /* err.user_cancelled */
         "伺服器上有較新的存檔，請選擇要保留的版本。", /* err.version_conflict */
+        "沒有找到帶存檔的遊戲。", /* grid.empty */
+        "未選擇", /* grid.nothing_selected */
+        "{0} 個存檔", /* grid.saves */
+        "A 還原   X 刪除   B 返回", /* hint.backups */
+        "A 選擇   B 返回   上下 移動", /* hint.choose */
+        "A 繼續", /* hint.continue */
+        "A 編輯   B 返回   上下 移動", /* hint.edit */
+        "A 備份   Y 還原   X 調查   L/R 庫   START 離開", /* hint.grid */
         "繁體中文", /* lang.name */
+        "3DS 遊戲", /* lib.3ds */
+        "nds-bootstrap 存檔", /* lib.nds */
+        "正在讀取備份", /* loading.backups */
+        "正在讀取圖示", /* loading.icons */
+        "正在讀取遊戲清單", /* loading.titles */
+        "備份此存檔", /* menu.backup */
+        "從備份還原", /* menu.restore */
+        "自我測試（會銷毀此存檔）", /* menu.selftest */
+        "設定", /* menu.settings */
+        "調查所有遊戲並寫入 SD 卡", /* menu.survey */
+        "與伺服器同步", /* menu.sync */
+        "備份", /* op.backup */
+        "還原", /* op.restore */
+        "安全值", /* op.secure_value */
+        "調查", /* op.survey */
+        "同步", /* op.sync */
         "正在下載", /* progress.downloading */
         "正在封裝存檔", /* progress.packing */
         "正在解開存檔", /* progress.unpacking */
         "正在上傳", /* progress.uploading */
         "正在驗證", /* progress.verifying */
+        "{0}失敗。{1}", /* report.failed */
+        "{0}：已完成。", /* report.ok */
+        "此版本沒有自己的存檔區。請用 SAVEDATA_SIZE=128K 建置。", /* selftest.no_archive */
+        "DaeMoon 自身", /* selftest.self */
+        "這會銷毀 {0} 的存檔。請只用於測試用遊戲。會先做備份，但不要依賴它。", /* selftest.warning */
         "這台主機的名稱", /* settings.label */
+        "語言", /* settings.language */
+        "跟隨主機設定（{0}）", /* settings.language_auto */
+        "這台主機沒有{0}字型，文字會是空白。語言未變更。", /* settings.no_font */
         "無法將設定寫入 SD 卡。", /* settings.save_failed */
         "已儲存。此後將使用這些設定。", /* settings.saved */
         "伺服器位址", /* settings.server */
@@ -382,7 +564,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "已是最新", /* sync.action_none */
         "上傳", /* sync.action_upload */
         "同步完成。已更新 {0} 個，略過 {1} 個。", /* sync.done */
+        "上傳 {0}，下載 {1}，無變更 {2}，衝突 {3}。", /* sync.result */
         "{0} 已是最新。", /* sync.up_to_date */
+        "無安全值", /* title.no_secure_value */
+        "安全值 {0}", /* title.secure_value */
         "校驗值不符。已中止還原，未做任何變更。", /* verify.failed */
         "目前為記憶體受限的小程式模式。請在遊戲之上啟動本程式以使用完整功能。", /* warn.applet_mode */
         "同步前請先關閉遊戲。遊戲執行中同步會損壞存檔。", /* warn.game_running */
@@ -424,6 +609,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "El servidor ha rechazado la petición.", /* err.invalid_request */
         "No se ha podido leer o escribir la partida.", /* err.io_error */
         "No se ha podido conectar con el servidor.", /* err.network_error */
+        "No hay servidor configurado. Abre Ajustes e introduce la dirección y el token.", /* err.no_server */
         "No hay espacio suficiente en la tarjeta SD.", /* err.no_space */
         "No se ha encontrado en el servidor.", /* err.not_found */
         "Memoria insuficiente.", /* err.out_of_memory */
@@ -434,19 +620,52 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "La partida supera el tamaño permitido por el servidor.", /* err.save_too_large */
         "Este código de compartición ha caducado.", /* err.share_expired */
         "El servidor no ha respondido a tiempo.", /* err.timeout */
+        "No se ha podido leer la lista de juegos.", /* err.title_list */
         "No se ha podido verificar el certificado del servidor.", /* err.tls_error */
         "Esta consola no ha iniciado sesión. Vuelve a vincularla.", /* err.unauthorized */
         "No es compatible.", /* err.unsupported */
         "El servidor no admite esta consola.", /* err.unsupported_platform */
         "Cancelado.", /* err.user_cancelled */
         "El servidor tiene una partida más reciente. Elige qué versión conservar.", /* err.version_conflict */
+        "No se ha encontrado ningún juego con partida guardada.", /* grid.empty */
+        "nada seleccionado", /* grid.nothing_selected */
+        "{0} partidas", /* grid.saves */
+        "A restaurar   X eliminar   B atrás", /* hint.backups */
+        "A elegir   B atrás   arriba/abajo mover", /* hint.choose */
+        "A continuar", /* hint.continue */
+        "A editar   B atrás   arriba/abajo mover", /* hint.edit */
+        "A copiar   Y restaurar   X analizar   L/R biblioteca   START salir", /* hint.grid */
         "Español", /* lang.name */
+        "Juegos de 3DS", /* lib.3ds */
+        "Partidas de nds-bootstrap", /* lib.nds */
+        "Leyendo las copias de seguridad", /* loading.backups */
+        "Leyendo los iconos", /* loading.icons */
+        "Leyendo los juegos", /* loading.titles */
+        "Copiar esta partida", /* menu.backup */
+        "Restaurar desde una copia", /* menu.restore */
+        "Autocomprobación (destruye esta partida)", /* menu.selftest */
+        "Ajustes", /* menu.settings */
+        "Analizar todos los juegos y escribirlo en la tarjeta SD", /* menu.survey */
+        "Sincronizar con el servidor", /* menu.sync */
+        "Copia de seguridad", /* op.backup */
+        "Restauración", /* op.restore */
+        "Valor seguro", /* op.secure_value */
+        "Análisis", /* op.survey */
+        "Sincronización", /* op.sync */
         "Descargando", /* progress.downloading */
         "Empaquetando la partida", /* progress.packing */
         "Extrayendo la partida", /* progress.unpacking */
         "Subiendo", /* progress.uploading */
         "Verificando", /* progress.verifying */
+        "{0} ha fallado. {1}", /* report.failed */
+        "{0}: hecho.", /* report.ok */
+        "Esta compilación no tiene su propio archivo de partida. Compílala con SAVEDATA_SIZE=128K.", /* selftest.no_archive */
+        "El propio DaeMoon", /* selftest.self */
+        "Esto DESTRUYE la partida de {0}. Usa un juego de prueba. Se hace una copia antes, pero no confíes en ella.", /* selftest.warning */
         "Nombre de esta consola", /* settings.label */
+        "Idioma", /* settings.language */
+        "Según la consola ({0})", /* settings.language_auto */
+        "Esta consola no tiene una fuente para {0}, el texto quedaría en blanco. No se ha cambiado el idioma.", /* settings.no_font */
         "No se han podido escribir los ajustes en la tarjeta SD.", /* settings.save_failed */
         "Guardado. Esta consola usará estos ajustes a partir de ahora.", /* settings.saved */
         "Dirección del servidor", /* settings.server */
@@ -458,7 +677,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Al día", /* sync.action_none */
         "Subir", /* sync.action_upload */
         "Sincronización terminada. {0} actualizados, {1} omitidos.", /* sync.done */
+        "{0} subidas, {1} descargas, {2} sin cambios, {3} conflictos.", /* sync.result */
         "{0} ya está al día.", /* sync.up_to_date */
+        "sin valor seguro", /* title.no_secure_value */
+        "valor seguro {0}", /* title.secure_value */
         "La suma de verificación no coincide. La restauración se ha cancelado y no se ha cambiado nada.", /* verify.failed */
         "En modo applet con memoria limitada. Abre la aplicación desde un juego para tener todas las funciones.", /* warn.applet_mode */
         "Cierra el juego antes de sincronizar. Sincronizar con el juego abierto daña la partida.", /* warn.game_running */
@@ -500,6 +722,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Le serveur a rejeté la requête.", /* err.invalid_request */
         "Impossible de lire ou d'écrire la sauvegarde.", /* err.io_error */
         "Impossible de joindre le serveur.", /* err.network_error */
+        "Aucun serveur configuré. Ouvre les Réglages et saisis l'adresse et le jeton.", /* err.no_server */
         "Espace insuffisant sur la carte SD.", /* err.no_space */
         "Introuvable sur le serveur.", /* err.not_found */
         "Mémoire insuffisante.", /* err.out_of_memory */
@@ -510,19 +733,52 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "La sauvegarde dépasse la taille autorisée par le serveur.", /* err.save_too_large */
         "Ce code de partage a expiré.", /* err.share_expired */
         "Le serveur n'a pas répondu à temps.", /* err.timeout */
+        "Impossible de lire la liste des jeux.", /* err.title_list */
         "Le certificat du serveur n'a pas pu être vérifié.", /* err.tls_error */
         "Cette console n'est pas connectée. Associez-la de nouveau.", /* err.unauthorized */
         "Non pris en charge.", /* err.unsupported */
         "Cette console n'est pas prise en charge par le serveur.", /* err.unsupported_platform */
         "Annulé.", /* err.user_cancelled */
         "Le serveur a une sauvegarde plus récente. Choisissez la version à conserver.", /* err.version_conflict */
+        "Aucun jeu avec une sauvegarde n'a été trouvé.", /* grid.empty */
+        "rien de sélectionné", /* grid.nothing_selected */
+        "{0} sauvegardes", /* grid.saves */
+        "A restaurer   X supprimer   B retour", /* hint.backups */
+        "A choisir   B retour   haut/bas déplacer", /* hint.choose */
+        "A continuer", /* hint.continue */
+        "A modifier   B retour   haut/bas déplacer", /* hint.edit */
+        "A sauvegarder   Y restaurer   X analyser   L/R bibliothèque   START quitter", /* hint.grid */
         "Français", /* lang.name */
+        "Jeux 3DS", /* lib.3ds */
+        "Sauvegardes nds-bootstrap", /* lib.nds */
+        "Lecture des sauvegardes", /* loading.backups */
+        "Lecture des icônes", /* loading.icons */
+        "Lecture des jeux", /* loading.titles */
+        "Sauvegarder cette partie", /* menu.backup */
+        "Restaurer depuis une sauvegarde", /* menu.restore */
+        "Autotest (détruit cette partie)", /* menu.selftest */
+        "Réglages", /* menu.settings */
+        "Analyser tous les jeux et écrire sur la carte SD", /* menu.survey */
+        "Synchroniser avec le serveur", /* menu.sync */
+        "Sauvegarde", /* op.backup */
+        "Restauration", /* op.restore */
+        "Valeur sécurisée", /* op.secure_value */
+        "Analyse", /* op.survey */
+        "Synchronisation", /* op.sync */
         "Téléchargement en cours", /* progress.downloading */
         "Compression de la sauvegarde", /* progress.packing */
         "Extraction de la sauvegarde", /* progress.unpacking */
         "Envoi en cours", /* progress.uploading */
         "Vérification", /* progress.verifying */
+        "{0} a échoué. {1}", /* report.failed */
+        "{0} : terminé.", /* report.ok */
+        "Cette version n'a pas d'archive de sauvegarde propre. Compile avec SAVEDATA_SIZE=128K.", /* selftest.no_archive */
+        "DaeMoon lui-même", /* selftest.self */
+        "Ceci DÉTRUIT la partie de {0}. Utilise un jeu de test. Une sauvegarde est faite d'abord, mais ne compte pas dessus.", /* selftest.warning */
         "Nom de cette console", /* settings.label */
+        "Langue", /* settings.language */
+        "Selon la console ({0})", /* settings.language_auto */
+        "Cette console n'a pas de police pour {0}, le texte serait vide. La langue n'a pas été changée.", /* settings.no_font */
         "Impossible d'écrire les réglages sur la carte SD.", /* settings.save_failed */
         "Enregistré. Cette console utilisera ces réglages désormais.", /* settings.saved */
         "Adresse du serveur", /* settings.server */
@@ -534,7 +790,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "À jour", /* sync.action_none */
         "Envoyer", /* sync.action_upload */
         "Synchronisation terminée. {0} mis à jour, {1} ignorés.", /* sync.done */
+        "{0} envoyées, {1} téléchargées, {2} inchangées, {3} conflits.", /* sync.result */
         "{0} est déjà à jour.", /* sync.up_to_date */
+        "pas de valeur sécurisée", /* title.no_secure_value */
+        "valeur sécurisée {0}", /* title.secure_value */
         "La somme de contrôle ne correspond pas. La restauration a été annulée et rien n'a été modifié.", /* verify.failed */
         "Mode applet avec mémoire limitée. Lancez l'application depuis un jeu pour accéder à toutes les fonctions.", /* warn.applet_mode */
         "Fermez le jeu avant de synchroniser. Synchroniser pendant une partie corrompt la sauvegarde.", /* warn.game_running */
@@ -576,6 +835,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Der Server hat die Anfrage abgelehnt.", /* err.invalid_request */
         "Der Spielstand konnte nicht gelesen oder geschrieben werden.", /* err.io_error */
         "Der Server ist nicht erreichbar.", /* err.network_error */
+        "Kein Server eingerichtet. Adresse und Token in den Einstellungen eintragen.", /* err.no_server */
         "Nicht genug Platz auf der SD-Karte.", /* err.no_space */
         "Auf dem Server nicht gefunden.", /* err.not_found */
         "Nicht genug Speicher.", /* err.out_of_memory */
@@ -586,19 +846,52 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Der Spielstand ist größer als der Server erlaubt.", /* err.save_too_large */
         "Dieser Freigabecode ist abgelaufen.", /* err.share_expired */
         "Der Server hat nicht rechtzeitig geantwortet.", /* err.timeout */
+        "Die Titelliste konnte nicht gelesen werden.", /* err.title_list */
         "Das Zertifikat des Servers konnte nicht geprüft werden.", /* err.tls_error */
         "Diese Konsole ist nicht angemeldet. Koppel sie erneut.", /* err.unauthorized */
         "Wird nicht unterstützt.", /* err.unsupported */
         "Diese Konsole wird vom Server nicht unterstützt.", /* err.unsupported_platform */
         "Abgebrochen.", /* err.user_cancelled */
         "Der Server hat einen neueren Spielstand. Wähle, welche Fassung bleibt.", /* err.version_conflict */
+        "Keine Titel mit Spielständen gefunden.", /* grid.empty */
+        "nichts ausgewählt", /* grid.nothing_selected */
+        "{0} Spielstände", /* grid.saves */
+        "A wiederherstellen   X löschen   B zurück", /* hint.backups */
+        "A wählen   B zurück   hoch/runter bewegen", /* hint.choose */
+        "A weiter", /* hint.continue */
+        "A bearbeiten   B zurück   hoch/runter bewegen", /* hint.edit */
+        "A sichern   Y wiederherstellen   X erfassen   L/R Bibliothek   START beenden", /* hint.grid */
         "Deutsch", /* lang.name */
+        "3DS-Titel", /* lib.3ds */
+        "nds-bootstrap-Spielstände", /* lib.nds */
+        "Sicherungen werden gelesen", /* loading.backups */
+        "Symbole werden gelesen", /* loading.icons */
+        "Titel werden gelesen", /* loading.titles */
+        "Diesen Spielstand sichern", /* menu.backup */
+        "Aus einer Sicherung wiederherstellen", /* menu.restore */
+        "Selbsttest (zerstört diesen Spielstand)", /* menu.selftest */
+        "Einstellungen", /* menu.settings */
+        "Alle Titel erfassen und auf die SD-Karte schreiben", /* menu.survey */
+        "Mit dem Server abgleichen", /* menu.sync */
+        "Sicherung", /* op.backup */
+        "Wiederherstellung", /* op.restore */
+        "Sicherheitswert", /* op.secure_value */
+        "Erfassung", /* op.survey */
+        "Abgleich", /* op.sync */
         "Wird heruntergeladen", /* progress.downloading */
         "Spielstand wird gepackt", /* progress.packing */
         "Spielstand wird entpackt", /* progress.unpacking */
         "Wird hochgeladen", /* progress.uploading */
         "Wird geprüft", /* progress.verifying */
+        "{0} fehlgeschlagen. {1}", /* report.failed */
+        "{0}: fertig.", /* report.ok */
+        "Dieser Build hat kein eigenes Speicherarchiv. Mit SAVEDATA_SIZE=128K bauen.", /* selftest.no_archive */
+        "DaeMoon selbst", /* selftest.self */
+        "Das ZERSTÖRT den Spielstand von {0}. Nur mit einem Testtitel verwenden. Vorher wird gesichert, aber verlass dich nicht darauf.", /* selftest.warning */
         "Name dieser Konsole", /* settings.label */
+        "Sprache", /* settings.language */
+        "Wie die Konsole ({0})", /* settings.language_auto */
+        "Diese Konsole hat keine Schrift für {0}, der Text bliebe leer. Die Sprache wurde nicht geändert.", /* settings.no_font */
         "Die Einstellungen konnten nicht auf die SD-Karte geschrieben werden.", /* settings.save_failed */
         "Gespeichert. Diese Konsole verwendet sie ab jetzt.", /* settings.saved */
         "Serveradresse", /* settings.server */
@@ -610,7 +903,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Aktuell", /* sync.action_none */
         "Hochladen", /* sync.action_upload */
         "Abgleich beendet. {0} aktualisiert, {1} übersprungen.", /* sync.done */
+        "{0} hochgeladen, {1} heruntergeladen, {2} unverändert, {3} Konflikte.", /* sync.result */
         "{0} ist bereits aktuell.", /* sync.up_to_date */
+        "kein Sicherheitswert", /* title.no_secure_value */
+        "Sicherheitswert {0}", /* title.secure_value */
         "Die Prüfsumme stimmt nicht. Die Wiederherstellung wurde abgebrochen, es wurde nichts geändert.", /* verify.failed */
         "Applet-Modus mit stark begrenztem Speicher. Starte die Anwendung über ein Spiel, um alle Funktionen zu nutzen.", /* warn.applet_mode */
         "Beende das Spiel vor dem Abgleich. Ein Abgleich bei laufendem Spiel beschädigt den Spielstand.", /* warn.game_running */

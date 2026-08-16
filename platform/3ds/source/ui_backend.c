@@ -77,7 +77,7 @@ static int modal(const char *title, const char *body, const char *const *options
             y += 40.0f;
         }
         daemoon_gfx_text(16.0f, GFX_SCREEN_H - 24.0f, 0.4f, GFX_TEXT_DIM,
-                         "A select   B back   up/down move");
+                         daemoon_str(DAEMOON_STR_HINT_CHOOSE));
 
         daemoon_gfx_frame_end();
 

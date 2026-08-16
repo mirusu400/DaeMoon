@@ -104,7 +104,9 @@ static library_t g_lib[2];
 
 /* --------------------------------------------------------------------- i18n */
 
-static daemoon_lang_t select_language(void)
+/* Which language the console itself is set to. Also the SMDH slot a title's name
+ * is read from, which is why the two are worked out together. */
+static daemoon_lang_t console_language(void)
 {
     u8 code = 0;
     daemoon_lang_t lang = DAEMOON_LANG_EN;
@@ -124,11 +126,61 @@ static daemoon_lang_t select_language(void)
     case CFG_LANGUAGE_TW: (void)daemoon_i18n_language_from_code("zh-Hant", &lang); break;
     default:              lang = DAEMOON_LANG_EN; break;
     }
-    daemoon_i18n_set_language(lang);
 
     /* The SMDH title index is the console's own language numbering, so a title's
-     * name comes back in the language the HOME menu shows it in. */
+     * name comes back in the language the HOME menu shows it in. This follows the
+     * console even when the UI language does not: a game's name is the game's, not
+     * a translation. */
     g_save_ctx.smdh_language = (int)code;
+    return lang;
+}
+
+/* Whether the font in use can draw a language at all.
+ *
+ * One representative character each. A console's system font is its own region's,
+ * so a European console has no Hangul and no kanji, and the selected language is a
+ * user choice with nothing to do with the console's region. Asked rather than
+ * inferred - see docs/fonts.md, where inferring it from a loader returning NULL
+ * was wrong for months. */
+static int language_is_drawable(daemoon_lang_t lang)
+{
+    static const struct {
+        daemoon_lang_t lang;
+        unsigned int   probe;
+    } k_probe[] = {
+        { DAEMOON_LANG_KO,      0xAC00u }, /* 가 */
+        { DAEMOON_LANG_JA,      0x3042u }, /* あ */
+        { DAEMOON_LANG_ZH_HANS, 0x4E2Du }, /* 中 */
+        { DAEMOON_LANG_ZH_HANT, 0x4E2Du },
+        { DAEMOON_LANG_DE,      0x00DFu }, /* ß */
+        { DAEMOON_LANG_FR,      0x00E9u }, /* é */
+        { DAEMOON_LANG_ES,      0x00F1u }  /* ñ */
+    };
+    size_t i;
+
+    for (i = 0; i < sizeof(k_probe) / sizeof(k_probe[0]); ++i) {
+        if (k_probe[i].lang == lang) {
+            return daemoon_gfx_can_draw(k_probe[i].probe);
+        }
+    }
+    return 1; /* English needs nothing this font could be missing. */
+}
+
+/* The UI language: the user's choice when they made one, the console's otherwise.
+ *
+ * Kept apart from the console's setting on purpose. Empty in the file is not the
+ * same as "en" - a console later switched to Japanese should follow, and somebody
+ * who picked English on a Japanese console should not be overruled by it. */
+static daemoon_lang_t select_language(void)
+{
+    daemoon_lang_t lang = console_language();
+    daemoon_lang_t chosen;
+
+    if (g_config.language[0] != '\0' &&
+        daemoon_i18n_language_from_code(g_config.language, &chosen) == DAEMOON_OK) {
+        lang = chosen;
+    }
+    daemoon_i18n_set_language(lang);
     return lang;
 }
 
@@ -194,9 +246,9 @@ static void free_library(library_t *lib)
 /* One frame of the loading screen. Reading the list opens every save archive on
  * the console, so this runs for as long as that takes and a still screen would
  * look like a hang. */
-static void draw_loading(const char *what, unsigned done, unsigned total)
+static void draw_loading(daemoon_str_id_t what, unsigned done, unsigned total)
 {
-    char line[96];
+    char line[160];
 
     daemoon_gfx_frame_begin();
     daemoon_gfx_top();
@@ -204,9 +256,9 @@ static void draw_loading(const char *what, unsigned done, unsigned total)
     daemoon_gfx_text(12.0f, 6.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_APP_TITLE));
 
     if (total > 0) {
-        (void)snprintf(line, sizeof(line), "%s  %u/%u", what, done, total);
+        (void)snprintf(line, sizeof(line), "%s  %u/%u", daemoon_str(what), done, total);
     } else {
-        (void)snprintf(line, sizeof(line), "%s", what);
+        (void)daemoon_strlcpy(line, sizeof(line), daemoon_str(what));
     }
     daemoon_gfx_text(12.0f, 100.0f, 0.5f, GFX_TEXT_DIM, line);
 
@@ -222,7 +274,7 @@ static void draw_loading(const char *what, unsigned done, unsigned total)
 static void loading_progress(void *user, unsigned done, unsigned total)
 {
     (void)user;
-    draw_loading("reading titles", done, total);
+    draw_loading(DAEMOON_STR_LOADING_TITLES, done, total);
 }
 
 /* Points the environment at one library's backend. The backend and its context
@@ -254,7 +306,7 @@ static daemoon_result_t load_library(int nds)
     }
 
     for (i = 0; i < lib->count && i < MAX_ICONS; ++i) {
-        draw_loading("reading icons", (unsigned)i, (unsigned)lib->count);
+        draw_loading(DAEMOON_STR_LOADING_ICONS, (unsigned)i, (unsigned)lib->count);
         if (nds) {
             /* Out of the ROM's banner, beside the save. A .sav next to a file
              * called "5684(Dsi0143) 포켓몬화이트 (K)" is exactly where a name
@@ -318,14 +370,21 @@ static void draw_grid(void)
     daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
     daemoon_gfx_text(10.0f, 5.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_APP_TITLE));
     daemoon_gfx_text(96.0f, 9.0f, 0.4f, GFX_ACCENT,
-                     g_source_nds ? "nds-bootstrap saves" : "3DS titles");
+                     daemoon_str(g_source_nds ? DAEMOON_STR_LIB_NDS
+                                               : DAEMOON_STR_LIB_3DS));
 
     if (CUR->count > GRID_PAGE) {
         (void)snprintf(right, sizeof(right), "%d/%u   %s", CUR->selected + 1,
                        (unsigned)CUR->count, DAEMOON_BUILD_STAMP);
     } else {
-        (void)snprintf(right, sizeof(right), "%u saves   %s", (unsigned)CUR->count,
-                       DAEMOON_BUILD_STAMP);
+        char counted[48];
+        const char *args[1];
+        char n[16];
+
+        (void)snprintf(n, sizeof(n), "%u", (unsigned)CUR->count);
+        args[0] = n;
+        (void)daemoon_strf(counted, sizeof(counted), DAEMOON_STR_GRID_SAVES, args, 1);
+        (void)snprintf(right, sizeof(right), "%s   %s", counted, DAEMOON_BUILD_STAMP);
     }
     w = daemoon_gfx_text_width(0.36f, right);
     daemoon_gfx_text(GFX_TOP_W - w - 8.0f, 10.0f, 0.36f, GFX_TEXT_DIM, right);
@@ -359,20 +418,18 @@ static void draw_grid(void)
     }
 
     if (CUR->count == 0) {
-        daemoon_gfx_text(12.0f, 100.0f, 0.5f, GFX_TEXT_DIM,
-                         "No titles with save data were found.");
+        (void)daemoon_gfx_text_wrapped(12.0f, 100.0f, GFX_TOP_W - 24.0f, 0.5f,
+                                       GFX_TEXT_DIM,
+                                       daemoon_str(DAEMOON_STR_GRID_EMPTY));
     }
 }
 
 static void draw_details(u32 down, touchPosition touch, int *out_action)
 {
-    static const char *const labels[] = {
-        "Back up this save",
-        "Restore from a backup",
-        "Sync with the server",
-        "Survey every title to the SD card",
-        "Self test (destroys this save)",
-        "Settings"
+    static const daemoon_str_id_t labels[] = {
+        DAEMOON_STR_MENU_BACKUP,   DAEMOON_STR_MENU_RESTORE,
+        DAEMOON_STR_MENU_SYNC,     DAEMOON_STR_MENU_SURVEY,
+        DAEMOON_STR_MENU_SELFTEST, DAEMOON_STR_MENU_SETTINGS
     };
     const daemoon_title_t *t = NULL;
     char line[160];
@@ -398,16 +455,24 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
             daemoon_3ds_secure_value_t secure;
 
             if (daemoon_3ds_read_secure_value(t, &secure) == DAEMOON_OK && secure.exists) {
-                (void)snprintf(line, sizeof(line), "secure value %016llX",
+                char hex[24];
+                const char *args[1];
+
+                (void)snprintf(hex, sizeof(hex), "%016llX",
                                (unsigned long long)secure.value);
+                args[0] = hex;
+                (void)daemoon_strf(line, sizeof(line), DAEMOON_STR_TITLE_SECURE_VALUE,
+                                   args, 1);
                 daemoon_gfx_text(8.0f, y, 0.32f, GFX_WARN, line);
             } else {
-                daemoon_gfx_text(8.0f, y, 0.32f, GFX_TEXT_DIM, "no secure value");
+                daemoon_gfx_text(8.0f, y, 0.32f, GFX_TEXT_DIM,
+                                 daemoon_str(DAEMOON_STR_TITLE_NO_SECURE_VALUE));
             }
             y += 14.0f;
         }
     } else {
-        daemoon_gfx_text(8.0f, y, 0.45f, GFX_TEXT_DIM, "nothing selected");
+        daemoon_gfx_text(8.0f, y, 0.45f, GFX_TEXT_DIM,
+                         daemoon_str(DAEMOON_STR_GRID_NOTHING_SELECTED));
         y += 44.0f;
     }
 
@@ -415,7 +480,8 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
      * and the hint line both fit; a button that is off the bottom of the screen is
      * a feature nobody can reach. */
     for (i = 0; i < sizeof(labels) / sizeof(labels[0]); ++i) {
-        if (daemoon_gfx_button(8.0f, y, GFX_BOTTOM_W - 16.0f, 27.0f, labels[i], 0,
+        if (daemoon_gfx_button(8.0f, y, GFX_BOTTOM_W - 16.0f, 27.0f,
+                               daemoon_str(labels[i]), 0,
                                down, touch.px, touch.py, touched)) {
             *out_action = (int)i;
         }
@@ -423,7 +489,7 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
     }
 
     daemoon_gfx_text(8.0f, GFX_SCREEN_H - 16.0f, 0.34f, GFX_TEXT_DIM,
-                     "A back up   Y restore   X survey   L/R library   START exit");
+                     daemoon_str(DAEMOON_STR_HINT_GRID));
 }
 
 /* ------------------------------------------------------------------ actions */
@@ -448,7 +514,8 @@ static void message(const char *title, const char *body, u32 accent)
         (void)daemoon_gfx_text_wrapped(12.0f, 56.0f, GFX_TOP_W - 24.0f, 0.5f, GFX_TEXT,
                                        body);
         daemoon_gfx_bottom();
-        daemoon_gfx_text(12.0f, 100.0f, 0.5f, GFX_TEXT_DIM, "A continue");
+        daemoon_gfx_text(12.0f, 100.0f, 0.5f, GFX_TEXT_DIM,
+                         daemoon_str(DAEMOON_STR_HINT_CONTINUE));
         daemoon_gfx_frame_end();
 
         if (down & (KEY_A | KEY_B)) {
@@ -457,19 +524,31 @@ static void message(const char *title, const char *body, u32 accent)
     }
 }
 
-static void report(const char *what, daemoon_result_t r)
+/* One place where an operation's outcome becomes a sentence.
+ *
+ * The wire code goes on the end in brackets. It is an identifier rather than
+ * prose - the same kind of thing as a title id - and it is what a photograph in a
+ * bug report has to carry, because "동기화 실패" narrows nothing on its own. */
+static void report(daemoon_str_id_t op, daemoon_result_t r)
 {
-    char body[256];
+    char body[320];
+    const char *args[2];
 
     if (r == DAEMOON_OK) {
-        (void)snprintf(body, sizeof(body), "%s: ok", what);
+        args[0] = daemoon_str(op);
+        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_REPORT_OK, args, 1);
         message(daemoon_str(DAEMOON_STR_APP_TITLE), body, GFX_OK);
         return;
     }
-    /* The wire code and the translated text: one for a photograph in a bug
-     * report, the other for the person holding the console. */
-    (void)snprintf(body, sizeof(body), "%s: %s - %s", what, daemoon_result_code(r),
-                   daemoon_str(daemoon_result_str_id(r)));
+
+    args[0] = daemoon_str(op);
+    args[1] = daemoon_str(daemoon_result_str_id(r));
+    (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_REPORT_FAILED, args, 2);
+    {
+        size_t len = strlen(body);
+
+        (void)snprintf(body + len, sizeof(body) - len, "  [%s]", daemoon_result_code(r));
+    }
     message(daemoon_str(DAEMOON_STR_APP_TITLE), body, GFX_DANGER);
 }
 
@@ -502,7 +581,7 @@ static void action_backup(void)
                                                        sizeof(path));
 
         daemoon_3ds_trace("backup/done", daemoon_result_code(r));
-        report("backup", r);
+        report(DAEMOON_STR_OP_BACKUP, r);
     }
 }
 
@@ -547,7 +626,7 @@ static void action_restore(void)
     }
 
     daemoon_3ds_trace("restore/begin", CUR->titles[CUR->selected].id);
-    draw_loading("reading backups", 0, 0);
+    draw_loading(DAEMOON_STR_LOADING_BACKUPS, 0, 0);
     current_digest(&CUR->titles[CUR->selected], digest, sizeof(digest));
     daemoon_3ds_trace("restore/digest", digest[0] != '\0' ? digest : "-");
 
@@ -579,10 +658,10 @@ static void action_restore(void)
         daemoon_3ds_trace("restore/core", pick);
         r = daemoon_sync_restore_package(&g_env, &g_archive, &CUR->titles[CUR->selected], pick);
         daemoon_3ds_trace("restore/core-done", daemoon_result_code(r));
-        report("restore", r);
+        report(DAEMOON_STR_OP_RESTORE, r);
 
         if (r == DAEMOON_OK && sr == DAEMOON_OK && secure.exists) {
-            report("secure value",
+            report(DAEMOON_STR_OP_SECURE_VALUE,
                    daemoon_3ds_write_secure_value(&CUR->titles[CUR->selected], &secure));
             daemoon_3ds_trace("restore/secure-written", NULL);
         }
@@ -617,8 +696,7 @@ static void action_sync(void)
     }
     if (!daemoon_3ds_config_can_sync(&g_config)) {
         message(daemoon_str(DAEMOON_STR_APP_TITLE),
-                "No server configured. Put server= and token= in "
-                DAEMOON_3DS_CONFIG_PATH, GFX_WARN);
+                daemoon_str(DAEMOON_STR_ERR_NO_SERVER), GFX_WARN);
         return;
     }
 
@@ -628,12 +706,22 @@ static void action_sync(void)
     daemoon_3ds_trace("sync/done", daemoon_result_code(r));
 
     if (r != DAEMOON_OK) {
-        report("sync", r);
+        report(DAEMOON_STR_OP_SYNC, r);
         return;
     }
-    (void)snprintf(body, sizeof(body), "uploaded %u  downloaded %u  skipped %u  "
-                   "conflicts %u", stats.uploaded, stats.downloaded, stats.skipped,
-                   stats.conflicts);
+    {
+        char counts[4][12];
+        const char *args[4];
+        size_t i;
+        const unsigned n[4] = { stats.uploaded, stats.downloaded, stats.skipped,
+                                stats.conflicts };
+
+        for (i = 0; i < 4; ++i) {
+            (void)snprintf(counts[i], sizeof(counts[i]), "%u", n[i]);
+            args[i] = counts[i];
+        }
+        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_SYNC_RESULT, args, 4);
+    }
     message(daemoon_str(DAEMOON_STR_APP_TITLE), body, GFX_OK);
 }
 
@@ -691,14 +779,38 @@ static int edit_field(daemoon_str_id_t label, const char *hint, char *value, siz
     return 1;
 }
 
+#define SETTINGS_ROWS 4
+
+static const daemoon_str_id_t k_settings_labels[SETTINGS_ROWS] = {
+    DAEMOON_STR_SETTINGS_SERVER, DAEMOON_STR_SETTINGS_TOKEN,
+    DAEMOON_STR_SETTINGS_LABEL, DAEMOON_STR_SETTINGS_LANGUAGE
+};
+
+/* What the language row shows: the chosen language, or the console's with a note
+ * that it is being followed. The distinction is the point of the setting. */
+static void language_value(char *out, size_t cap)
+{
+    daemoon_lang_t chosen;
+
+    if (g_config.language[0] != '\0' &&
+        daemoon_i18n_language_from_code(g_config.language, &chosen) == DAEMOON_OK) {
+        (void)daemoon_strlcpy(out, cap, daemoon_lang_name(chosen));
+        return;
+    }
+    {
+        const char *args[1];
+
+        args[0] = daemoon_lang_name(console_language());
+        (void)daemoon_strf(out, cap, DAEMOON_STR_SETTINGS_LANGUAGE_AUTO, args, 1);
+    }
+}
+
 static void draw_settings(int selected)
 {
-    static const daemoon_str_id_t labels[3] = {
-        DAEMOON_STR_SETTINGS_SERVER, DAEMOON_STR_SETTINGS_TOKEN,
-        DAEMOON_STR_SETTINGS_LABEL
-    };
-    const char *values[3];
+    const daemoon_str_id_t *labels = k_settings_labels;
+    const char *values[SETTINGS_ROWS];
     char masked[32];
+    char language[64];
     float y;
     size_t i;
 
@@ -709,43 +821,99 @@ static void draw_settings(int selected)
     } else {
         (void)snprintf(masked, sizeof(masked), "%.6s...", g_config.token);
     }
+    language_value(language, sizeof(language));
     values[0] = g_config.server_url[0] != '\0' ? g_config.server_url
                                                : daemoon_str(DAEMOON_STR_SETTINGS_UNSET);
     values[1] = masked;
     values[2] = g_config.device_label;
+    values[3] = language;
 
     daemoon_gfx_top();
     daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
     daemoon_gfx_text(12.0f, 6.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_SETTINGS_TITLE));
 
-    y = 48.0f;
-    for (i = 0; i < 3; ++i) {
-        daemoon_gfx_text(14.0f, y, 0.4f, GFX_TEXT_DIM, daemoon_str(labels[i]));
-        daemoon_gfx_text_fit(14.0f, y + 18.0f, GFX_TOP_W - 28.0f, 0.45f,
+    y = 40.0f;
+    for (i = 0; i < SETTINGS_ROWS; ++i) {
+        daemoon_gfx_text(14.0f, y, 0.38f, GFX_TEXT_DIM, daemoon_str(labels[i]));
+        daemoon_gfx_text_fit(14.0f, y + 16.0f, GFX_TOP_W - 28.0f, 0.42f,
                              (int)i == selected ? GFX_TEXT : GFX_TEXT_DIM, values[i]);
-        y += 48.0f;
+        y += 42.0f;
     }
     daemoon_gfx_text(14.0f, GFX_SCREEN_H - 22.0f, 0.34f, GFX_TEXT_DIM,
                      DAEMOON_3DS_CONFIG_PATH);
 
     daemoon_gfx_bottom();
-    y = 16.0f;
-    for (i = 0; i < 3; ++i) {
-        daemoon_gfx_rect(10.0f, y, GFX_BOTTOM_W - 20.0f, 34.0f,
+    y = 14.0f;
+    for (i = 0; i < SETTINGS_ROWS; ++i) {
+        daemoon_gfx_rect(10.0f, y, GFX_BOTTOM_W - 20.0f, 32.0f,
                          (int)i == selected ? GFX_ACCENT : GFX_PANEL);
-        daemoon_gfx_text(18.0f, y + 8.0f, 0.45f, GFX_TEXT, daemoon_str(labels[i]));
-        y += 40.0f;
+        daemoon_gfx_text_fit(18.0f, y + 7.0f, GFX_BOTTOM_W - 36.0f, 0.45f, GFX_TEXT,
+                             daemoon_str(labels[i]));
+        y += 38.0f;
     }
     daemoon_gfx_text(10.0f, GFX_SCREEN_H - 18.0f, 0.34f, GFX_TEXT_DIM,
-                     "A edit   B back   up/down move");
+                     daemoon_str(DAEMOON_STR_HINT_EDIT));
+}
+
+/* Steps the language through "follow the console" and the eight the app ships.
+ *
+ * A list rather than a keyboard: eight entries is not worth a text field, and a
+ * typo in a language code is a console that quietly shows English.
+ *
+ * A language the console has no font for is refused rather than accepted, because
+ * accepting it means every screen after this one is blank - including the one that
+ * would let it be changed back. */
+static int cycle_language(void)
+{
+    static const daemoon_lang_t k_order[] = {
+        DAEMOON_LANG_EN, DAEMOON_LANG_KO, DAEMOON_LANG_JA, DAEMOON_LANG_ZH_HANS,
+        DAEMOON_LANG_ZH_HANT, DAEMOON_LANG_ES, DAEMOON_LANG_FR, DAEMOON_LANG_DE
+    };
+    const size_t n = sizeof(k_order) / sizeof(k_order[0]);
+    size_t at = n; /* n means "follow the console", the entry before the first */
+    size_t i;
+    daemoon_lang_t next;
+
+    if (g_config.language[0] != '\0') {
+        daemoon_lang_t chosen;
+
+        if (daemoon_i18n_language_from_code(g_config.language, &chosen) == DAEMOON_OK) {
+            for (i = 0; i < n; ++i) {
+                if (k_order[i] == chosen) {
+                    at = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    at = (at + 1) % (n + 1);
+    if (at == n) {
+        g_config.language[0] = '\0';
+        daemoon_i18n_set_language(console_language());
+        return 1;
+    }
+
+    next = k_order[at];
+    if (!language_is_drawable(next)) {
+        char body[320];
+        const char *args[1];
+
+        args[0] = daemoon_lang_name(next);
+        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_SETTINGS_NO_FONT, args, 1);
+        message(daemoon_str(DAEMOON_STR_APP_TITLE), body, GFX_WARN);
+        return 0;
+    }
+
+    (void)daemoon_strlcpy(g_config.language, sizeof(g_config.language),
+                          daemoon_lang_code(next));
+    daemoon_i18n_set_language(next);
+    return 1;
 }
 
 static void action_settings(void)
 {
-    static const daemoon_str_id_t labels[3] = {
-        DAEMOON_STR_SETTINGS_SERVER, DAEMOON_STR_SETTINGS_TOKEN,
-        DAEMOON_STR_SETTINGS_LABEL
-    };
+    const daemoon_str_id_t *labels = k_settings_labels;
     int selected = 0;
     int dirty = 0;
 
@@ -784,9 +952,15 @@ static void action_settings(void)
                 edited = edit_field(labels[1], "daemoonctl pair", g_config.token,
                                     sizeof(g_config.token));
                 break;
-            default:
+            case 2:
                 edited = edit_field(labels[2], "3DS", g_config.device_label,
                                     sizeof(g_config.device_label));
+                break;
+            default:
+                /* No keyboard for this one - it steps through the list, so the
+                 * screen changes language under the cursor and the choice is
+                 * judged by reading it. */
+                edited = cycle_language();
                 break;
             }
             dirty = dirty || edited;
@@ -794,7 +968,7 @@ static void action_settings(void)
         if ((down & KEY_UP) && selected > 0) {
             --selected;
         }
-        if ((down & KEY_DOWN) && selected < 2) {
+        if ((down & KEY_DOWN) && selected < SETTINGS_ROWS - 1) {
             ++selected;
         }
     }
@@ -835,7 +1009,7 @@ static void action_survey(void)
     r = g_env.fs->open(g_env.fs_ctx, DAEMOON_3DS_WORK_DIR "/survey.txt",
                        DAEMOON_OPEN_WRITE, &out);
     if (r != DAEMOON_OK) {
-        report("survey", r);
+        report(DAEMOON_STR_OP_SURVEY, r);
         return;
     }
 
@@ -963,7 +1137,7 @@ static void action_survey(void)
      * from the console again. */
     daemoon_3ds_cache_forget(g_save_ctx.cache);
 
-    report("survey", r);
+    report(DAEMOON_STR_OP_SURVEY, r);
 }
 
 /* The conformance suite writes, clears and commits a real save archive. It exists
@@ -981,10 +1155,12 @@ static void action_self_test(void)
         return;
     }
 
-    (void)snprintf(body, sizeof(body),
-                   "This DESTROYS the save of %s. Use a dummy title. A backup is "
-                   "made first, but do not rely on it.",
-                   CUR->titles[CUR->selected].name);
+    {
+        const char *args[1];
+
+        args[0] = CUR->titles[CUR->selected].name;
+        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_SELFTEST_WARNING, args, 1);
+    }
     message(daemoon_str(DAEMOON_STR_APP_TITLE), body, GFX_DANGER);
 
     memset(&ask, 0, sizeof(ask));
@@ -995,7 +1171,7 @@ static void action_self_test(void)
         return;
     }
 
-    report("backup", daemoon_sync_backup_local(&g_env, &g_archive, &CUR->titles[CUR->selected],
+    report(DAEMOON_STR_OP_BACKUP, daemoon_sync_backup_local(&g_env, &g_archive, &CUR->titles[CUR->selected],
                                                path, sizeof(path)));
 
     memset(&ut, 0, sizeof(ut));
@@ -1036,7 +1212,8 @@ static void run_autotest(void)
         return;
     }
     daemoon_3ds_format_title_id(program_id, self.id, sizeof(self.id));
-    (void)daemoon_strlcpy(self.name, sizeof(self.name), "DaeMoon itself");
+    (void)daemoon_strlcpy(self.name, sizeof(self.name),
+                          daemoon_str(DAEMOON_STR_SELFTEST_SELF));
     self.platform = DAEMOON_PLATFORM_3DS;
     self.save_type = DAEMOON_SAVE_SAVEDATA;
     self.size_hint = (unsigned long long)MEDIATYPE_SD;
@@ -1049,7 +1226,7 @@ static void run_autotest(void)
             (void)daemoon_3ds_save_backend.close_save(&g_save_ctx, probe);
         } else if (daemoon_3ds_format_own_save(&self, 128) != DAEMOON_OK) {
             message(daemoon_str(DAEMOON_STR_APP_TITLE),
-                    "No archive of its own: build with SAVEDATA_SIZE=128K.", GFX_WARN);
+                    daemoon_str(DAEMOON_STR_SELFTEST_NO_ARCHIVE), GFX_WARN);
             return;
         }
     }
@@ -1103,7 +1280,11 @@ int main(void)
 {
     daemoon_lang_t lang = DAEMOON_LANG_EN;
 
-    /* Services first: the language decides which font to load. */
+    /* The settings come first because the language is one of them, and the
+     * language decides which font is loaded. Reading the file needs nothing but
+     * stdio, so it can happen before any service is up. */
+    (void)daemoon_3ds_config_load(DAEMOON_3DS_CONFIG_PATH, &g_config);
+
     if (R_FAILED(cfguInit())) {
         g_save_ctx.smdh_language = 1;
     } else {
@@ -1125,31 +1306,9 @@ int main(void)
      * English is a poor answer for somebody who does not read it. It is a better
      * one than a screen of blank boxes on a confirmation they have to answer, and
      * it is the option docs/fonts.md picked with the sizes written down. */
-    {
-        static const struct {
-            daemoon_lang_t lang;
-            unsigned int   probe;
-        } k_probe[] = {
-            { DAEMOON_LANG_KO,      0xAC00u }, /* 가 */
-            { DAEMOON_LANG_JA,      0x3042u }, /* あ */
-            { DAEMOON_LANG_ZH_HANS, 0x4E2Du }, /* 中 */
-            { DAEMOON_LANG_ZH_HANT, 0x4E2Du },
-            { DAEMOON_LANG_DE,      0x00DFu }, /* ß */
-            { DAEMOON_LANG_FR,      0x00E9u }, /* é */
-            { DAEMOON_LANG_ES,      0x00F1u }  /* ñ */
-        };
-        size_t i;
-
-        for (i = 0; i < sizeof(k_probe) / sizeof(k_probe[0]); ++i) {
-            if (k_probe[i].lang != lang) {
-                continue;
-            }
-            if (!daemoon_gfx_can_draw(k_probe[i].probe)) {
-                daemoon_3ds_trace("font/fallback", daemoon_lang_code(lang));
-                daemoon_i18n_set_language(DAEMOON_LANG_EN);
-            }
-            break;
-        }
+    if (!language_is_drawable(lang)) {
+        daemoon_3ds_trace("font/fallback", daemoon_lang_code(lang));
+        daemoon_i18n_set_language(DAEMOON_LANG_EN);
     }
     (void)amInit();
 
@@ -1191,7 +1350,6 @@ int main(void)
     daemoon_3ds_ui_init(&g_ui_ctx);
     g_archive.count = 0;
 
-    (void)daemoon_3ds_config_load(DAEMOON_3DS_CONFIG_PATH, &g_config);
     g_net_ctx.ca_bundle = g_config.ca_bundle;
 
     g_nds_ctx.rom_dir = DAEMOON_3DS_NDS_ROM_DIR;
@@ -1233,8 +1391,8 @@ int main(void)
     }
 
     if (show_library(0) != DAEMOON_OK) {
-        message(daemoon_str(DAEMOON_STR_APP_TITLE), "Could not read the title list.",
-                GFX_DANGER);
+        message(daemoon_str(DAEMOON_STR_APP_TITLE),
+                daemoon_str(DAEMOON_STR_ERR_TITLE_LIST), GFX_DANGER);
     }
 
     if (g_env.fs->exists(g_env.fs_ctx, DAEMOON_3DS_WORK_DIR "/AUTOTEST")) {

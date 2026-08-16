@@ -99,6 +99,13 @@ typedef struct {
     char token[DAEMOON_TOKEN_MAX];
     char device_label[DAEMOON_LABEL_MAX];
     char ca_bundle[DAEMOON_PATH_MAX];
+    /* A language code, or empty for "whatever the console is set to".
+     *
+     * Empty is the default and is not the same as "en": a console that is later
+     * switched to Japanese should follow, and a user who picked English on a
+     * Japanese console should not be overruled by it. Storing the choice and the
+     * absence of one separately is the only way to tell those apart. */
+    char language[12];
 } daemoon_3ds_config_t;
 
 void             daemoon_3ds_config_defaults(daemoon_3ds_config_t *cfg);

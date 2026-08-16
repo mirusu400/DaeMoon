@@ -768,6 +768,285 @@ TEST_CASE(the_smdh_is_read_whole_from_the_start)
 }
 
 
+/* ------------------------------------------------------------ backup picker */
+
+/* Plain file writing, needed by the picker cases below and by the nds ones
+ * further down. */
+static void write_file(const char *path, const void *data, size_t len)
+{
+    FILE *fp = fopen(path, "wb");
+
+    if (fp == NULL) {
+        return;
+    }
+    (void)fwrite(data, 1, len, fp);
+    (void)fclose(fp);
+}
+
+/* Puts one file into the stub's save archive through the backend, and commits,
+ * so the digest afterwards is the one the application would compute. */
+static int write_save_file(daemoon_env_t *env, const daemoon_title_t *title,
+                           const char *name, const char *text)
+{
+    daemoon_save_t *save = NULL;
+    daemoon_stream_t *f = NULL;
+
+    if (env->save->open_save_write(env->save_ctx, title, &save) != DAEMOON_OK) {
+        return -1;
+    }
+    if (env->save->open_file(env->save_ctx, save, name, DAEMOON_OPEN_WRITE, &f) !=
+        DAEMOON_OK) {
+        (void)env->save->close_save(env->save_ctx, save);
+        return -1;
+    }
+    (void)daemoon_stream_write(f, text, strlen(text));
+    (void)daemoon_stream_close(f);
+    (void)env->save->commit(env->save_ctx, save);
+    (void)env->save->close_save(env->save_ctx, save);
+    return 0;
+}
+
+/* What the restore screen lists, without the screen.
+ *
+ * The first version of this was written straight into the drawing code and sent to
+ * a console with no test behind it - which is the order this project exists to
+ * avoid, and it cost a hardware round. The part worth testing is not the layout:
+ * it is that up to thirty two files, any of which a card reader or a half finished
+ * write could have damaged, are read without taking the application down.
+ */
+static void backup_env(daemoon_env_t *env, daemoon_3ds_save_ctx_t *save_ctx,
+                       daemoon_posix_ui_ctx_t *ui, const char *work,
+                       unsigned char *scratch, size_t scratch_len)
+{
+    memset(save_ctx, 0, sizeof(*save_ctx));
+    save_ctx->media = MEDIATYPE_SD;
+    daemoon_posix_ui_init(ui);
+
+    memset(env, 0, sizeof(*env));
+    env->save = &daemoon_3ds_save_backend;
+    env->fs = &daemoon_3ds_fs_backend;
+    env->ui = &daemoon_posix_ui_backend;
+    env->save_ctx = save_ctx;
+    env->ui_ctx = ui;
+    env->device_label = "3DS";
+    env->work_dir = work;
+    env->scratch = scratch;
+    env->scratch_len = scratch_len;
+}
+
+TEST_CASE(the_backup_list_reads_each_package_and_marks_the_current_one)
+{
+    char root[256];
+    char work[320];
+    char backups[384];
+    char digest[DAEMOON_SHA256_HEX];
+    daemoon_strbuf_t sb;
+    daemoon_title_t title;
+    daemoon_3ds_save_ctx_t save_ctx;
+    daemoon_posix_ui_ctx_t ui;
+    daemoon_archive_ctx_t actx;
+    daemoon_env_t env;
+    daemoon_3ds_backup_row_t rows[8];
+    daemoon_save_t *save = NULL;
+    unsigned long long size = 0;
+    static unsigned char scratch[64 * 1024];
+    size_t count;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-picklist"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_ID), 0);
+    title_for(&title, TEST_TITLE_ID);
+
+    daemoon_strbuf_init(&sb, work, sizeof(work));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/DaeMoon");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+    (void)snprintf(backups, sizeof(backups), "%s/backups", work);
+
+    backup_env(&env, &save_ctx, &ui, work, scratch, sizeof(scratch));
+    actx.count = 0;
+
+    /* One backup, then the save changes, then a second. Two packages, two
+     * digests - which is the case the picker exists for. */
+    CHECK_EQ_INT(write_save_file(&env, &title, "slot_1/playerData.dat", "first"), 0);
+    CHECK_OK(daemoon_sync_backup_local(&env, &actx, &title, NULL, 0));
+    CHECK_EQ_INT(write_save_file(&env, &title, "slot_1/playerData.dat", "second"), 0);
+    CHECK_OK(daemoon_sync_backup_local(&env, &actx, &title, NULL, 0));
+
+    /* The digest of what is "on the console" now, exactly as the restore action
+     * computes it. */
+    CHECK_OK(env.save->open_save(env.save_ctx, &title, &save));
+    CHECK_OK(daemoon_archive_hash_save(&env, &actx, save, digest, &size));
+    CHECK_OK(env.save->close_save(env.save_ctx, save));
+
+    count = daemoon_3ds_backup_list(&env, backups, &title, digest, rows,
+                                    sizeof(rows) / sizeof(rows[0]));
+    CHECK_EQ_INT((int)count, 2);
+    {
+        size_t i;
+        int current_rows = 0;
+
+        for (i = 0; i < count; ++i) {
+            CHECK(rows[i].readable);
+            CHECK(rows[i].size > 0);
+            CHECK(rows[i].sha256[0] != '\0');
+            CHECK_STR(rows[i].device_label, "3DS");
+            if (rows[i].is_current) {
+                ++current_rows;
+                CHECK_STR(rows[i].sha256, digest);
+            }
+        }
+        /* Exactly one of them is what the console holds. Saying so is the only
+         * claim on that screen that does not come from a clock the user can set. */
+        CHECK_EQ_INT(current_rows, 1);
+    }
+
+    /* Another title's backups are not this title's. */
+    {
+        daemoon_title_t other;
+
+        title_for(&other, TEST_TITLE_OTHER);
+        CHECK_EQ_INT((int)daemoon_3ds_backup_list(&env, backups, &other, digest, rows,
+                                                  sizeof(rows) / sizeof(rows[0])),
+                     0);
+    }
+
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
+TEST_CASE(a_damaged_package_is_a_row_rather_than_a_crash)
+{
+    char root[256];
+    char work[320];
+    char backups[384];
+    char path[512];
+    daemoon_strbuf_t sb;
+    daemoon_title_t title;
+    daemoon_3ds_save_ctx_t save_ctx;
+    daemoon_posix_ui_ctx_t ui;
+    daemoon_archive_ctx_t actx;
+    daemoon_env_t env;
+    daemoon_3ds_backup_row_t rows[8];
+    static unsigned char scratch[64 * 1024];
+    static unsigned char junk[4096];
+    size_t count;
+    size_t i;
+    int readable = 0;
+    int unreadable = 0;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-pickbad"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_ID), 0);
+    title_for(&title, TEST_TITLE_ID);
+
+    daemoon_strbuf_init(&sb, work, sizeof(work));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/DaeMoon");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+    (void)snprintf(backups, sizeof(backups), "%s/backups", work);
+
+    backup_env(&env, &save_ctx, &ui, work, scratch, sizeof(scratch));
+    actx.count = 0;
+
+    CHECK_EQ_INT(write_save_file(&env, &title, "slot_1/playerData.dat", "ok"), 0);
+    CHECK_OK(daemoon_sync_backup_local(&env, &actx, &title, NULL, 0));
+
+    /* Everything a directory of backups can actually contain after a card has been
+     * pulled, a write has been interrupted, or somebody has copied a file in by
+     * hand. Every one of these is opened by the picker. */
+    (void)snprintf(path, sizeof(path), "%s/3ds_%s_000000000000.zip", backups, title.id);
+    write_file(path, "", 0); /* empty */
+
+    (void)snprintf(path, sizeof(path), "%s/3ds_%s_111111111111.zip", backups, title.id);
+    memset(junk, 0x5A, sizeof(junk));
+    write_file(path, junk, sizeof(junk)); /* not a zip at all */
+
+    (void)snprintf(path, sizeof(path), "%s/3ds_%s_222222222222.zip", backups, title.id);
+    memcpy(junk, "PK\003\004", 4); /* the right first four bytes and nothing else */
+    write_file(path, junk, 64);
+
+    (void)snprintf(path, sizeof(path), "%s/3ds_%s_333333333333.zip.tmp", backups,
+                   title.id);
+    write_file(path, junk, 64); /* a swap that never completed */
+
+    (void)snprintf(path, sizeof(path), "%s/3ds_%s_444444444444.zip", backups, title.id);
+    CHECK_EQ_INT(mkdir(path, 0755), 0); /* a directory wearing the name of a package */
+
+    count = daemoon_3ds_backup_list(&env, backups, &title, NULL, rows,
+                                    sizeof(rows) / sizeof(rows[0]));
+    /* Every one of them is listed. Hiding a file the user cannot then delete would
+     * leave the card filling up with something they cannot see. */
+    CHECK_EQ_INT((int)count, 6);
+    for (i = 0; i < count; ++i) {
+        if (rows[i].readable) {
+            ++readable;
+            CHECK(rows[i].sha256[0] != '\0');
+        } else {
+            ++unreadable;
+            /* Nothing downstream may read these as real values. */
+            CHECK_EQ_INT((int)rows[i].size, 0);
+            CHECK_STR(rows[i].sha256, "");
+            CHECK_EQ_INT(rows[i].is_current, 0);
+        }
+    }
+    CHECK_EQ_INT(readable, 1);
+    CHECK_EQ_INT(unreadable, 5);
+
+    /* And the readable one sorts above the wreckage, because that is the one the
+     * user came here for. */
+    CHECK(rows[0].readable);
+
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
+TEST_CASE(more_backups_than_the_screen_holds_are_not_written_past)
+{
+    char root[256];
+    char work[320];
+    char backups[384];
+    char path[512];
+    daemoon_strbuf_t sb;
+    daemoon_title_t title;
+    daemoon_3ds_save_ctx_t save_ctx;
+    daemoon_posix_ui_ctx_t ui;
+    daemoon_env_t env;
+    daemoon_3ds_backup_row_t rows[4];
+    static unsigned char scratch[64 * 1024];
+    int i;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-pickmany"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    title_for(&title, TEST_TITLE_ID);
+
+    daemoon_strbuf_init(&sb, work, sizeof(work));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/DaeMoon");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+    (void)snprintf(backups, sizeof(backups), "%s/backups", work);
+
+    backup_env(&env, &save_ctx, &ui, work, scratch, sizeof(scratch));
+    CHECK_OK(env.fs->mkdir_p(env.fs_ctx, backups));
+
+    for (i = 0; i < 20; ++i) {
+        (void)snprintf(path, sizeof(path), "%s/3ds_%s_%012d.zip", backups, title.id, i);
+        write_file(path, "not a package", 13);
+    }
+
+    /* The cap is the caller's array, not a constant this file happens to agree
+     * with. Getting that wrong writes past a static buffer on a console. */
+    CHECK_EQ_INT((int)daemoon_3ds_backup_list(&env, backups, &title, NULL, rows,
+                                              sizeof(rows) / sizeof(rows[0])),
+                 4);
+
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
 /* -------------------------------------------------------------- name cache */
 
 /* The cache exists for one reason: reading an SMDH opens the title's content and
@@ -1048,17 +1327,6 @@ TEST_CASE(the_list_reads_each_titles_smdh_once)
  * file IO: no permissions, no archive, no service. That is also why it is the one
  * that goes on the network first - if the sync path corrupts a save here, the
  * sync path is what is wrong. */
-
-static void write_file(const char *path, const void *data, size_t len)
-{
-    FILE *fp = fopen(path, "wb");
-
-    if (fp == NULL) {
-        return;
-    }
-    (void)fwrite(data, 1, len, fp);
-    (void)fclose(fp);
-}
 
 /* A DS cartridge header is a 12 byte title then a 4 character game code. Only
  * those first sixteen bytes are read, so that is all a test ROM needs. */
@@ -1421,6 +1689,11 @@ void test_3ds_backend(void)
     RUN(a_name_missing_in_the_console_language_falls_back);
     RUN(the_list_prefers_a_name_the_console_can_draw);
     RUN(the_smdh_is_read_whole_from_the_start);
+
+    printf("backup picker\n");
+    RUN(the_backup_list_reads_each_package_and_marks_the_current_one);
+    RUN(a_damaged_package_is_a_row_rather_than_a_crash);
+    RUN(more_backups_than_the_screen_holds_are_not_written_past);
 
     printf("name and icon cache\n");
     RUN(a_cached_name_does_not_read_the_smdh_again);

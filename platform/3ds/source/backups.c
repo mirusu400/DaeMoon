@@ -46,147 +46,11 @@
 #define ROW_H     34.0f
 #define ROWS_PAGE 6
 
-typedef struct {
-    char               name[96];
-    /* From the package's own manifest. Read once when the list is built: opening
-     * thirty two zips is already the slow part of this screen and doing it per
-     * frame would make it unusable. */
-    unsigned long long size;
-    char               created_at[DAEMOON_TIMESTAMP_MAX];
-    char               device_label[DAEMOON_LABEL_MAX];
-    char               sha256[DAEMOON_SHA256_HEX];
-    int                readable;
-    /* Whether this package holds exactly what is on the console right now. A fact
-     * about content rather than about clocks, so unlike the date it can be trusted
-     * and is worth saying out loud: restoring it would change nothing. */
-    int                is_current;
-} backup_row_t;
-
-/* ------------------------------------------------------------------ gathering */
-
-static daemoon_result_t read_row(const daemoon_env_t *env, const char *dir,
-                                 backup_row_t *row)
-{
-    char path[DAEMOON_PATH_MAX];
-    daemoon_strbuf_t sb;
-    daemoon_stream_t *pkg = NULL;
-    daemoon_manifest_t m;
-    daemoon_result_t r;
-
-    daemoon_strbuf_init(&sb, path, sizeof(path));
-    daemoon_strbuf_add(&sb, dir);
-    daemoon_strbuf_addc(&sb, '/');
-    daemoon_strbuf_add(&sb, row->name);
-    DAEMOON_TRY(daemoon_strbuf_result(&sb));
-
-    DAEMOON_TRY(env->fs->open(env->fs_ctx, path, DAEMOON_OPEN_READ, &pkg));
-    r = daemoon_archive_read_manifest(pkg, &m);
-    (void)daemoon_stream_close(pkg);
-    if (r != DAEMOON_OK) {
-        return r;
-    }
-
-    row->size = m.size;
-    (void)daemoon_strlcpy(row->created_at, sizeof(row->created_at), m.created_at);
-    (void)daemoon_strlcpy(row->device_label, sizeof(row->device_label), m.device_label);
-    (void)daemoon_strlcpy(row->sha256, sizeof(row->sha256), m.sha256);
-    row->readable = 1;
-    return DAEMOON_OK;
-}
-
-/* Newest first, by the string, which works because the timestamps are ISO 8601 and
- * fixed width. A package whose manifest could not be read sorts to the bottom
- * rather than being hidden: it is still a file taking up space and the user should
- * be able to delete it. */
-static void sort_rows(backup_row_t *rows, size_t count)
-{
-    size_t i;
-
-    for (i = 1; i < count; ++i) {
-        backup_row_t key = rows[i];
-        size_t j = i;
-
-        while (j > 0) {
-            const backup_row_t *prev = &rows[j - 1];
-            int worse;
-
-            if (prev->readable != key.readable) {
-                worse = !prev->readable;
-            } else {
-                worse = strcmp(prev->created_at, key.created_at) < 0;
-            }
-            if (!worse) {
-                break;
-            }
-            rows[j] = rows[j - 1];
-            --j;
-        }
-        rows[j] = key;
-    }
-}
-
-static size_t gather(const daemoon_env_t *env, const char *dir,
-                     const daemoon_title_t *title, const char *current_digest,
-                     backup_row_t *rows)
-{
-    char prefix[DAEMOON_TITLE_ID_MAX + 16];
-    daemoon_strbuf_t sb;
-    DIR *d;
-    struct dirent *ent;
-    size_t count = 0;
-    size_t i;
-
-    /* The same key the sync state and the staging path use: a title id is only
-     * unique together with its platform. */
-    daemoon_strbuf_init(&sb, prefix, sizeof(prefix));
-    daemoon_strbuf_add(&sb, daemoon_platform_name(title->platform));
-    daemoon_strbuf_addc(&sb, '_');
-    daemoon_strbuf_add(&sb, title->id);
-    if (daemoon_strbuf_result(&sb) != DAEMOON_OK) {
-        return 0;
-    }
-
-    d = opendir(dir);
-    if (d == NULL) {
-        return 0;
-    }
-    while (count < MAX_SHOWN && (ent = readdir(d)) != NULL) {
-        if (strncmp(ent->d_name, prefix, strlen(prefix)) != 0) {
-            continue;
-        }
-        memset(&rows[count], 0, sizeof(rows[count]));
-        (void)daemoon_strlcpy(rows[count].name, sizeof(rows[count].name), ent->d_name);
-        ++count;
-    }
-    (void)closedir(d);
-
-    for (i = 0; i < count; ++i) {
-        (void)read_row(env, dir, &rows[i]);
-        if (current_digest != NULL && current_digest[0] != '\0' && rows[i].readable) {
-            rows[i].is_current = strcmp(rows[i].sha256, current_digest) == 0;
-        }
-    }
-    sort_rows(rows, count);
-    return count;
-}
-
 /* --------------------------------------------------------------------- drawing */
-
-static void human_size(unsigned long long bytes, char *out, size_t cap)
-{
-    if (bytes >= 1024ull * 1024ull) {
-        (void)snprintf(out, cap, "%llu.%llu MB", bytes / (1024ull * 1024ull),
-                       (bytes % (1024ull * 1024ull)) * 10ull / (1024ull * 1024ull));
-    } else if (bytes >= 1024ull) {
-        (void)snprintf(out, cap, "%llu KB", bytes / 1024ull);
-    } else {
-        (void)snprintf(out, cap, "%llu B", bytes);
-    }
-}
 
 /* The digest, short. Two backups of the same title differ only here, so it is what
  * the file name is made of and what a bug report should carry. */
-static void short_digest(const backup_row_t *row, char *out, size_t cap)
+static void short_digest(const daemoon_3ds_backup_row_t *row, char *out, size_t cap)
 {
     if (row->readable) {
         (void)snprintf(out, cap, "%.12s", row->sha256);
@@ -195,7 +59,7 @@ static void short_digest(const backup_row_t *row, char *out, size_t cap)
     (void)daemoon_strlcpy(out, cap, "unreadable");
 }
 
-static void draw_details(const backup_row_t *row, const daemoon_title_t *title)
+static void draw_details(const daemoon_3ds_backup_row_t *row, const daemoon_title_t *title)
 {
     char line[160];
     char size[32];
@@ -219,7 +83,7 @@ static void draw_details(const backup_row_t *row, const daemoon_title_t *title)
         return;
     }
 
-    human_size(row->size, size, sizeof(size));
+    daemoon_3ds_backup_size_text(row->size, size, sizeof(size));
     (void)snprintf(line, sizeof(line), "%s", row->readable ? size : "unreadable package");
     daemoon_gfx_text(14.0f, y, 0.6f, GFX_TEXT, line);
     y += 30.0f;
@@ -246,7 +110,7 @@ static void draw_details(const backup_row_t *row, const daemoon_title_t *title)
                                    daemoon_str(DAEMOON_STR_BACKUP_CLOCK_NOTE));
 }
 
-static void draw_list(const backup_row_t *rows, size_t count, size_t selected,
+static void draw_list(const daemoon_3ds_backup_row_t *rows, size_t count, size_t selected,
                       size_t scroll)
 {
     size_t i;
@@ -268,7 +132,7 @@ static void draw_list(const backup_row_t *rows, size_t count, size_t selected,
         }
 
         if (rows[index].readable) {
-            human_size(rows[index].size, size, sizeof(size));
+            daemoon_3ds_backup_size_text(rows[index].size, size, sizeof(size));
             (void)snprintf(label, sizeof(label), "%.10s   %s", rows[index].created_at,
                            size);
         } else {
@@ -286,10 +150,55 @@ static void draw_list(const backup_row_t *rows, size_t count, size_t selected,
                      "A restore   X delete   B back");
 }
 
+/* Draws both halves of this screen, with no input, for the unattended test.
+ *
+ * The list itself is covered on a desktop. What is not, and what has now cost two
+ * trips to a console, is the drawing: real citro2d, a real font, and strings whose
+ * length depends on which language the console is in. This runs it against rows
+ * that cover the cases the layout has to survive - a package that could not be
+ * read, one that matches the console, one with nothing in it - so an emulator can
+ * fault instead of somebody's afternoon.
+ */
+void daemoon_3ds_pick_backup_render_check(const daemoon_title_t *title, unsigned frames)
+{
+    daemoon_3ds_backup_row_t rows[3];
+    unsigned f;
+
+    memset(rows, 0, sizeof(rows));
+    (void)daemoon_strlcpy(rows[0].name, sizeof(rows[0].name),
+                          "3ds_0004000000055D00_0123456789ab.zip");
+    rows[0].size = 967;
+    (void)daemoon_strlcpy(rows[0].created_at, sizeof(rows[0].created_at),
+                          "1970-01-01T00:00:00Z");
+    (void)daemoon_strlcpy(rows[0].device_label, sizeof(rows[0].device_label), "3DS");
+    (void)daemoon_strlcpy(rows[0].sha256, sizeof(rows[0].sha256),
+                          "0123456789abcdef0123456789abcdef"
+                          "0123456789abcdef0123456789abcdef");
+    rows[0].readable = 1;
+    rows[0].is_current = 1;
+
+    rows[1] = rows[0];
+    rows[1].is_current = 0;
+    rows[1].size = 5ull * 1024ull * 1024ull;
+
+    /* Everything blank, which is what a package that could not be read leaves
+     * behind. Nothing here may treat an empty digest as a string to print past. */
+    (void)daemoon_strlcpy(rows[2].name, sizeof(rows[2].name), "3ds_broken.zip");
+
+    for (f = 0; f < frames; ++f) {
+        size_t selected = f % (sizeof(rows) / sizeof(rows[0]));
+
+        daemoon_gfx_frame_begin();
+        draw_details(&rows[selected], title);
+        draw_list(rows, sizeof(rows) / sizeof(rows[0]), selected, 0);
+        daemoon_gfx_frame_end();
+    }
+}
+
 /* --------------------------------------------------------------------- picking */
 
 static daemoon_result_t delete_row(const daemoon_env_t *env, const char *dir,
-                                   const backup_row_t *row)
+                                   const daemoon_3ds_backup_row_t *row)
 {
     char path[DAEMOON_PATH_MAX];
     daemoon_strbuf_t sb;
@@ -317,12 +226,16 @@ daemoon_result_t daemoon_3ds_pick_backup(const daemoon_env_t *env, const char *d
 {
     /* Thirty two of these is about twenty kilobytes. Static rather than on the
      * stack, which on this platform is small enough to care about. */
-    static backup_row_t rows[MAX_SHOWN];
+    static daemoon_3ds_backup_row_t rows[MAX_SHOWN];
     size_t count;
     size_t selected = 0;
     size_t scroll = 0;
+    int chosen = 0;
+    int drew = 0;
 
-    count = gather(env, dir, title, current_digest, rows);
+    daemoon_3ds_trace("pick/gather", dir);
+    count = daemoon_3ds_backup_list(env, dir, title, current_digest, rows, MAX_SHOWN);
+    daemoon_3ds_trace_uint("pick/rows", (unsigned long long)count);
     if (count == 0) {
         return DAEMOON_ERR_NOT_FOUND;
     }
@@ -337,11 +250,16 @@ daemoon_result_t daemoon_3ds_pick_backup(const daemoon_env_t *env, const char *d
         draw_details(&rows[selected], title);
         draw_list(rows, count, selected, scroll);
         daemoon_gfx_frame_end();
+        if (!drew) {
+            drew = 1;
+            daemoon_3ds_trace("pick/drew", NULL);
+        }
 
         if (down & KEY_B) {
             return DAEMOON_ERR_USER_CANCELLED;
         }
         if (down & KEY_A) {
+            chosen = 1;
             break;
         }
         if (down & KEY_X) {
@@ -355,7 +273,7 @@ daemoon_result_t daemoon_3ds_pick_backup(const daemoon_env_t *env, const char *d
                     done.id = DAEMOON_STR_BACKUP_DELETED;
                     env->ui->notify(env->ui_ctx, &done);
                 }
-                count = gather(env, dir, title, current_digest, rows);
+                count = daemoon_3ds_backup_list(env, dir, title, current_digest, rows, MAX_SHOWN);
                 if (count == 0) {
                     return DAEMOON_ERR_NOT_FOUND;
                 }
@@ -377,6 +295,14 @@ daemoon_result_t daemoon_3ds_pick_backup(const daemoon_env_t *env, const char *d
         }
     }
 
+    if (!chosen) {
+        /* aptMainLoop said the application is going away - HOME, or the power
+         * button. Falling out of the loop is not a choice, and treating it as one
+         * would start a restore while the system is trying to close us. */
+        daemoon_3ds_trace("pick/apt-exit", NULL);
+        return DAEMOON_ERR_USER_CANCELLED;
+    }
+
     {
         daemoon_strbuf_t sb;
 
@@ -384,6 +310,7 @@ daemoon_result_t daemoon_3ds_pick_backup(const daemoon_env_t *env, const char *d
         daemoon_strbuf_add(&sb, dir);
         daemoon_strbuf_addc(&sb, '/');
         daemoon_strbuf_add(&sb, rows[selected].name);
+        daemoon_3ds_trace("pick/chose", rows[selected].name);
         return daemoon_strbuf_result(&sb);
     }
 }

@@ -236,6 +236,39 @@ const daemoon_3ds_name_probe_t *daemoon_3ds_last_name_probe(void);
  * declared SaveDataSize does not create one; the title has to format it once. */
 daemoon_result_t daemoon_3ds_format_own_save(const daemoon_title_t *t, unsigned blocks);
 
+/* One backup, as the picker needs to show it.
+ *
+ * The metadata is read out of each package's manifest when the list is built, not
+ * per frame: a backup is named after its content digest, which is the right name
+ * for storage and tells a person nothing. */
+typedef struct {
+    char               name[96];
+    unsigned long long size;
+    char               created_at[DAEMOON_TIMESTAMP_MAX];
+    char               device_label[DAEMOON_LABEL_MAX];
+    char               sha256[DAEMOON_SHA256_HEX];
+    /* Cleared when the package could not be read. Such a row is still shown -
+     * it is a file taking up space and the user has to be able to delete it. */
+    int                readable;
+    /* Whether this package holds exactly what is on the console right now. A fact
+     * about content rather than about clocks, so unlike created_at it can be
+     * trusted: restoring it would change nothing. */
+    int                is_current;
+} daemoon_3ds_backup_row_t;
+
+/* Fills rows with the backups belonging to one title, newest first by the date in
+ * their manifests, and returns how many. Kept apart from the screen that draws
+ * them so it can be run on a desktop against packages a card reader has damaged.
+ *
+ * current_digest may be NULL; when given, the row holding exactly what is on the
+ * console right now is marked. */
+size_t daemoon_3ds_backup_list(const daemoon_env_t *env, const char *dir,
+                               const daemoon_title_t *title, const char *current_digest,
+                               daemoon_3ds_backup_row_t *rows, size_t cap);
+
+/* "967 B", "1 KB", "2.5 MB". */
+void daemoon_3ds_backup_size_text(unsigned long long bytes, char *out, size_t cap);
+
 /* Lists the backups belonging to one title, with what each package's own manifest
  * says about it, and lets the user choose one to restore or delete. Returns
  * not_found when there are none, and user_cancelled when they back out.
@@ -247,6 +280,23 @@ daemoon_result_t daemoon_3ds_pick_backup(const daemoon_env_t *env, const char *d
                                          const daemoon_title_t *title,
                                          const char *current_digest, char *out,
                                          size_t cap);
+
+/* One line per step, on the card, closed after each write.
+ *
+ * A console that dies mid action says nothing on its own: the screen is gone, and
+ * a Luma dump only exists for the faults Luma catches and only means something
+ * once its addresses are matched back to the right build. A trail of steps costs
+ * a few SD writes per user action and answers "how far did it get" without
+ * another trip to the console. */
+#define DAEMOON_3DS_TRACE_PATH DAEMOON_3DS_WORK_DIR "/trace.txt"
+
+void daemoon_3ds_trace(const char *step, const char *detail);
+void daemoon_3ds_trace_uint(const char *step, unsigned long long value);
+
+/* Draws the backup picker for a number of frames with no input, so an unattended
+ * run can prove the drawing does not fault. Needs a console: it is in the header
+ * only so the autotest can reach it. */
+void daemoon_3ds_pick_backup_render_check(const daemoon_title_t *title, unsigned frames);
 
 /* The console UI keeps a little state: which line is selected, what to draw. */
 typedef struct {

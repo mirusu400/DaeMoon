@@ -220,8 +220,17 @@ static daemoon_result_t open_save(void *ctx, const daemoon_title_t *t, daemoon_s
 static daemoon_result_t open_save_write(void *ctx, const daemoon_title_t *t,
                                         daemoon_save_t **out)
 {
+    daemoon_result_t r;
+
     (void)ctx;
-    return open_common(t, 1, out);
+    /* The three calls below are the ones that change a save archive, and until
+     * now they were unreachable on this console: the picker froze before a
+     * restore could start, so a restore has never actually run on hardware.
+     * Which step it stops at is the whole question. */
+    daemoon_3ds_trace("save/open-write", t->id);
+    r = open_common(t, 1, out);
+    daemoon_3ds_trace("save/open-write-done", daemoon_result_code(r));
+    return r;
 }
 
 static daemoon_result_t close_save(void *ctx, daemoon_save_t *s)
@@ -245,6 +254,7 @@ static daemoon_result_t commit(void *ctx, daemoon_save_t *s)
     if (!s->writable) {
         return DAEMOON_ERR_FORBIDDEN;
     }
+    daemoon_3ds_trace("save/commit", NULL);
     return from_result(FSUSER_ControlArchive(s->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA,
                                              NULL, 0, NULL, 0));
 }
@@ -520,6 +530,7 @@ static daemoon_result_t remove_all(void *ctx, daemoon_save_t *s)
     if (r == DAEMOON_OK) {
         r = c.err;
     }
+    daemoon_3ds_trace_uint("save/remove-all", (unsigned long long)c.count);
 
     for (i = 0; r == DAEMOON_OK && i < c.count; ++i) {
         u16 utf16[TDS_UTF16_MAX];
@@ -537,6 +548,7 @@ static daemoon_result_t remove_all(void *ctx, daemoon_save_t *s)
     }
 
     free(c.paths);
+    daemoon_3ds_trace("save/remove-all-done", daemoon_result_code(r));
     return r;
 }
 

@@ -40,6 +40,11 @@ static int modal(const char *title, const char *body, const char *const *options
 {
     int selected = start;
 
+    /* Which dialog was on screen, and whether it was ever answered. A console that
+     * dies here says nothing otherwise, and every destructive action in the
+     * project passes through this function. */
+    daemoon_3ds_trace("ui/modal", title);
+
     while (aptMainLoop()) {
         u32 down;
         touchPosition touch;
@@ -66,6 +71,7 @@ static int modal(const char *title, const char *body, const char *const *options
                                          (down & KEY_TOUCH) != 0);
             if (hit) {
                 daemoon_gfx_frame_end();
+                daemoon_3ds_trace_uint("ui/modal-touch", (unsigned long long)i);
                 return (int)i;
             }
             y += 40.0f;
@@ -76,9 +82,11 @@ static int modal(const char *title, const char *body, const char *const *options
         daemoon_gfx_frame_end();
 
         if (down & KEY_A) {
+            daemoon_3ds_trace_uint("ui/modal-chose", (unsigned long long)selected);
             return selected;
         }
         if (down & KEY_B) {
+            daemoon_3ds_trace("ui/modal-back", NULL);
             return -1;
         }
         if ((down & KEY_UP) && selected > 0) {
@@ -88,6 +96,9 @@ static int modal(const char *title, const char *body, const char *const *options
             ++selected;
         }
     }
+    /* The application is being closed. Not an answer, and the caller must not read
+     * it as one: every question asked here is asked before something destructive. */
+    daemoon_3ds_trace("ui/modal-apt-exit", NULL);
     return -1;
 }
 
@@ -115,6 +126,12 @@ static void ui_progress(void *ctx, const daemoon_str_ref_t *label, int pct)
 
     (void)ctx;
     render(label, text, sizeof(text));
+
+    /* core announces each stage of a backup or a restore through here, a handful
+     * of times per operation rather than per frame. Writing them down turns "it
+     * died somewhere in the restore" into "it died between verifying and
+     * unpacking", without core knowing a console exists. */
+    daemoon_3ds_trace("ui/progress", text);
 
     daemoon_gfx_frame_begin();
     daemoon_gfx_top();

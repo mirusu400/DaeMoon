@@ -373,6 +373,7 @@ static void action_backup(void)
      * makes a backup and the button that overwrites a save are next to each other
      * on a console with no pointer, and being told which title is about to be read
      * is worth one press. */
+    daemoon_3ds_trace("backup/begin", g_titles[g_selected].id);
     memset(&ask, 0, sizeof(ask));
     ask.id = DAEMOON_STR_CONFIRM_BACKUP;
     ask.args[0] = g_titles[g_selected].name;
@@ -381,8 +382,14 @@ static void action_backup(void)
         return;
     }
 
-    report("backup", daemoon_sync_backup_local(&g_env, &g_archive, &g_titles[g_selected],
-                                               path, sizeof(path)));
+    {
+        daemoon_result_t r = daemoon_sync_backup_local(&g_env, &g_archive,
+                                                       &g_titles[g_selected], path,
+                                                       sizeof(path));
+
+        daemoon_3ds_trace("backup/done", daemoon_result_code(r));
+        report("backup", r);
+    }
 }
 
 /* The digest of what is on the console right now, so the backup list can say which
@@ -425,11 +432,14 @@ static void action_restore(void)
         return;
     }
 
+    daemoon_3ds_trace("restore/begin", g_titles[g_selected].id);
     draw_loading("reading backups", 0, 0);
     current_digest(&g_titles[g_selected], digest, sizeof(digest));
+    daemoon_3ds_trace("restore/digest", digest[0] != '\0' ? digest : "-");
 
     pr = daemoon_3ds_pick_backup(&g_env, dir, &g_titles[g_selected], digest, pick,
                                  sizeof(pick));
+    daemoon_3ds_trace("restore/picked", daemoon_result_code(pr));
     if (pr == DAEMOON_ERR_NOT_FOUND) {
         char none[256];
         const char *args[1];
@@ -451,12 +461,16 @@ static void action_restore(void)
         daemoon_result_t sr = daemoon_3ds_read_secure_value(&g_titles[g_selected], &secure);
         daemoon_result_t r;
 
+        daemoon_3ds_trace("restore/secure-read", daemoon_result_code(sr));
+        daemoon_3ds_trace("restore/core", pick);
         r = daemoon_sync_restore_package(&g_env, &g_archive, &g_titles[g_selected], pick);
+        daemoon_3ds_trace("restore/core-done", daemoon_result_code(r));
         report("restore", r);
 
         if (r == DAEMOON_OK && sr == DAEMOON_OK && secure.exists) {
             report("secure value",
                    daemoon_3ds_write_secure_value(&g_titles[g_selected], &secure));
+            daemoon_3ds_trace("restore/secure-written", NULL);
         }
     }
 }
@@ -764,6 +778,12 @@ static void run_autotest(void)
     daemoon_backend_conformance(&ut);
     failures = daemoon_test_failures - failures;
 
+    /* The screen that has twice gone wrong on hardware, drawn unattended. It
+     * asserts nothing - a fault here takes the process down, which is the report. */
+    daemoon_3ds_trace("autotest/picker-draw", NULL);
+    daemoon_3ds_pick_backup_render_check(&self, 8);
+    daemoon_3ds_trace("autotest/picker-drawn", NULL);
+
     daemoon_strbuf_init(&sb, line, sizeof(line));
     daemoon_strbuf_add(&sb, "build=");
     daemoon_strbuf_add(&sb, DAEMOON_BUILD_STAMP);
@@ -805,6 +825,11 @@ int main(void)
         return 1;
     }
     (void)amInit();
+
+    /* A line the trail can be read from. Without it two runs of the same action
+     * are indistinguishable in the file, and "did it get further this time" is the
+     * question the file exists to answer. */
+    daemoon_3ds_trace("app/start", DAEMOON_BUILD_STAMP);
 
     g_save_ctx.media = 1; /* MEDIATYPE_SD */
     g_save_ctx.only_with_saves = 1;
@@ -935,6 +960,7 @@ int main(void)
     }
 
 done:
+    daemoon_3ds_trace("app/exit", NULL);
     free_icons();
     if (g_titles != NULL) {
         g_env.save->free_titles(g_env.save_ctx, g_titles, g_title_count);

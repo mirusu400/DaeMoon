@@ -41,26 +41,29 @@ size_t daemoon_3ds_tile_index(unsigned x, unsigned y, unsigned tex_w)
 
 /* Where the camera keeps the pixel that appears at (x, y).
  *
- * Columns, top left first: index = x * height + y. The console said so - the
- * preview was made to cycle through the four plausible layouts and this is the one
- * that is a picture.
+ * Rows, left to right, top to bottom: index = y * width + x. Established by giving
+ * the console four named candidates and asking which one is a picture.
  *
- * It took three attempts, and the argument that made the first two look right is
- * worth writing down because it was wrong. quirc was being handed this buffer as a
- * 400 wide image and decoding real codes from it, and I read that as proof the rows
- * were 400 wide: reading columns as rows shears the picture, one pixel further
- * along on every line, and surely no QR code survives that.
+ * It took four rounds, and the two things that went wrong are both worth keeping.
  *
- * A QR code survives that. quirc fits a perspective transform from the four
- * corners of the finder pattern, and a shear is affine, which is inside what a
- * perspective transform can undo. So decoding proved the buffer held an image and
- * nothing at all about its shape.
+ * The first is an argument that was wrong even though its conclusion was right.
+ * quirc was decoding real codes from this buffer read as 400 wide rows, and I took
+ * that as proof the rows were 400 wide - reading columns as rows shears a picture,
+ * one pixel further along on every line, and surely no QR code survives that. A QR
+ * code survives that: quirc fits a perspective transform from the finder corners,
+ * a shear is affine, and affine is inside what a perspective transform undoes. So
+ * decoding proved the buffer held an image and nothing about its shape, and I then
+ * abandoned the right answer on the strength of a bad argument for it.
  *
  * **A decoder that corrects for something cannot be used to detect it.**
+ *
+ * The second is that the candidates were numbered, and I reordered them between two
+ * builds. "Layout 2" then meant two different things, and one round was spent
+ * finding that out. They have names now and the numbering does not move.
  */
-size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_h)
+size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_w)
 {
-    return (size_t)x * (size_t)cam_h + (size_t)y;
+    return (size_t)y * (size_t)cam_w + (size_t)x;
 }
 
 /* The same question, asked on the console instead of guessed at.
@@ -92,15 +95,17 @@ const char *daemoon_3ds_cam_layout_name(int layout)
 size_t daemoon_3ds_cam_index_as(unsigned x, unsigned y, unsigned cam_w,
                                 unsigned cam_h, int layout)
 {
+    /* These indices do not move. They were reordered once, between two builds,
+     * and an answer read off a screen stopped meaning anything. */
     switch (layout) {
     case 1: /* columns, bottom left first - the 3DS framebuffer's own order */
         return (size_t)x * (size_t)cam_h + (size_t)(cam_h - 1u - y);
-    case 2: /* rows of the frame width, top down */
-        return (size_t)y * (size_t)cam_w + (size_t)x;
+    case 2: /* rows, top down - what the console says it uses */
+        return daemoon_3ds_cam_index(x, y, cam_w);
     case 3: /* rows, bottom up */
         return (size_t)(cam_h - 1u - y) * (size_t)cam_w + (size_t)x;
-    default: /* columns, top left first - what the console says it uses */
-        return daemoon_3ds_cam_index(x, y, cam_h);
+    default: /* columns, top left first */
+        return (size_t)x * (size_t)cam_h + (size_t)y;
     }
 }
 

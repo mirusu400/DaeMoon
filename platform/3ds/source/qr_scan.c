@@ -179,6 +179,7 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
     int want_flip = 0;
 
     memset(&g_stats, 0, sizeof(g_stats));
+    g_stats.layout = DAEMOON_3DS_CAM_LAYOUT_DEFAULT;
     if (out == NULL || cap == 0) {
         return DAEMOON_ERR_INVALID_REQUEST;
     }
@@ -225,13 +226,11 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
         return DAEMOON_ERR_BACKEND_ERROR;
     }
 
-    /* The sensor stores columns, so the buffer read straight through is a 240 wide
-     * image that happens to be the picture turned on its side. Told that, quirc
-     * gets a rotation - which QR decoding does not care about at all - instead of
-     * the shear it was being handed before. It corrected for that shear, which is
-     * why nothing looked wrong until the preview was drawn. */
+    /* Rows of the frame width, which is what the buffer holds, so quirc is given
+     * the picture the right way round rather than a skewed one it has to solve
+     * for. */
     q = quirc_new();
-    if (q == NULL || quirc_resize(q, CAM_H, CAM_W) < 0) {
+    if (q == NULL || quirc_resize(q, CAM_W, CAM_H) < 0) {
         if (q != NULL) {
             quirc_destroy(q);
         }

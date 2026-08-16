@@ -376,11 +376,15 @@ const daemoon_3ds_qr_stats_t *daemoon_3ds_qr_last_stats(void);
  * be checked on a desktop. A wrong swizzle does not fail - it draws noise, and
  * noise on a console is a photograph and a guess. */
 size_t daemoon_3ds_tile_index(unsigned x, unsigned y, unsigned tex_w);
-size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_h);
+size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_w);
 
 /* Four candidate sensor layouts, so the console can be asked which one it uses
  * rather than told. 0 is what ships; the rest exist to be ruled out on screen. */
 #define DAEMOON_3DS_CAM_LAYOUTS 4
+/* rows/TD, which is what one console answered when asked by name. The index is not
+ * moved to make it first: renumbering these is what made an earlier answer
+ * ambiguous, and being the default is not worth being called zero. */
+#define DAEMOON_3DS_CAM_LAYOUT_DEFAULT 2
 size_t daemoon_3ds_cam_index_as(unsigned x, unsigned y, unsigned cam_w,
                                 unsigned cam_h, int layout);
 /* A name rather than a number: the layouts were renumbered once and the answer

@@ -1926,12 +1926,13 @@ TEST_CASE(a_camera_frame_is_rotated_and_tiled)
      * column, or a flip is a different value rather than a similar picture. */
     for (y = 0; y < CH; ++y) {
         for (x = 0; x < CW; ++x) {
-            frame[daemoon_3ds_cam_index(x, y, CH)] =
+            frame[daemoon_3ds_cam_index(x, y, CW)] =
                 (unsigned short)(0x1000u + y * 0x40u + x);
         }
     }
 
-    daemoon_3ds_cam_to_tiled(frame, CW, CH, tex, TW, TH, 0);
+    daemoon_3ds_cam_to_tiled(frame, CW, CH, tex, TW, TH,
+                             DAEMOON_3DS_CAM_LAYOUT_DEFAULT);
 
     for (y = 0; y < CH; ++y) {
         for (x = 0; x < CW; ++x) {
@@ -1962,26 +1963,40 @@ TEST_CASE(a_camera_frame_is_rotated_and_tiled)
     }
 }
 
-/* The camera keeps a frame in columns, top left first.
+/* The camera keeps a frame in rows, left to right, top to bottom.
  *
- * Established by asking the console: the preview cycles through the four plausible
- * layouts and this is the one that is a picture. It took three attempts, and the
- * argument behind the first two is worth remembering because it was wrong - quirc
- * decoded real codes from the buffer read as 400 wide rows, which looked like proof
- * that the rows were 400 wide. It was not. quirc fits a perspective transform from
- * the finder corners, a shear is affine, and affine is inside what a perspective
- * transform undoes.
+ * Established by giving a console four named candidates and asking which one is a
+ * picture. Four rounds, and two lessons that are not about cameras:
  *
- * A decoder that corrects for something cannot be used to detect it. */
-TEST_CASE(the_camera_layout_is_columns_from_the_top_left)
+ * The argument that first produced this answer was wrong even though the answer was
+ * right. quirc decoded real codes from the buffer read as 400 wide rows, which
+ * looked like proof the rows were 400 wide - but quirc fits a perspective transform
+ * from the finder corners, a shear is affine, and affine is inside what such a
+ * transform undoes. A decoder that corrects for something cannot be used to detect
+ * it. Believing that argument is what made me abandon the right answer.
+ *
+ * And the candidates were numbered, and I reordered them between builds, so an
+ * answer read off a screen meant two things. They have names now. */
+TEST_CASE(the_camera_layout_is_rows_of_the_frame_width)
 {
-    CHECK_EQ_INT((int)daemoon_3ds_cam_index(0, 0, 240), 0);
-    /* One row down is one pixel further on: a column is contiguous. */
-    CHECK_EQ_INT((int)daemoon_3ds_cam_index(0, 1, 240), 1);
-    /* One column right is a whole column further on. */
-    CHECK_EQ_INT((int)daemoon_3ds_cam_index(1, 0, 240), 240);
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(0, 0, 400), 0);
+    /* One step right is one pixel further on: a row is contiguous. */
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(1, 0, 400), 1);
+    /* One row down is a whole width further on. */
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(0, 1, 400), 400);
     /* And the last pixel of a 400x240 frame is the last index. */
-    CHECK_EQ_INT((int)daemoon_3ds_cam_index(399, 239, 240), 400 * 240 - 1);
+    CHECK_EQ_INT((int)daemoon_3ds_cam_index(399, 239, 400), 400 * 240 - 1);
+}
+
+/* The names are the contract, not the indices. A future reordering that changed
+ * what an answer meant is the failure this is here to stop. */
+TEST_CASE(the_layout_names_do_not_move)
+{
+    CHECK_STR(daemoon_3ds_cam_layout_name(0), "cols/TL");
+    CHECK_STR(daemoon_3ds_cam_layout_name(1), "cols/BL");
+    CHECK_STR(daemoon_3ds_cam_layout_name(2), "rows/TD");
+    CHECK_STR(daemoon_3ds_cam_layout_name(3), "rows/BU");
+    CHECK_STR(daemoon_3ds_cam_layout_name(DAEMOON_3DS_CAM_LAYOUT_DEFAULT), "rows/TD");
 }
 
 void test_3ds_backend(void)
@@ -2009,7 +2024,8 @@ void test_3ds_backend(void)
 
     printf("camera preview\n");
     RUN(a_camera_frame_is_rotated_and_tiled);
-    RUN(the_camera_layout_is_columns_from_the_top_left);
+    RUN(the_camera_layout_is_rows_of_the_frame_width);
+    RUN(the_layout_names_do_not_move);
 
     printf("name and icon cache\n");
     RUN(a_cached_name_does_not_read_the_smdh_again);

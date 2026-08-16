@@ -338,6 +338,25 @@ and a console that has never been configured needs nothing typed at all.
   stops delivering must not become an application that never returns on a screen
   whose only way out is the frame callback.
 
+The sensor stores **rows of the frame width, top to bottom**, and settling that
+took four rounds for two reasons that are not about cameras.
+
+The argument that first produced the right answer was wrong. quirc was decoding
+real codes from the buffer read as 400 wide rows, and that looked like proof the
+rows were 400 wide - reading columns as rows shears a picture, and surely no QR
+code survives that. It does: quirc fits a perspective transform from the finder
+corners, a shear is affine, and affine is inside what such a transform undoes. So
+decoding proved the buffer held an image and nothing about its shape, and believing
+otherwise is what made me abandon a correct answer.
+
+**A decoder that corrects for something cannot be used to detect it.**
+
+Then the preview was made to cycle through four candidates so the console could
+answer instead of being guessed at - and the candidates were numbered, and I
+reordered them between two builds. "Layout 2" meant two different things and a
+round went into finding that out. They have names now, `cols/TL` and friends, the
+indices do not move, and a test says so.
+
 **Only the optics need hardware.** `make emu-pair` runs the whole flow in an
 emulator against a real server, with the camera replaced by a file holding exactly
 what a scan would have produced - same parser, same network backend, same token

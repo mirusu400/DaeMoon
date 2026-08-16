@@ -21,12 +21,31 @@
 
 #include <3ds.h>
 
+#include <stdio.h>
 #include <string.h>
 
 /* One line each, so the file can be read by anything that can read the archive and
  * there is no format to get wrong. */
 #define SECRET_PATH "token"
 #define SECRET_MAX  (DAEMOON_TOKEN_MAX + DAEMOON_DEVICE_ID_MAX + 8)
+
+/* Every step, with the raw Result behind it.
+ *
+ * "backend_error" is one word for everything the filesystem can refuse, and this
+ * path has five places to fail. The SMDH lookup already cost four trips to a
+ * console for exactly that reason. */
+static void trace_step(const char *step, daemoon_result_t r)
+{
+    char detail[48];
+
+    if (r == DAEMOON_OK) {
+        daemoon_3ds_trace(step, "ok");
+        return;
+    }
+    (void)snprintf(detail, sizeof(detail), "%s 0x%08lX", daemoon_result_code(r),
+                   daemoon_3ds_last_fs_result());
+    daemoon_3ds_trace(step, detail);
+}
 
 /* This title, as the save backend wants to see it. */
 static daemoon_result_t own_title(daemoon_title_t *t)
@@ -116,15 +135,31 @@ daemoon_result_t daemoon_3ds_secret_save(const daemoon_env_t *env, const char *t
     DAEMOON_TRY(daemoon_strbuf_result(&sb));
 
     r = daemoon_3ds_save_backend.open_save_write(NULL, &self, &save);
-    if (r == DAEMOON_ERR_NOT_FOUND) {
-        /* A declared SaveDataSize does not create an archive; the title has to
-         * format it once. Only ever its own - daemoon_3ds_format_own_save refuses
-         * any other id, which is not a check worth doing without. */
-        /* The same size the unattended self test formats, which is the only value
-         * this has been seen to work at. A declared SaveDataSize is a ceiling, not
-         * an archive. */
-        DAEMOON_TRY(daemoon_3ds_format_own_save(&self, 128));
+    trace_step("secret/open", r);
+    if (r != DAEMOON_OK) {
+        /* Formatted on any failure, not only on not_found.
+         *
+         * A declared SaveDataSize does not create an archive - the title has to
+         * format it once - and an archive that is not there yet does not come back
+         * as one consistent error. It has been seen as not_found and as a plain
+         * backend error, and treating only the first as "format it" turned a first
+         * run into a pairing that could not complete.
+         *
+         * Trying costs nothing that matters: daemoon_3ds_format_own_save refuses
+         * every title but this one, so the worst case is a call the service says
+         * no to. 128 blocks is what the unattended self test has been formatting
+         * for weeks and the only size this is known to work at.
+         *
+         * It will not silently destroy anything either. This runs when the archive
+         * could not be opened at all, which is not a state a save is in. */
+        daemoon_result_t fr = daemoon_3ds_format_own_save(&self, 128);
+
+        trace_step("secret/format", fr);
+        if (fr != DAEMOON_OK) {
+            return r;
+        }
         r = daemoon_3ds_save_backend.open_save_write(NULL, &self, &save);
+        trace_step("secret/reopen", r);
     }
     DAEMOON_TRY(r);
 
@@ -143,8 +178,10 @@ daemoon_result_t daemoon_3ds_secret_save(const daemoon_env_t *env, const char *t
 
     /* Without the commit nothing is persisted and the console finds out the next
      * time it is turned on. The same rule as every other write in this project. */
+    trace_step("secret/write", r);
     if (r == DAEMOON_OK) {
         r = daemoon_3ds_save_backend.commit(NULL, save);
+        trace_step("secret/commit", r);
     }
     {
         daemoon_result_t cr = daemoon_3ds_save_backend.close_save(NULL, save);

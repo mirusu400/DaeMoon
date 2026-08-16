@@ -200,6 +200,11 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
  * the module, the summary and the description, and can be looked up. */
 unsigned long daemoon_3ds_last_name_result(void);
 
+/* The last raw Result from the FS service. The wire codes are coarse on purpose
+ * and a Result names the module, the summary and the description - which is the
+ * difference between "backend error" and a line somebody can look up. */
+unsigned long daemoon_3ds_last_fs_result(void);
+
 /* The name and the icon, remembered between launches.
  *
  * Reading an SMDH opens the title's content and decrypts the front of it, and it

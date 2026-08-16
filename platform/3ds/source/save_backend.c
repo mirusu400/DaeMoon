@@ -37,11 +37,25 @@ struct daemoon_save {
 /* libctru results carry a summary. Anything that means "it is not there" has to
  * come back as not_found, because daemoon_sync_scan_local reads that as "no save
  * yet" rather than a failure the user has to act on. */
+/* The last raw Result the FS service returned.
+ *
+ * The wire codes this project uses are deliberately coarse, and the SMDH lookup
+ * already cost four trips to a console because "not supported" stood in for three
+ * different causes. A 32 bit Result names the module, the summary and the
+ * description, and can be looked up. */
+static Result g_last_fs_result;
+
+unsigned long daemoon_3ds_last_fs_result(void)
+{
+    return (unsigned long)g_last_fs_result;
+}
+
 static daemoon_result_t from_result(Result res)
 {
     if (R_SUCCEEDED(res)) {
         return DAEMOON_OK;
     }
+    g_last_fs_result = res;
     switch (R_SUMMARY(res)) {
     case RS_NOTFOUND:
         return DAEMOON_ERR_NOT_FOUND;

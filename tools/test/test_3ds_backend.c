@@ -768,6 +768,280 @@ TEST_CASE(the_smdh_is_read_whole_from_the_start)
 }
 
 
+/* -------------------------------------------------------------- name cache */
+
+/* The cache exists for one reason: reading an SMDH opens the title's content and
+ * decrypts the front of it, and doing that per title per launch is most of what
+ * the loading screen was. Which means the thing worth asserting is not that the
+ * right name comes back - the lookup already has tests for that - but that the
+ * hardware is not touched a second time. The stub counts the opens. */
+
+static const char *cache_file(char *buf, size_t cap, const char *root)
+{
+    (void)snprintf(buf, cap, "%s/titles.bin", root);
+    return buf;
+}
+
+TEST_CASE(a_cached_name_does_not_read_the_smdh_again)
+{
+    char root[256];
+    char path[320];
+    daemoon_3ds_title_cache_t *cache = NULL;
+    char name[DAEMOON_NAME_MAX];
+    unsigned after_first;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-cache"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    daemoon_stub_set_title_name(TEST_TITLE_ID, 1, "Some Game");
+    (void)cache_file(path, sizeof(path), root);
+
+    CHECK_OK(daemoon_3ds_cache_open(path, 1, &cache));
+
+    CHECK_OK(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID, 0, name,
+                                    sizeof(name)));
+    CHECK_STR(name, "Some Game");
+    after_first = daemoon_stub_smdh_opens();
+    CHECK(after_first > 0);
+
+    /* The icon comes out of the same read. Before the cache these were two
+     * separate opens per title, which is why the list took twice as long as it
+     * had to. */
+    CHECK(daemoon_3ds_cache_icon(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID) != NULL);
+    CHECK_EQ_INT((int)daemoon_stub_smdh_opens(), (int)after_first);
+
+    CHECK_OK(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID, 0, name,
+                                    sizeof(name)));
+    CHECK_EQ_INT((int)daemoon_stub_smdh_opens(), (int)after_first);
+    CHECK_EQ_INT((int)daemoon_3ds_cache_misses(cache), 1);
+
+    daemoon_3ds_cache_close(cache);
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
+TEST_CASE(a_cache_survives_a_relaunch_and_forgets_deleted_titles)
+{
+    char root[256];
+    char path[320];
+    daemoon_3ds_title_cache_t *cache = NULL;
+    char name[DAEMOON_NAME_MAX];
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-cache-persist"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    daemoon_stub_add_title(TEST_TITLE_OTHER, "CTR-P-OTHR");
+    daemoon_stub_set_title_name(TEST_TITLE_ID, 1, "First Game");
+    daemoon_stub_set_title_name(TEST_TITLE_OTHER, 1, "Second Game");
+    (void)cache_file(path, sizeof(path), root);
+
+    CHECK_OK(daemoon_3ds_cache_open(path, 1, &cache));
+    CHECK_OK(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID, 0, name,
+                                    sizeof(name)));
+    CHECK_OK(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_OTHER, 0, name,
+                                    sizeof(name)));
+    CHECK_OK(daemoon_3ds_cache_flush(cache, path));
+    daemoon_3ds_cache_close(cache);
+
+    /* A second launch: the file is there, so nothing goes to the hardware. */
+    {
+        unsigned before;
+
+        CHECK_OK(daemoon_3ds_cache_open(path, 1, &cache));
+        before = daemoon_stub_smdh_opens();
+        CHECK_OK(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID, 0, name,
+                                        sizeof(name)));
+        CHECK_STR(name, "First Game");
+        CHECK_EQ_INT((int)daemoon_stub_smdh_opens(), (int)before);
+        CHECK_EQ_INT((int)daemoon_3ds_cache_hits(cache), 1);
+
+        /* Only one of the two titles was asked about, so the other is one that is
+         * no longer installed. Writing it back would grow the file forever. */
+        CHECK_OK(daemoon_3ds_cache_flush(cache, path));
+        daemoon_3ds_cache_close(cache);
+    }
+
+    {
+        unsigned before;
+
+        CHECK_OK(daemoon_3ds_cache_open(path, 1, &cache));
+        before = daemoon_stub_smdh_opens();
+        CHECK_OK(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_OTHER, 0,
+                                        name, sizeof(name)));
+        CHECK_STR(name, "Second Game");
+        /* Pruned, so this one is read from the hardware again. */
+        CHECK(daemoon_stub_smdh_opens() > before);
+        CHECK_OK(daemoon_3ds_cache_flush(cache, path));
+        daemoon_3ds_cache_close(cache);
+    }
+
+    /* A launch where the title list could not be read asks about nothing, and that
+     * must not be mistaken for every game having been uninstalled. Pruning on that
+     * evidence would make one transient AM failure cost the launch after it too. */
+    {
+        unsigned before;
+
+        CHECK_OK(daemoon_3ds_cache_open(path, 1, &cache));
+        CHECK_OK(daemoon_3ds_cache_flush(cache, path));
+        daemoon_3ds_cache_close(cache);
+
+        CHECK_OK(daemoon_3ds_cache_open(path, 1, &cache));
+        before = daemoon_stub_smdh_opens();
+        CHECK_OK(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_OTHER, 0,
+                                        name, sizeof(name)));
+        CHECK_STR(name, "Second Game");
+        CHECK_EQ_INT((int)daemoon_stub_smdh_opens(), (int)before);
+        daemoon_3ds_cache_close(cache);
+    }
+
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
+TEST_CASE(a_cache_from_another_language_or_format_is_discarded)
+{
+    char root[256];
+    char path[320];
+    daemoon_3ds_title_cache_t *cache = NULL;
+    char name[DAEMOON_NAME_MAX];
+    unsigned before;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-cache-lang"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    daemoon_stub_set_title_name(TEST_TITLE_ID, 1, "English Name");
+    (void)cache_file(path, sizeof(path), root);
+
+    CHECK_OK(daemoon_3ds_cache_open(path, 1, &cache));
+    CHECK_OK(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID, 0, name,
+                                    sizeof(name)));
+    CHECK_OK(daemoon_3ds_cache_flush(cache, path));
+    daemoon_3ds_cache_close(cache);
+
+    /* A console whose language changed has a file full of names chosen by a
+     * fallback chain that started somewhere else. */
+    CHECK_OK(daemoon_3ds_cache_open(path, 7, &cache));
+    before = daemoon_stub_smdh_opens();
+    CHECK_OK(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID, 0, name,
+                                    sizeof(name)));
+    CHECK(daemoon_stub_smdh_opens() > before);
+    daemoon_3ds_cache_close(cache);
+
+    /* A truncated file - a card pulled during a write - is not read as a shorter
+     * cache full of garbage. */
+    {
+        FILE *fp = fopen(path, "r+b");
+
+        CHECK(fp != NULL);
+        if (fp != NULL) {
+            CHECK_EQ_INT(fseek(fp, 0, SEEK_SET), 0);
+            (void)fwrite("XXXX", 1, 4, fp);
+            (void)fclose(fp);
+        }
+    }
+    CHECK_OK(daemoon_3ds_cache_open(path, 1, &cache));
+    before = daemoon_stub_smdh_opens();
+    CHECK_OK(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID, 0, name,
+                                    sizeof(name)));
+    CHECK_STR(name, "English Name");
+    CHECK(daemoon_stub_smdh_opens() > before);
+    daemoon_3ds_cache_close(cache);
+
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
+TEST_CASE(a_title_with_no_smdh_is_only_asked_about_once)
+{
+    char root[256];
+    char path[320];
+    daemoon_3ds_title_cache_t *cache = NULL;
+    char name[DAEMOON_NAME_MAX];
+    unsigned after_first;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-cache-none"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    /* No name set, so the lookup fails - and on a real console the failure arrives
+     * after the open, which makes these the most expensive titles of all. Not
+     * remembering the negative would leave them paying full price every launch. */
+    (void)cache_file(path, sizeof(path), root);
+
+    CHECK_OK(daemoon_3ds_cache_open(path, 1, &cache));
+    CHECK_RESULT(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID, 0, name,
+                                        sizeof(name)),
+                 DAEMOON_ERR_NOT_FOUND);
+    after_first = daemoon_stub_smdh_opens();
+
+    CHECK_RESULT(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID, 0, name,
+                                        sizeof(name)),
+                 DAEMOON_ERR_NOT_FOUND);
+    CHECK_EQ_INT((int)daemoon_stub_smdh_opens(), (int)after_first);
+
+    /* And the survey has to be able to get past it, because a cached failure is
+     * indistinguishable from a bug in the lookup until the hardware is asked. */
+    daemoon_3ds_cache_forget(cache);
+    CHECK_RESULT(daemoon_3ds_cache_name(cache, (int)MEDIATYPE_SD, TEST_TITLE_ID, 0, name,
+                                        sizeof(name)),
+                 DAEMOON_ERR_NOT_FOUND);
+    CHECK(daemoon_stub_smdh_opens() > after_first);
+
+    daemoon_3ds_cache_close(cache);
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
+TEST_CASE(the_list_reads_each_titles_smdh_once)
+{
+    char root[256];
+    char path[320];
+    daemoon_3ds_save_ctx_t ctx;
+    daemoon_title_t *titles = NULL;
+    size_t count = 0;
+    unsigned first_pass;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-cache-list"), 0);
+    daemoon_stub_init(root);
+    daemoon_stub_add_title(TEST_TITLE_ID, "CTR-P-DUMY");
+    daemoon_stub_add_title(TEST_TITLE_OTHER, "CTR-P-OTHR");
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_ID), 0);
+    CHECK_EQ_INT(make_archive(root, TEST_TITLE_OTHER), 0);
+    daemoon_stub_set_title_name(TEST_TITLE_ID, 1, "First Game");
+    daemoon_stub_set_title_name(TEST_TITLE_OTHER, 1, "Second Game");
+    (void)cache_file(path, sizeof(path), root);
+
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.media = (int)MEDIATYPE_SD;
+    ctx.smdh_language = 1;
+    ctx.only_with_saves = 1;
+    CHECK_OK(daemoon_3ds_cache_open(path, 1, &ctx.cache));
+
+    CHECK_OK(daemoon_3ds_save_backend.list_titles(&ctx, &titles, &count));
+    CHECK_EQ_INT((int)count, 2);
+    first_pass = daemoon_stub_smdh_opens();
+    /* Two titles, one read each. It used to be two: the name lookup and then the
+     * icon loader, both opening the same file. */
+    CHECK_EQ_INT((int)first_pass, 2);
+    daemoon_3ds_save_backend.free_titles(&ctx, titles, count);
+
+    /* The icons the grid draws come from the same records. */
+    CHECK(daemoon_3ds_cache_icon(ctx.cache, ctx.media, TEST_TITLE_ID) != NULL);
+    CHECK(daemoon_3ds_cache_icon(ctx.cache, ctx.media, TEST_TITLE_OTHER) != NULL);
+    CHECK_EQ_INT((int)daemoon_stub_smdh_opens(), (int)first_pass);
+
+    titles = NULL;
+    count = 0;
+    CHECK_OK(daemoon_3ds_save_backend.list_titles(&ctx, &titles, &count));
+    CHECK_EQ_INT((int)count, 2);
+    CHECK_STR(titles[0].name, "First Game");
+    CHECK_EQ_INT((int)daemoon_stub_smdh_opens(), (int)first_pass);
+    daemoon_3ds_save_backend.free_titles(&ctx, titles, count);
+
+    daemoon_3ds_cache_close(ctx.cache);
+    daemoon_stub_reset();
+    (void)daemoon_posix_rmtree(root);
+}
+
 /* ------------------------------------------------------------ nds-bootstrap */
 
 /* Phase 2's backend, run here rather than through a stub, because it is ordinary
@@ -1147,6 +1421,13 @@ void test_3ds_backend(void)
     RUN(a_name_missing_in_the_console_language_falls_back);
     RUN(the_list_prefers_a_name_the_console_can_draw);
     RUN(the_smdh_is_read_whole_from_the_start);
+
+    printf("name and icon cache\n");
+    RUN(a_cached_name_does_not_read_the_smdh_again);
+    RUN(a_cache_survives_a_relaunch_and_forgets_deleted_titles);
+    RUN(a_cache_from_another_language_or_format_is_discarded);
+    RUN(a_title_with_no_smdh_is_only_asked_about_once);
+    RUN(the_list_reads_each_titles_smdh_once);
 
     printf("nds-bootstrap backend\n");
     RUN(nds_titles_are_named_from_the_cartridge_header);

@@ -883,15 +883,27 @@ static daemoon_result_t list_titles(void *ctx, daemoon_title_t **out, size_t *co
          * draw is worse than a product code: a blank line tells the user nothing
          * about which game they are about to overwrite. The real name is still
          * recorded in the survey file, which is read somewhere with fonts. */
-        if (daemoon_3ds_title_name(c->media, ids[i], c->smdh_language,
-                                   c->ascii_names ? DAEMOON_3DS_NAME_ASCII : 0,
-                                   t->name, sizeof(t->name)) != DAEMOON_OK) {
-            memset(product, 0, sizeof(product));
-            if (R_SUCCEEDED(AM_GetTitleProductCode(c->media, ids[i], product))) {
-                product[sizeof(product) - 1] = '\0';
+        {
+            unsigned name_flags = c->ascii_names ? DAEMOON_3DS_NAME_ASCII : 0u;
+            daemoon_result_t nr;
+
+            /* Through the cache when there is one. Without it every launch pays
+             * for a decrypt per title, which is most of the loading screen. */
+            if (c->cache != NULL) {
+                nr = daemoon_3ds_cache_name(c->cache, c->media, ids[i], name_flags,
+                                            t->name, sizeof(t->name));
+            } else {
+                nr = daemoon_3ds_title_name(c->media, ids[i], c->smdh_language,
+                                            name_flags, t->name, sizeof(t->name));
             }
-            (void)daemoon_strlcpy(t->name, sizeof(t->name),
-                                  product[0] != '\0' ? product : t->id);
+            if (nr != DAEMOON_OK) {
+                memset(product, 0, sizeof(product));
+                if (R_SUCCEEDED(AM_GetTitleProductCode(c->media, ids[i], product))) {
+                    product[sizeof(product) - 1] = '\0';
+                }
+                (void)daemoon_strlcpy(t->name, sizeof(t->name),
+                                      product[0] != '\0' ? product : t->id);
+            }
         }
 
         /* Whether this title binds its save to the console is a Phase 1 question

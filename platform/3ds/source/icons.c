@@ -17,10 +17,7 @@
 
 #include <string.h>
 
-/* Offsets inside the SMDH, from the top of the file. */
-#define SMDH_LARGE_ICON_OFFSET 0x24C0u
-#define SMDH_LARGE_ICON_DIM    48
-#define SMDH_LARGE_ICON_BYTES  (SMDH_LARGE_ICON_DIM * SMDH_LARGE_ICON_DIM * 2)
+#define SMDH_LARGE_ICON_DIM 48
 
 #define ICON_TEX_DIM 64
 
@@ -39,23 +36,15 @@ static const Tex3DS_SubTexture k_subtexture = {
     0.0f
 };
 
-daemoon_result_t daemoon_3ds_icon_load(int media, unsigned long long title_id,
-                                       daemoon_3ds_icon_t *out)
+daemoon_result_t daemoon_3ds_icon_upload(const void *pixels, daemoon_3ds_icon_t *out)
 {
-    /* One SMDH, read whole, shared with the name lookup. Reading only the icon's
-     * own range is what the service refuses: the file is decrypted as it is read
-     * and a request that starts anywhere but zero comes back "not supported". */
-    static u8 smdh[DAEMOON_3DS_SMDH_SIZE];
-    const u8 *pixels = smdh + DAEMOON_3DS_SMDH_ICON_OFF;
     C3D_Tex *tex;
-    daemoon_result_t r;
     int row;
 
     memset(out, 0, sizeof(*out));
 
-    r = daemoon_3ds_smdh_load(media, title_id, smdh);
-    if (r != DAEMOON_OK) {
-        return r;
+    if (pixels == NULL) {
+        return DAEMOON_ERR_NOT_FOUND;
     }
 
     tex = (C3D_Tex *)linearAlloc(sizeof(*tex));
@@ -74,7 +63,7 @@ daemoon_result_t daemoon_3ds_icon_load(int media, unsigned long long title_id,
     {
         /* Offset so the icon lands where k_subtexture says it is. */
         u16 *dst = (u16 *)tex->data + (ICON_TEX_DIM - SMDH_LARGE_ICON_DIM) * ICON_TEX_DIM;
-        const u16 *src = (const u16 *)(const void *)pixels;
+        const u16 *src = (const u16 *)pixels;
 
         for (row = 0; row < SMDH_LARGE_ICON_DIM; row += 8) {
             memcpy(dst, src, (size_t)SMDH_LARGE_ICON_DIM * 8 * sizeof(u16));

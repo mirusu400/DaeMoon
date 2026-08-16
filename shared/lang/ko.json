@@ -22,9 +22,16 @@
 
   "backup.creating": "현재 세이브를 백업하는 중",
   "backup.failed": "로컬 백업에 실패했습니다. 변경된 내용은 없습니다.",
+  "backup.list": "{0} 백업 목록",
+  "backup.none": "{0}의 백업이 아직 없습니다.",
+  "backup.deleted": "백업을 삭제했습니다. 본체의 세이브는 건드리지 않았습니다.",
+  "backup.same_as_console": "지금 본체에 있는 세이브와 같음",
+  "backup.clock_note": "날짜는 본체 시계에서 옵니다. 백업을 설명할 뿐, 어느 세이브가 최신인지 결정하지 않습니다.",
 
   "confirm.upload": "{0}의 세이브를 서버에 업로드할까요?",
   "confirm.restore": "{0}을(를) 이 본체에 복원할까요? 먼저 로컬 백업을 만듭니다.",
+  "confirm.backup": "{0}의 세이브를 SD 카드에 백업할까요?",
+  "confirm.delete_backup": "이 백업을 삭제할까요? 본체의 세이브는 건드리지 않습니다.",
 
   "conflict.title": "세이브 충돌",
   "conflict.explain": "{0}은(는) 다른 기기에서도 변경되었습니다. 두 버전 모두 보관합니다. 지금 사용할 쪽을 선택하세요.",

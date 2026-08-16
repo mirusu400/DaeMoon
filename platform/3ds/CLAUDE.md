@@ -125,6 +125,58 @@ the app's own Survey action):
 - **Three titles had an archive with nothing in it.** Backing one of those up is
   now refused rather than producing a package whose restore would clear a save.
 
+## The screens are one UI now, and were not
+
+Restoring froze the application, on the screen after "restore" - which is the
+worst place on the console for it to freeze, because from the outside a freeze
+there and a restore that stopped halfway look identical. Nothing had been written:
+the picker runs before core's confirmation, so no save was ever opened for
+writing.
+
+The cause was left over from the text console the UI replaced. `backups.c` still
+called `consoleClear` and `printf` on a console that is no longer initialised, and
+still drove its input loop with `gfxSwapBuffers` and `gspWaitForVBlank` while
+citro3d owns the GPU. Nothing drew, nothing swapped, and the loop had no exit.
+
+**A screen that is not drawn by `gfx.c` is a screen that is not drawn.** When the
+UI changed, the calls that were replaced were replaced everywhere they were
+obvious - and this one was two function calls deep in a file about backups, so it
+compiled, linked, and shipped. Grep for `printf` and `console` in this directory
+before believing a screen works.
+
+## Names and icons are read once, ever
+
+`title_cache.c` keeps each title's name and its 48x48 icon in
+`sdmc:/DaeMoon/cache/titles.bin`.
+
+Reading an SMDH opens the title's content and decrypts the front of it, and it was
+being done **twice per title per launch** - once by `list_titles` for the name and
+again by the icon loader for the picture, on the same file. Now one read fills
+both, and the launch after the first one does neither.
+
+Three things about it are deliberate:
+
+- **Failures are cached too.** On this console several titles have no readable
+  SMDH, and those are the most expensive ones, because the failure arrives after
+  the open.
+- **Which means a bug in the lookup gets cached.** One has already happened here -
+  the read that had to start at offset zero. So the file carries a format number,
+  a build that changes the lookup bumps it, and old files are discarded rather
+  than migrated. The console's language is in the header too, because the name
+  fallback chain starts there.
+- **The Survey never reads it**, and clears it when it finishes. A diagnostic that
+  answers from yesterday's cache is not a diagnostic, and this also makes Survey
+  the button to press when a name or an icon looks wrong.
+
+Pruning is by what was asked about since the last write, so uninstalled titles
+drop out - except when *nothing* was asked about, which on a console means the
+title list failed to read rather than that every game was uninstalled. Wiping a
+good cache on that evidence would make one transient AM failure cost the next
+launch as well.
+
+The stub counts SMDH opens, so "the cache works" is an assertion in
+`make core-test` rather than an impression that the loading screen feels quicker.
+
 ## Proving the backend
 
 `tools/test/backend_conformance.c` is the contract, written against the interface

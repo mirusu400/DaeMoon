@@ -219,4 +219,12 @@ void daemoon_stub_fail_next_commit(void);
 /* Open handles, so a test can prove nothing is leaked. */
 int daemoon_stub_open_handles(void);
 
+/* How many times a title's SMDH was actually opened.
+ *
+ * This is the expensive operation on hardware - it opens the title's content and
+ * decrypts the front of it - and the whole point of the name and icon cache is
+ * that it stops happening. "The cache works" is otherwise only observable as the
+ * loading screen feeling quicker, which is not something a test can assert. */
+unsigned daemoon_stub_smdh_opens(void);
+
 #endif /* DAEMOON_CTRU_STUB_3DS_H */

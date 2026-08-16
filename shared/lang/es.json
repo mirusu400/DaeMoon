@@ -22,9 +22,16 @@
 
   "backup.creating": "Creando copia de seguridad de la partida actual",
   "backup.failed": "La copia de seguridad local ha fallado. No se ha cambiado nada.",
+  "backup.list": "Copias de seguridad de {0}",
+  "backup.none": "Todavía no hay ninguna copia de seguridad de {0}.",
+  "backup.deleted": "La copia de seguridad se ha eliminado. No se ha tocado la partida de la consola.",
+  "backup.same_as_console": "igual que la partida que hay ahora en la consola",
+  "backup.clock_note": "Las fechas vienen del reloj de la consola. Describen una copia; nunca deciden qué partida es más reciente.",
 
   "confirm.upload": "¿Subir la partida de {0} al servidor?",
   "confirm.restore": "¿Restaurar {0} en esta consola? Primero se crea una copia de seguridad local.",
+  "confirm.backup": "¿Hacer una copia de seguridad de la partida de {0} en la tarjeta SD?",
+  "confirm.delete_backup": "¿Eliminar esta copia de seguridad? No se toca la partida de la consola.",
 
   "conflict.title": "Partidas en conflicto",
   "conflict.explain": "{0} también se ha modificado en otro dispositivo. Se conservan ambas versiones. Elige cuál usar ahora.",

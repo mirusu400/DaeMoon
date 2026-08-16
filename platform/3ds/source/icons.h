@@ -15,10 +15,14 @@ typedef struct {
     int       loaded;
 } daemoon_3ds_icon_t;
 
-/* Reads a title's 48x48 icon out of its SMDH. not_found when the title has none,
- * which is normal and is drawn as a placeholder rather than a gap. */
-daemoon_result_t daemoon_3ds_icon_load(int media, unsigned long long title_id,
-                                       daemoon_3ds_icon_t *out);
+/* Uploads a 48x48 tiled RGB565 icon - DAEMOON_3DS_ICON_BYTES of it, exactly as an
+ * SMDH stores it - to a texture.
+ *
+ * The pixels are supplied rather than read here on purpose. They come out of the
+ * same SMDH the name does, and reading that file twice per title was half of what
+ * made the loading screen slow. The caller reads it once and both users are fed
+ * from that. */
+daemoon_result_t daemoon_3ds_icon_upload(const void *pixels, daemoon_3ds_icon_t *out);
 void daemoon_3ds_icon_free(daemoon_3ds_icon_t *icon);
 
 #endif /* DAEMOON_3DS_ICONS_H */

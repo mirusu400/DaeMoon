@@ -20,11 +20,17 @@
  * that is indistinguishable from a hang. */
 typedef void (*daemoon_3ds_progress_fn)(void *user, unsigned done, unsigned total);
 
+typedef struct daemoon_3ds_title_cache daemoon_3ds_title_cache_t;
+
 typedef struct {
     /* MEDIATYPE_SD for installed titles. Cartridges are a Phase 1 question: they
      * work the same way through AM, but a card being pulled mid write is a failure
      * mode nothing else here has. */
     int media;
+    /* Names and icons already read, so a second launch does not read them again.
+     * NULL is allowed and means every lookup goes to the hardware, which is what
+     * the conformance build and the survey want. */
+    daemoon_3ds_title_cache_t *cache;
     /* Which language to read a title's name in, as an SMDH index: 1 is English,
      * which is also the fallback the console itself uses. */
     int smdh_language;
@@ -160,6 +166,48 @@ daemoon_result_t daemoon_3ds_title_name(int media, unsigned long long title_id,
  * the module, the summary and the description, and can be looked up. */
 unsigned long daemoon_3ds_last_name_result(void);
 
+/* The name and the icon, remembered between launches.
+ *
+ * Reading an SMDH opens the title's content and decrypts the front of it, and it
+ * is by a wide margin the slowest thing in the loading screen. The answer only
+ * changes when a title is installed, updated or deleted, so it is kept on the SD
+ * card and the launch after the first one does not pay for it.
+ *
+ * Failed lookups are remembered too - on a real console those are the slowest
+ * titles of all, because the failure arrives after the open. Which means a bug in
+ * the lookup would be remembered as well, so the file carries a format number and
+ * a build that changes the lookup discards every older file. The survey never
+ * reads this: a diagnostic that answers from a cache is not one. */
+#define DAEMOON_3DS_ICON_BYTES \
+    (DAEMOON_3DS_SMDH_ICON_DIM * DAEMOON_3DS_SMDH_ICON_DIM * 2)
+#define DAEMOON_3DS_CACHE_PATH DAEMOON_3DS_WORK_DIR "/cache/titles.bin"
+
+daemoon_result_t daemoon_3ds_cache_open(const char *path, int lang,
+                                        daemoon_3ds_title_cache_t **out);
+void             daemoon_3ds_cache_close(daemoon_3ds_title_cache_t *cache);
+
+/* Same contract as daemoon_3ds_title_name, answered from the cache when it can be.
+ * unsupported means the name exists and the console cannot draw it, which is a
+ * different problem from not_found and gets a different fallback. */
+daemoon_result_t daemoon_3ds_cache_name(daemoon_3ds_title_cache_t *cache, int media,
+                                        unsigned long long title_id, unsigned flags,
+                                        char *out, size_t cap);
+
+/* The raw 48x48 tiled RGB565 icon, or NULL. Owned by the cache. */
+const void *daemoon_3ds_cache_icon(daemoon_3ds_title_cache_t *cache, int media,
+                                   unsigned long long title_id);
+
+/* Throw the whole thing away and read from hardware again. */
+void daemoon_3ds_cache_forget(daemoon_3ds_title_cache_t *cache);
+
+/* Writes back only what was asked for since the last flush, so titles that have
+ * been deleted from the console drop out of the file. */
+daemoon_result_t daemoon_3ds_cache_flush(daemoon_3ds_title_cache_t *cache,
+                                         const char *path);
+
+unsigned daemoon_3ds_cache_hits(const daemoon_3ds_title_cache_t *cache);
+unsigned daemoon_3ds_cache_misses(const daemoon_3ds_title_cache_t *cache);
+
 /* Every step of the last name lookup.
  *
  * The service reports a missing filesystem right, a missing ARM9 right and an
@@ -188,10 +236,17 @@ const daemoon_3ds_name_probe_t *daemoon_3ds_last_name_probe(void);
  * declared SaveDataSize does not create one; the title has to format it once. */
 daemoon_result_t daemoon_3ds_format_own_save(const daemoon_title_t *t, unsigned blocks);
 
-/* Lists the backups belonging to one title and lets the user choose. Returns
- * not_found when there are none, and user_cancelled when they back out. */
-daemoon_result_t daemoon_3ds_pick_backup(const char *dir, const daemoon_title_t *title,
-                                         char *out, size_t cap);
+/* Lists the backups belonging to one title, with what each package's own manifest
+ * says about it, and lets the user choose one to restore or delete. Returns
+ * not_found when there are none, and user_cancelled when they back out.
+ *
+ * current_digest may be NULL. When it is given, the backup holding exactly what is
+ * on the console right now is marked - a fact about content, unlike the dates,
+ * which come from a clock the user can set. */
+daemoon_result_t daemoon_3ds_pick_backup(const daemoon_env_t *env, const char *dir,
+                                         const daemoon_title_t *title,
+                                         const char *current_digest, char *out,
+                                         size_t cap);
 
 /* The console UI keeps a little state: which line is selected, what to draw. */
 typedef struct {

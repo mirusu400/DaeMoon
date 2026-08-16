@@ -22,9 +22,16 @@
 
   "backup.creating": "正在备份当前存档",
   "backup.failed": "本地备份失败，未做任何更改。",
+  "backup.list": "{0} 的备份",
+  "backup.none": "还没有 {0} 的备份。",
+  "backup.deleted": "备份已删除。主机上的存档未被改动。",
+  "backup.same_as_console": "与主机上现在的存档相同",
+  "backup.clock_note": "日期来自主机时钟，仅用于描述备份，绝不决定哪个存档更新。",
 
   "confirm.upload": "要把 {0} 的存档上传到服务器吗？",
   "confirm.restore": "要把 {0} 恢复到本机吗？会先生成本地备份。",
+  "confirm.backup": "把 {0} 的存档备份到 SD 卡？",
+  "confirm.delete_backup": "删除这个备份？主机上的存档不会被改动。",
 
   "conflict.title": "存档冲突",
   "conflict.explain": "{0} 在另一台设备上也被修改过。两个版本都会保留。请选择现在使用哪一个。",

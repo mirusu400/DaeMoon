@@ -182,9 +182,17 @@ static daemoon_result_t reload_titles(void)
     if (!g_source_nds) {
         for (i = 0; i < g_title_count && i < MAX_ICONS; ++i) {
             draw_loading("reading icons", (unsigned)i, (unsigned)g_title_count);
-            (void)daemoon_3ds_icon_load(g_save_ctx.media, tid_of(&g_titles[i]),
-                                        &g_icons[i]);
+            /* The same SMDH the name came from, already in the cache by now, so
+             * this loop costs a texture upload rather than a decrypt per title. */
+            (void)daemoon_3ds_icon_upload(
+                daemoon_3ds_cache_icon(g_save_ctx.cache, g_save_ctx.media,
+                                       tid_of(&g_titles[i])),
+                &g_icons[i]);
         }
+        /* Written back once the list is complete, not per title: a title that was
+         * skipped this run is a title that is no longer installed, and that is
+         * only known at the end. */
+        (void)daemoon_3ds_cache_flush(g_save_ctx.cache, DAEMOON_3DS_CACHE_PATH);
     }
     if (g_selected >= (int)g_title_count) {
         g_selected = g_title_count > 0 ? (int)g_title_count - 1 : 0;
@@ -354,19 +362,57 @@ static void report(const char *what, daemoon_result_t r)
 static void action_backup(void)
 {
     char path[DAEMOON_PATH_MAX * 2];
+    daemoon_str_ref_t ask;
 
     if (g_title_count == 0) {
         return;
     }
+
+    /* Backing up writes only to the SD card and cannot lose a save, so this is not
+     * one of the confirmations the rules demand. It is here because the button that
+     * makes a backup and the button that overwrites a save are next to each other
+     * on a console with no pointer, and being told which title is about to be read
+     * is worth one press. */
+    memset(&ask, 0, sizeof(ask));
+    ask.id = DAEMOON_STR_CONFIRM_BACKUP;
+    ask.args[0] = g_titles[g_selected].name;
+    ask.nargs = 1;
+    if (!g_env.ui->confirm(g_env.ui_ctx, &ask)) {
+        return;
+    }
+
     report("backup", daemoon_sync_backup_local(&g_env, &g_archive, &g_titles[g_selected],
                                                path, sizeof(path)));
+}
+
+/* The digest of what is on the console right now, so the backup list can say which
+ * of its entries would change nothing. Best effort: a title with no archive yet has
+ * no digest, and that is not a reason to refuse to show the list. */
+static void current_digest(const daemoon_title_t *title, char *out, size_t cap)
+{
+    daemoon_save_t *save = NULL;
+    unsigned long long size = 0;
+
+    out[0] = '\0';
+    if (cap < DAEMOON_SHA256_HEX) {
+        return;
+    }
+    if (g_env.save->open_save(g_env.save_ctx, title, &save) != DAEMOON_OK) {
+        return;
+    }
+    if (daemoon_archive_hash_save(&g_env, &g_archive, save, out, &size) != DAEMOON_OK) {
+        out[0] = '\0';
+    }
+    (void)g_env.save->close_save(g_env.save_ctx, save);
 }
 
 static void action_restore(void)
 {
     char dir[DAEMOON_PATH_MAX * 2];
     char pick[DAEMOON_PATH_MAX * 2];
+    char digest[DAEMOON_SHA256_HEX];
     daemoon_strbuf_t sb;
+    daemoon_result_t pr;
 
     if (g_title_count == 0) {
         return;
@@ -379,10 +425,21 @@ static void action_restore(void)
         return;
     }
 
-    if (daemoon_3ds_pick_backup(dir, &g_titles[g_selected], pick, sizeof(pick)) !=
-        DAEMOON_OK) {
-        message(daemoon_str(DAEMOON_STR_APP_TITLE), "No backup for this title yet.",
-                GFX_PANEL);
+    draw_loading("reading backups", 0, 0);
+    current_digest(&g_titles[g_selected], digest, sizeof(digest));
+
+    pr = daemoon_3ds_pick_backup(&g_env, dir, &g_titles[g_selected], digest, pick,
+                                 sizeof(pick));
+    if (pr == DAEMOON_ERR_NOT_FOUND) {
+        char none[256];
+        const char *args[1];
+
+        args[0] = g_titles[g_selected].name;
+        (void)daemoon_strf(none, sizeof(none), DAEMOON_STR_BACKUP_NONE, args, 1);
+        message(daemoon_str(DAEMOON_STR_APP_TITLE), none, GFX_PANEL);
+        return;
+    }
+    if (pr != DAEMOON_OK) {
         return;
     }
 
@@ -596,6 +653,13 @@ static void action_survey(void)
     }
 
     r = daemoon_stream_close(out);
+
+    /* Everything above went to the hardware rather than to the cache, so the cache
+     * is now the older of the two answers. Throwing it away also makes this the
+     * button to press when a name or an icon looks wrong: the next list is read
+     * from the console again. */
+    daemoon_3ds_cache_forget(g_save_ctx.cache);
+
     report("survey", r);
 }
 
@@ -782,6 +846,16 @@ int main(void)
 
     g_save_ctx.progress = loading_progress;
 
+    /* Names and icons from the last launch, so the loading screen stops paying for
+     * a decrypt per title every time. Failing to open it is not an error: without
+     * one every lookup goes to the hardware, which is what happened before this
+     * existed. */
+    (void)g_env.fs->mkdir_p(g_env.fs_ctx, DAEMOON_3DS_WORK_DIR "/cache");
+    if (daemoon_3ds_cache_open(DAEMOON_3DS_CACHE_PATH, g_save_ctx.smdh_language,
+                               &g_save_ctx.cache) != DAEMOON_OK) {
+        g_save_ctx.cache = NULL;
+    }
+
     if (reload_titles() != DAEMOON_OK) {
         message(daemoon_str(DAEMOON_STR_APP_TITLE), "Could not read the title list.",
                 GFX_DANGER);
@@ -865,6 +939,8 @@ done:
     if (g_titles != NULL) {
         g_env.save->free_titles(g_env.save_ctx, g_titles, g_title_count);
     }
+    (void)daemoon_3ds_cache_flush(g_save_ctx.cache, DAEMOON_3DS_CACHE_PATH);
+    daemoon_3ds_cache_close(g_save_ctx.cache);
     daemoon_3ds_net_exit();
     amExit();
     cfguExit();

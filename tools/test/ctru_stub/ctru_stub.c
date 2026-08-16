@@ -49,6 +49,7 @@ typedef struct {
 static char          g_root[STUB_ROOT_MAX];
 static stub_handle_t g_handles[STUB_MAX_HANDLES];
 static unsigned      g_commits;
+static unsigned      g_smdh_opens;
 static int           g_fail_next_commit;
 
 static struct {
@@ -102,6 +103,7 @@ void daemoon_stub_reset(void)
     memset(g_secure_present, 0, sizeof(g_secure_present));
     memset(g_smdh, 0, sizeof(g_smdh));
     g_commits = 0;
+    g_smdh_opens = 0;
     g_fail_next_commit = 0;
     g_own_title = 0;
 }
@@ -123,6 +125,8 @@ void daemoon_stub_add_title(u64 title_id, const char *product_code)
 }
 
 unsigned daemoon_stub_commits(void) { return g_commits; }
+
+unsigned daemoon_stub_smdh_opens(void) { return g_smdh_opens; }
 
 void daemoon_stub_fail_next_commit(void) { g_fail_next_commit = 1; }
 
@@ -278,6 +282,7 @@ Result FSUSER_OpenFileDirectly(Handle *out, FS_ArchiveID archiveId, FS_Path arch
         return stub_error(RS_NOTFOUND, RD_NOT_FOUND);
     }
     title_id = ((u64)ap[1] << 32) | (u64)ap[0];
+    ++g_smdh_opens;
 
     for (i = 0; i < STUB_MAX_TITLES; ++i) {
         if (g_smdh[i].used && g_smdh[i].id == title_id) {

@@ -10,13 +10,20 @@
 const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     /* en */ {
         "DaeMoon", /* app.title */
+        "Dates come from the console clock. They describe a backup; they never decide which save is newer.", /* backup.clock_note */
         "Backing up the current save", /* backup.creating */
+        "The backup was deleted. The save on the console was not touched.", /* backup.deleted */
         "Local backup failed. Nothing was changed.", /* backup.failed */
+        "Backups of {0}", /* backup.list */
+        "No backup of {0} yet.", /* backup.none */
+        "same as the save on the console now", /* backup.same_as_console */
         "Cancel", /* btn.cancel */
         "No", /* btn.no */
         "OK", /* btn.ok */
         "Yes", /* btn.yes */
         "The save could not be committed. Do not launch the game until this is resolved.", /* commit.failed */
+        "Back up the save for {0} to the SD card?", /* confirm.backup */
+        "Delete this backup? The save on the console is not touched.", /* confirm.delete_backup */
         "Restore {0} to this console? A local backup is made first.", /* confirm.restore */
         "Upload the save for {0} to the server?", /* confirm.upload */
         "{0} was also changed on another device. Both versions are kept. Choose which one to use now.", /* conflict.explain */
@@ -71,13 +78,20 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* ko */ {
         "DaeMoon", /* app.title */
+        "날짜는 본체 시계에서 옵니다. 백업을 설명할 뿐, 어느 세이브가 최신인지 결정하지 않습니다.", /* backup.clock_note */
         "현재 세이브를 백업하는 중", /* backup.creating */
+        "백업을 삭제했습니다. 본체의 세이브는 건드리지 않았습니다.", /* backup.deleted */
         "로컬 백업에 실패했습니다. 변경된 내용은 없습니다.", /* backup.failed */
+        "{0} 백업 목록", /* backup.list */
+        "{0}의 백업이 아직 없습니다.", /* backup.none */
+        "지금 본체에 있는 세이브와 같음", /* backup.same_as_console */
         "취소", /* btn.cancel */
         "아니오", /* btn.no */
         "확인", /* btn.ok */
         "예", /* btn.yes */
         "세이브를 확정하지 못했습니다. 해결하기 전에는 게임을 실행하지 마세요.", /* commit.failed */
+        "{0}의 세이브를 SD 카드에 백업할까요?", /* confirm.backup */
+        "이 백업을 삭제할까요? 본체의 세이브는 건드리지 않습니다.", /* confirm.delete_backup */
         "{0}을(를) 이 본체에 복원할까요? 먼저 로컬 백업을 만듭니다.", /* confirm.restore */
         "{0}의 세이브를 서버에 업로드할까요?", /* confirm.upload */
         "{0}은(는) 다른 기기에서도 변경되었습니다. 두 버전 모두 보관합니다. 지금 사용할 쪽을 선택하세요.", /* conflict.explain */
@@ -132,13 +146,20 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* ja */ {
         "DaeMoon", /* app.title */
+        "日付は本体の時計によるものです。バックアップの説明にすぎず、どちらが新しいかを決めることはありません。", /* backup.clock_note */
         "現在のセーブをバックアップ中", /* backup.creating */
+        "バックアップを削除しました。本体のセーブデータは変更していません。", /* backup.deleted */
         "ローカルバックアップに失敗しました。変更はありません。", /* backup.failed */
+        "{0} のバックアップ", /* backup.list */
+        "{0} のバックアップはまだありません。", /* backup.none */
+        "今、本体にあるセーブデータと同じ", /* backup.same_as_console */
         "キャンセル", /* btn.cancel */
         "いいえ", /* btn.no */
         "OK", /* btn.ok */
         "はい", /* btn.yes */
         "セーブを確定できませんでした。解決するまでゲームを起動しないでください。", /* commit.failed */
+        "{0} のセーブデータを SD カードにバックアップしますか？", /* confirm.backup */
+        "このバックアップを削除しますか？本体のセーブデータは変更しません。", /* confirm.delete_backup */
         "{0} をこの本体に復元しますか？先にローカルバックアップを作成します。", /* confirm.restore */
         "{0} のセーブをサーバーにアップロードしますか？", /* confirm.upload */
         "{0} は別の端末でも変更されています。両方のバージョンを保持します。今使う方を選んでください。", /* conflict.explain */
@@ -193,13 +214,20 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* zh-Hans */ {
         "DaeMoon", /* app.title */
+        "日期来自主机时钟，仅用于描述备份，绝不决定哪个存档更新。", /* backup.clock_note */
         "正在备份当前存档", /* backup.creating */
+        "备份已删除。主机上的存档未被改动。", /* backup.deleted */
         "本地备份失败，未做任何更改。", /* backup.failed */
+        "{0} 的备份", /* backup.list */
+        "还没有 {0} 的备份。", /* backup.none */
+        "与主机上现在的存档相同", /* backup.same_as_console */
         "取消", /* btn.cancel */
         "否", /* btn.no */
         "确定", /* btn.ok */
         "是", /* btn.yes */
         "存档未能提交。问题解决前请不要启动游戏。", /* commit.failed */
+        "把 {0} 的存档备份到 SD 卡？", /* confirm.backup */
+        "删除这个备份？主机上的存档不会被改动。", /* confirm.delete_backup */
         "要把 {0} 恢复到本机吗？会先生成本地备份。", /* confirm.restore */
         "要把 {0} 的存档上传到服务器吗？", /* confirm.upload */
         "{0} 在另一台设备上也被修改过。两个版本都会保留。请选择现在使用哪一个。", /* conflict.explain */
@@ -254,13 +282,20 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* zh-Hant */ {
         "DaeMoon", /* app.title */
+        "日期來自主機時鐘，僅用於描述備份，絕不決定哪個存檔較新。", /* backup.clock_note */
         "正在備份目前的存檔", /* backup.creating */
+        "備份已刪除。主機上的存檔未被更動。", /* backup.deleted */
         "本機備份失敗，未做任何變更。", /* backup.failed */
+        "{0} 的備份", /* backup.list */
+        "還沒有 {0} 的備份。", /* backup.none */
+        "與主機上目前的存檔相同", /* backup.same_as_console */
         "取消", /* btn.cancel */
         "否", /* btn.no */
         "確定", /* btn.ok */
         "是", /* btn.yes */
         "存檔未能提交。問題解決前請勿啟動遊戲。", /* commit.failed */
+        "把 {0} 的存檔備份到 SD 卡？", /* confirm.backup */
+        "刪除這個備份？主機上的存檔不會被更動。", /* confirm.delete_backup */
         "要將 {0} 還原到本機嗎？會先建立本機備份。", /* confirm.restore */
         "要將 {0} 的存檔上傳到伺服器嗎？", /* confirm.upload */
         "{0} 在另一台裝置上也被修改過。兩個版本都會保留。請選擇現在要使用哪一個。", /* conflict.explain */
@@ -315,13 +350,20 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* es */ {
         "DaeMoon", /* app.title */
+        "Las fechas vienen del reloj de la consola. Describen una copia; nunca deciden qué partida es más reciente.", /* backup.clock_note */
         "Creando copia de seguridad de la partida actual", /* backup.creating */
+        "La copia de seguridad se ha eliminado. No se ha tocado la partida de la consola.", /* backup.deleted */
         "La copia de seguridad local ha fallado. No se ha cambiado nada.", /* backup.failed */
+        "Copias de seguridad de {0}", /* backup.list */
+        "Todavía no hay ninguna copia de seguridad de {0}.", /* backup.none */
+        "igual que la partida que hay ahora en la consola", /* backup.same_as_console */
         "Cancelar", /* btn.cancel */
         "No", /* btn.no */
         "Aceptar", /* btn.ok */
         "Sí", /* btn.yes */
         "No se ha podido confirmar la partida. No inicies el juego hasta resolverlo.", /* commit.failed */
+        "¿Hacer una copia de seguridad de la partida de {0} en la tarjeta SD?", /* confirm.backup */
+        "¿Eliminar esta copia de seguridad? No se toca la partida de la consola.", /* confirm.delete_backup */
         "¿Restaurar {0} en esta consola? Primero se crea una copia de seguridad local.", /* confirm.restore */
         "¿Subir la partida de {0} al servidor?", /* confirm.upload */
         "{0} también se ha modificado en otro dispositivo. Se conservan ambas versiones. Elige cuál usar ahora.", /* conflict.explain */
@@ -376,13 +418,20 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* fr */ {
         "DaeMoon", /* app.title */
+        "Les dates viennent de l'horloge de la console. Elles décrivent une sauvegarde ; elles ne décident jamais laquelle est la plus récente.", /* backup.clock_note */
         "Sauvegarde locale de la partie en cours", /* backup.creating */
+        "La sauvegarde a été supprimée. La partie sur la console n'a pas été touchée.", /* backup.deleted */
         "La sauvegarde locale a échoué. Rien n'a été modifié.", /* backup.failed */
+        "Sauvegardes de {0}", /* backup.list */
+        "Aucune sauvegarde de {0} pour l'instant.", /* backup.none */
+        "identique à la partie actuellement sur la console", /* backup.same_as_console */
         "Annuler", /* btn.cancel */
         "Non", /* btn.no */
         "OK", /* btn.ok */
         "Oui", /* btn.yes */
         "La sauvegarde n'a pas pu être validée. Ne lancez pas le jeu avant d'avoir résolu ce problème.", /* commit.failed */
+        "Sauvegarder la partie de {0} sur la carte SD ?", /* confirm.backup */
+        "Supprimer cette sauvegarde ? La partie sur la console n'est pas touchée.", /* confirm.delete_backup */
         "Restaurer {0} sur cette console ? Une sauvegarde locale est créée d'abord.", /* confirm.restore */
         "Envoyer la sauvegarde de {0} vers le serveur ?", /* confirm.upload */
         "{0} a aussi été modifié sur un autre appareil. Les deux versions sont conservées. Choisissez celle à utiliser maintenant.", /* conflict.explain */
@@ -437,13 +486,20 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* de */ {
         "DaeMoon", /* app.title */
+        "Die Datumsangaben stammen von der Uhr der Konsole. Sie beschreiben eine Sicherung; sie entscheiden nie, welcher Spielstand neuer ist.", /* backup.clock_note */
         "Sicherung des aktuellen Spielstands wird erstellt", /* backup.creating */
+        "Die Sicherung wurde gelöscht. Der Spielstand auf der Konsole blieb unberührt.", /* backup.deleted */
         "Lokale Sicherung fehlgeschlagen. Es wurde nichts geändert.", /* backup.failed */
+        "Sicherungen von {0}", /* backup.list */
+        "Noch keine Sicherung von {0}.", /* backup.none */
+        "identisch mit dem Spielstand, der jetzt auf der Konsole liegt", /* backup.same_as_console */
         "Abbrechen", /* btn.cancel */
         "Nein", /* btn.no */
         "OK", /* btn.ok */
         "Ja", /* btn.yes */
         "Der Spielstand konnte nicht festgeschrieben werden. Starte das Spiel erst, wenn das behoben ist.", /* commit.failed */
+        "Den Spielstand von {0} auf die SD-Karte sichern?", /* confirm.backup */
+        "Diese Sicherung löschen? Der Spielstand auf der Konsole bleibt unberührt.", /* confirm.delete_backup */
         "{0} auf dieser Konsole wiederherstellen? Zuvor wird eine lokale Sicherung erstellt.", /* confirm.restore */
         "Spielstand von {0} auf den Server hochladen?", /* confirm.upload */
         "{0} wurde auch auf einem anderen Gerät geändert. Beide Fassungen bleiben erhalten. Wähle, welche jetzt verwendet wird.", /* conflict.explain */

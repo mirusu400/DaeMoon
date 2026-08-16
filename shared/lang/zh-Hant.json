@@ -22,9 +22,16 @@
 
   "backup.creating": "正在備份目前的存檔",
   "backup.failed": "本機備份失敗，未做任何變更。",
+  "backup.list": "{0} 的備份",
+  "backup.none": "還沒有 {0} 的備份。",
+  "backup.deleted": "備份已刪除。主機上的存檔未被更動。",
+  "backup.same_as_console": "與主機上目前的存檔相同",
+  "backup.clock_note": "日期來自主機時鐘，僅用於描述備份，絕不決定哪個存檔較新。",
 
   "confirm.upload": "要將 {0} 的存檔上傳到伺服器嗎？",
   "confirm.restore": "要將 {0} 還原到本機嗎？會先建立本機備份。",
+  "confirm.backup": "把 {0} 的存檔備份到 SD 卡？",
+  "confirm.delete_backup": "刪除這個備份？主機上的存檔不會被更動。",
 
   "conflict.title": "存檔衝突",
   "conflict.explain": "{0} 在另一台裝置上也被修改過。兩個版本都會保留。請選擇現在要使用哪一個。",

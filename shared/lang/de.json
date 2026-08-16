@@ -22,9 +22,16 @@
 
   "backup.creating": "Sicherung des aktuellen Spielstands wird erstellt",
   "backup.failed": "Lokale Sicherung fehlgeschlagen. Es wurde nichts geändert.",
+  "backup.list": "Sicherungen von {0}",
+  "backup.none": "Noch keine Sicherung von {0}.",
+  "backup.deleted": "Die Sicherung wurde gelöscht. Der Spielstand auf der Konsole blieb unberührt.",
+  "backup.same_as_console": "identisch mit dem Spielstand, der jetzt auf der Konsole liegt",
+  "backup.clock_note": "Die Datumsangaben stammen von der Uhr der Konsole. Sie beschreiben eine Sicherung; sie entscheiden nie, welcher Spielstand neuer ist.",
 
   "confirm.upload": "Spielstand von {0} auf den Server hochladen?",
   "confirm.restore": "{0} auf dieser Konsole wiederherstellen? Zuvor wird eine lokale Sicherung erstellt.",
+  "confirm.backup": "Den Spielstand von {0} auf die SD-Karte sichern?",
+  "confirm.delete_backup": "Diese Sicherung löschen? Der Spielstand auf der Konsole bleibt unberührt.",
 
   "conflict.title": "Widersprüchliche Spielstände",
   "conflict.explain": "{0} wurde auch auf einem anderen Gerät geändert. Beide Fassungen bleiben erhalten. Wähle, welche jetzt verwendet wird.",

@@ -22,9 +22,16 @@
 
   "backup.creating": "Backing up the current save",
   "backup.failed": "Local backup failed. Nothing was changed.",
+  "backup.list": "Backups of {0}",
+  "backup.none": "No backup of {0} yet.",
+  "backup.deleted": "The backup was deleted. The save on the console was not touched.",
+  "backup.same_as_console": "same as the save on the console now",
+  "backup.clock_note": "Dates come from the console clock. They describe a backup; they never decide which save is newer.",
 
   "confirm.upload": "Upload the save for {0} to the server?",
   "confirm.restore": "Restore {0} to this console? A local backup is made first.",
+  "confirm.backup": "Back up the save for {0} to the SD card?",
+  "confirm.delete_backup": "Delete this backup? The save on the console is not touched.",
 
   "conflict.title": "Conflicting saves",
   "conflict.explain": "{0} was also changed on another device. Both versions are kept. Choose which one to use now.",

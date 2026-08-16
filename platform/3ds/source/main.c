@@ -855,60 +855,161 @@ static void draw_settings(int selected)
                      daemoon_str(DAEMOON_STR_HINT_EDIT));
 }
 
-/* Steps the language through "follow the console" and the eight the app ships.
+/* Picking a language, as a list.
  *
- * A list rather than a keyboard: eight entries is not worth a text field, and a
- * typo in a language code is a console that quietly shows English.
+ * This stepped through the languages one press at a time until a console proved
+ * why that is wrong: the font check refuses a language the console cannot draw,
+ * and a refused entry in a cycle is a wall. Japanese was reachable, Chinese was
+ * refused, and everything after Chinese was unreachable - including the way back.
  *
- * A language the console has no font for is refused rather than accepted, because
- * accepting it means every screen after this one is blank - including the one that
- * would let it be changed back. */
-static int cycle_language(void)
+ * A list has no order to be trapped in. Every language is on screen at once, each
+ * written in its own script, and the ones this console has no font for are shown
+ * greyed rather than hidden: "my language is not here" is a worse answer than "my
+ * language is here and this console cannot draw it".
+ *
+ * Those rows cannot be written in their own script either - that is what being
+ * undrawable means - so they fall back to their language code, which is ASCII and
+ * always renders.
+ */
+#define LANG_ROWS 9
+
+static const daemoon_lang_t k_lang_order[LANG_ROWS - 1] = {
+    DAEMOON_LANG_EN, DAEMOON_LANG_KO, DAEMOON_LANG_JA, DAEMOON_LANG_ZH_HANS,
+    DAEMOON_LANG_ZH_HANT, DAEMOON_LANG_ES, DAEMOON_LANG_FR, DAEMOON_LANG_DE
+};
+
+/* Row 0 follows the console; rows 1.. are k_lang_order. */
+static void language_row_text(size_t row, char *out, size_t cap, int *drawable)
 {
-    static const daemoon_lang_t k_order[] = {
-        DAEMOON_LANG_EN, DAEMOON_LANG_KO, DAEMOON_LANG_JA, DAEMOON_LANG_ZH_HANS,
-        DAEMOON_LANG_ZH_HANT, DAEMOON_LANG_ES, DAEMOON_LANG_FR, DAEMOON_LANG_DE
-    };
-    const size_t n = sizeof(k_order) / sizeof(k_order[0]);
-    size_t at = n; /* n means "follow the console", the entry before the first */
+    if (row == 0) {
+        const char *args[1];
+
+        args[0] = daemoon_lang_name(console_language());
+        (void)daemoon_strf(out, cap, DAEMOON_STR_SETTINGS_LANGUAGE_AUTO, args, 1);
+        *drawable = 1;
+        return;
+    }
+    {
+        daemoon_lang_t lang = k_lang_order[row - 1];
+
+        *drawable = language_is_drawable(lang);
+        (void)daemoon_strlcpy(out, cap,
+                              *drawable ? daemoon_lang_name(lang)
+                                        : daemoon_lang_code(lang));
+    }
+}
+
+static size_t language_current_row(void)
+{
+    daemoon_lang_t chosen;
     size_t i;
-    daemoon_lang_t next;
 
-    if (g_config.language[0] != '\0') {
-        daemoon_lang_t chosen;
+    if (g_config.language[0] == '\0' ||
+        daemoon_i18n_language_from_code(g_config.language, &chosen) != DAEMOON_OK) {
+        return 0;
+    }
+    for (i = 0; i < LANG_ROWS - 1; ++i) {
+        if (k_lang_order[i] == chosen) {
+            return i + 1;
+        }
+    }
+    return 0;
+}
 
-        if (daemoon_i18n_language_from_code(g_config.language, &chosen) == DAEMOON_OK) {
-            for (i = 0; i < n; ++i) {
-                if (k_order[i] == chosen) {
-                    at = i;
-                    break;
-                }
+/* Returns 1 when the setting changed. */
+static int choose_language(void)
+{
+    size_t selected = language_current_row();
+    int changed = 0;
+
+    daemoon_3ds_trace("settings/language-open", NULL);
+
+    while (aptMainLoop()) {
+        u32 down;
+        size_t i;
+        float y;
+
+        hidScanInput();
+        down = hidKeysDown();
+
+        daemoon_gfx_frame_begin();
+
+        daemoon_gfx_top();
+        daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
+        daemoon_gfx_text(12.0f, 6.0f, 0.55f, GFX_TEXT,
+                         daemoon_str(DAEMOON_STR_SETTINGS_LANGUAGE));
+        {
+            char text[96];
+            int drawable = 1;
+
+            language_row_text(selected, text, sizeof(text), &drawable);
+            daemoon_gfx_text_fit(14.0f, 60.0f, GFX_TOP_W - 28.0f, 0.7f,
+                                 drawable ? GFX_TEXT : GFX_TEXT_DIM, text);
+            if (!drawable) {
+                char body[320];
+                const char *args[1];
+
+                args[0] = daemoon_lang_code(k_lang_order[selected - 1]);
+                (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_SETTINGS_NO_FONT,
+                                   args, 1);
+                (void)daemoon_gfx_text_wrapped(14.0f, 110.0f, GFX_TOP_W - 28.0f, 0.38f,
+                                               GFX_WARN, body);
             }
+        }
+
+        daemoon_gfx_bottom();
+        y = 6.0f;
+        for (i = 0; i < LANG_ROWS; ++i) {
+            char text[96];
+            int drawable = 1;
+
+            language_row_text(i, text, sizeof(text), &drawable);
+            daemoon_gfx_rect(6.0f, y, GFX_BOTTOM_W - 12.0f, 22.0f,
+                             i == selected ? GFX_ACCENT : GFX_PANEL);
+            daemoon_gfx_text_fit(12.0f, y + 3.0f, GFX_BOTTOM_W - 24.0f, 0.4f,
+                                 drawable ? GFX_TEXT : GFX_TEXT_DIM, text);
+            y += 24.0f;
+        }
+        daemoon_gfx_text(8.0f, GFX_SCREEN_H - 16.0f, 0.32f, GFX_TEXT_DIM,
+                         daemoon_str(DAEMOON_STR_HINT_CHOOSE));
+
+        daemoon_gfx_frame_end();
+
+        if (down & KEY_B) {
+            break;
+        }
+        if (down & KEY_A) {
+            if (selected == 0) {
+                g_config.language[0] = '\0';
+                daemoon_i18n_set_language(console_language());
+                changed = 1;
+                break;
+            }
+            {
+                daemoon_lang_t lang = k_lang_order[selected - 1];
+
+                /* Refused rather than accepted: every screen after this one would
+                 * be blank, including this one. The reason is already on the top
+                 * screen, so the press simply does nothing. */
+                if (!language_is_drawable(lang)) {
+                    continue;
+                }
+                (void)daemoon_strlcpy(g_config.language, sizeof(g_config.language),
+                                      daemoon_lang_code(lang));
+                daemoon_i18n_set_language(lang);
+                changed = 1;
+                break;
+            }
+        }
+        if ((down & KEY_UP) && selected > 0) {
+            --selected;
+        }
+        if ((down & KEY_DOWN) && selected + 1 < LANG_ROWS) {
+            ++selected;
         }
     }
 
-    at = (at + 1) % (n + 1);
-    if (at == n) {
-        g_config.language[0] = '\0';
-        daemoon_i18n_set_language(console_language());
-        return 1;
-    }
-
-    next = k_order[at];
-    if (!language_is_drawable(next)) {
-        char body[320];
-        const char *args[1];
-
-        args[0] = daemoon_lang_name(next);
-        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_SETTINGS_NO_FONT, args, 1);
-        message(daemoon_str(DAEMOON_STR_APP_TITLE), body, GFX_WARN);
-        return 0;
-    }
-
-    (void)daemoon_strlcpy(g_config.language, sizeof(g_config.language),
-                          daemoon_lang_code(next));
-    daemoon_i18n_set_language(next);
-    return 1;
+    return changed;
 }
 
 static void action_settings(void)
@@ -960,7 +1061,7 @@ static void action_settings(void)
                 /* No keyboard for this one - it steps through the list, so the
                  * screen changes language under the cursor and the choice is
                  * judged by reading it. */
-                edited = cycle_language();
+                edited = choose_language();
                 break;
             }
             dirty = dirty || edited;

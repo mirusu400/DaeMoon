@@ -34,7 +34,21 @@ type Config struct {
 	// BlobChunkSize is the row size for blob_chunks. Do not change it without
 	// measuring; it is what keeps reads streaming and memory bounded.
 	BlobChunkSize int
+
+	// TLSCert and TLSKey turn on https. Both or neither.
+	//
+	// Served here rather than left to a reverse proxy, because self hosting is a
+	// primary goal and "one binary plus one database file" stops being true the
+	// moment the answer to "how do I get https" is "install nginx". A save is
+	// also exactly the sort of thing that should not cross a network in the
+	// clear, and the client refuses to skip certificate verification, so the
+	// server had better be able to present one.
+	TLSCert string
+	TLSKey  string
 }
+
+// TLS reports whether https is configured.
+func (c Config) TLS() bool { return c.TLSCert != "" && c.TLSKey != "" }
 
 func Default() Config {
 	return Config{
@@ -59,6 +73,13 @@ func FromEnv() (Config, error) {
 	}
 	if v := os.Getenv("DAEMOON_DB"); v != "" {
 		c.Database = v
+	}
+	c.TLSCert = os.Getenv("DAEMOON_TLS_CERT")
+	c.TLSKey = os.Getenv("DAEMOON_TLS_KEY")
+	if (c.TLSCert == "") != (c.TLSKey == "") {
+		// Half configured TLS is the case where somebody thinks they have https
+		// and does not. Refuse rather than quietly serving plaintext.
+		return c, fmt.Errorf("DAEMOON_TLS_CERT and DAEMOON_TLS_KEY: set both or neither")
 	}
 	if v := os.Getenv("DAEMOON_MAX_SAVE_SIZE"); v != "" {
 		n, err := strconv.ParseInt(v, 10, 64)

@@ -68,6 +68,28 @@ edited on a phone sometimes, and a missing brace should not be why a console
 cannot reach its own server. A trailing slash on the server is stripped, because
 kept it becomes a double slash in every path built from it.
 
+`daemoond` serves https itself when `DAEMOON_TLS_CERT` and `DAEMOON_TLS_KEY` are
+set - both or neither, because half configured TLS is the case where somebody
+believes they have it and does not. It is served by the binary rather than left to
+a reverse proxy because "one binary plus one database file" stops being true the
+moment the answer to "how do I get https" is "install nginx".
+
+For a self hosted setup that usually means an operator's own CA:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -sha256 -days 365 -nodes \
+  -keyout ca.key -out ca.pem -subj "/CN=DaeMoon self-hosted CA"
+openssl req -newkey rsa:2048 -nodes -keyout server.key -out server.csr \
+  -subj "/CN=192.168.1.13"
+openssl x509 -req -in server.csr -CA ca.pem -CAkey ca.key -CAcreateserial \
+  -days 365 -sha256 -out server.pem \
+  -extfile <(printf "subjectAltName=IP:192.168.1.13\nextendedKeyUsage=serverAuth\n")
+tools/3ds-deploy.sh push 192.168.1.43 ca.pem DaeMoon/cacert.pem
+```
+
+The `subjectAltName` is not optional. A certificate with only a common name is
+rejected by anything written this decade, mbedtls included.
+
 `ca_bundle` is only needed for https. The console's own certificate store is from
 2011 and fails against ordinary modern servers, which is why this build links
 3ds-curl and 3ds-mbedtls rather than using httpc:C - but a bundle still has to come

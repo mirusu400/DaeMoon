@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -84,10 +85,24 @@ func run() error {
 		ReadHeaderTimeout: 15 * time.Second,
 	}
 
+	if cfg.TLS() {
+		// A 3DS talks to this through mbedtls, not through the console's own
+		// 2011 vintage certificate store, so a modern floor costs nothing here
+		// and is what the client is built to expect.
+		srv.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+
 	errc := make(chan error, 1)
 	go func() {
-		slog.Info("listening", "addr", cfg.Addr, "db", cfg.Database, "version", version)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		slog.Info("listening", "addr", cfg.Addr, "db", cfg.Database, "version", version,
+			"tls", cfg.TLS())
+		var err error
+		if cfg.TLS() {
+			err = srv.ListenAndServeTLS(cfg.TLSCert, cfg.TLSKey)
+		} else {
+			err = srv.ListenAndServe()
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errc <- fmt.Errorf("listen: %w", err)
 			return
 		}

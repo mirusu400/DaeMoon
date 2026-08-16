@@ -137,3 +137,34 @@ func contains(haystack, needle string) bool {
 	}
 	return false
 }
+
+// Half configured TLS is the case where somebody believes they have https and
+// does not, which for this project means saves crossing a network in the clear
+// while the operator thinks otherwise.
+func TestTLSMustBeBothOrNeither(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		cert    string
+		key     string
+		wantErr bool
+		wantTLS bool
+	}{
+		{"neither", "", "", false, false},
+		{"both", "cert.pem", "key.pem", false, true},
+		{"cert only", "cert.pem", "", true, false},
+		{"key only", "", "key.pem", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("DAEMOON_TLS_CERT", tc.cert)
+			t.Setenv("DAEMOON_TLS_KEY", tc.key)
+
+			c, err := config.FromEnv()
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tc.wantErr)
+			}
+			if err == nil && c.TLS() != tc.wantTLS {
+				t.Fatalf("TLS() = %v, want %v", c.TLS(), tc.wantTLS)
+			}
+		})
+	}
+}

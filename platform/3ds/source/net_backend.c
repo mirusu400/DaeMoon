@@ -236,6 +236,12 @@ static daemoon_result_t net_request(void *vctx, const daemoon_http_req_t *req,
     struct curl_slist *headers = NULL;
     upload_ctx_t up;
     download_ctx_t down;
+    /* curl's own sentence about what went wrong. The wire codes this project uses
+     * are deliberately coarse - tls_error covers a clock that is wrong, a CA file
+     * that could not be opened, and a name that does not match the certificate,
+     * and those need three different fixes. Same lesson the SMDH lookup taught:
+     * record what the layer below actually said. */
+    char errbuf[CURL_ERROR_SIZE];
     CURL *curl;
     CURLcode code;
     long status = 0;
@@ -286,6 +292,8 @@ static daemoon_result_t net_request(void *vctx, const daemoon_http_req_t *req,
      * second for a reply many servers never send. */
     headers = curl_slist_append(headers, "Expect:");
 
+    errbuf[0] = '\0';
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
     curl_easy_setopt(curl, CURLOPT_URL, req->url);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, on_write);
@@ -344,8 +352,15 @@ static daemoon_result_t net_request(void *vctx, const daemoon_http_req_t *req,
     }
 
     r = from_curl(code);
-    if (r != DAEMOON_OK && ctx != NULL) {
-        ctx->last_curl_code = (int)code;
+    if (r != DAEMOON_OK) {
+        char line[CURL_ERROR_SIZE + 32];
+
+        if (ctx != NULL) {
+            ctx->last_curl_code = (int)code;
+        }
+        (void)snprintf(line, sizeof(line), "curl=%d %s", (int)code,
+                       errbuf[0] != '\0' ? errbuf : curl_easy_strerror(code));
+        daemoon_3ds_trace("net/failed", line);
     }
     return r;
 }

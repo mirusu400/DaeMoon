@@ -87,8 +87,18 @@ openssl x509 -req -in server.csr -CA ca.pem -CAkey ca.key -CAcreateserial \
 tools/3ds-deploy.sh push 192.168.1.43 ca.pem DaeMoon/cacert.pem
 ```
 
-The `subjectAltName` is not optional. A certificate with only a common name is
-rejected by anything written this decade, mbedtls included.
+Two traps in that certificate, both of which come back as `tls_error` and neither
+of which says which one it was:
+
+- The `subjectAltName` is not optional. A certificate with only a common name is
+  rejected by anything written this decade, mbedtls included.
+- **`IP:` alone is not enough.** curl hands mbedtls the host as a string and
+  mbedtls matches it against `dNSName` entries, so a certificate for a bare IP
+  address needs `DNS:192.168.1.13` as well as `IP:192.168.1.13`. A name is easier
+  to live with, but a self hosted LAN server usually has neither DNS nor a name.
+
+`net/failed` in `sdmc:/DaeMoon/trace.txt` carries curl's own sentence about the
+failure, which is what tells those two apart. `tls_error` on its own does not.
 
 `ca_bundle` is only needed for https. The console's own certificate store is from
 2011 and fails against ordinary modern servers, which is why this build links

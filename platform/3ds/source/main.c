@@ -1119,6 +1119,21 @@ int main(void)
      * are indistinguishable in the file, and "did it get further this time" is the
      * question the file exists to answer. */
     daemoon_3ds_trace("app/start", DAEMOON_BUILD_STAMP);
+    {
+        /* Both clocks, because they are not the same one and only one of them
+         * decides whether a certificate is valid. mbedtls reads the C library's,
+         * so a console where that says 1970 cannot complete a handshake against
+         * anything issued this decade no matter what the RTC says. */
+        char when[64];
+
+        if (clock_iso8601(NULL, when, sizeof(when)) != DAEMOON_OK) {
+            (void)daemoon_strlcpy(when, sizeof(when), "time() unusable");
+        }
+        daemoon_3ds_trace("app/clock", when);
+        (void)snprintf(when, sizeof(when), "osGetTime=%llu",
+                       (unsigned long long)osGetTime());
+        daemoon_3ds_trace("app/clock-rtc", when);
+    }
 
     g_save_ctx.media = 1; /* MEDIATYPE_SD */
     g_save_ctx.only_with_saves = 1;

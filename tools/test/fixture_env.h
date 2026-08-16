@@ -36,6 +36,7 @@ const daemoon_title_t *fixture_add_title(fixture_t *f, const char *title_id,
 
 int fixture_write_save_file(fixture_t *f, const daemoon_title_t *t, const char *rel,
                             const char *content);
+int fixture_remove_save_file(fixture_t *f, const daemoon_title_t *t, const char *rel);
 /* Returns 0 when the file exists and was read, -1 otherwise. */
 int fixture_read_save_file(fixture_t *f, const daemoon_title_t *t, const char *rel, char *buf,
                            size_t cap);

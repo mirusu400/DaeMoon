@@ -11,6 +11,12 @@
  * and still small enough to sit on the stack. */
 #define MANIFEST_MAX_TOKENS 64
 
+int daemoon_manifest_has_date(const char *created_at)
+{
+    return created_at != NULL && created_at[0] != '\0' &&
+           strcmp(created_at, DAEMOON_TIMESTAMP_NONE) != 0;
+}
+
 void daemoon_manifest_init(daemoon_manifest_t *m)
 {
     if (m == NULL) {

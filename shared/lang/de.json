@@ -24,6 +24,7 @@
   "backup.failed": "Lokale Sicherung fehlgeschlagen. Es wurde nichts geändert.",
   "backup.list": "Sicherungen von {0}",
   "backup.none": "Noch keine Sicherung von {0}.",
+  "backup.no_date": "Datum unbekannt",
   "backup.deleted": "Die Sicherung wurde gelöscht. Der Spielstand auf der Konsole blieb unberührt.",
   "backup.same_as_console": "identisch mit dem Spielstand, der jetzt auf der Konsole liegt",
   "backup.clock_note": "Die Datumsangaben stammen von der Uhr der Konsole. Sie beschreiben eine Sicherung; sie entscheiden nie, welcher Spielstand neuer ist.",

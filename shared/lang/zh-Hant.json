@@ -24,6 +24,7 @@
   "backup.failed": "本機備份失敗，未做任何變更。",
   "backup.list": "{0} 的備份",
   "backup.none": "還沒有 {0} 的備份。",
+  "backup.no_date": "日期不明",
   "backup.deleted": "備份已刪除。主機上的存檔未被更動。",
   "backup.same_as_console": "與主機上目前的存檔相同",
   "backup.clock_note": "日期來自主機時鐘，僅用於描述備份，絕不決定哪個存檔較新。",

@@ -24,6 +24,7 @@
   "backup.failed": "La sauvegarde locale a échoué. Rien n'a été modifié.",
   "backup.list": "Sauvegardes de {0}",
   "backup.none": "Aucune sauvegarde de {0} pour l'instant.",
+  "backup.no_date": "date inconnue",
   "backup.deleted": "La sauvegarde a été supprimée. La partie sur la console n'a pas été touchée.",
   "backup.same_as_console": "identique à la partie actuellement sur la console",
   "backup.clock_note": "Les dates viennent de l'horloge de la console. Elles décrivent une sauvegarde ; elles ne décident jamais laquelle est la plus récente.",

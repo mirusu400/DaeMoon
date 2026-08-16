@@ -24,6 +24,7 @@
   "backup.failed": "로컬 백업에 실패했습니다. 변경된 내용은 없습니다.",
   "backup.list": "{0} 백업 목록",
   "backup.none": "{0}의 백업이 아직 없습니다.",
+  "backup.no_date": "날짜 없음",
   "backup.deleted": "백업을 삭제했습니다. 본체의 세이브는 건드리지 않았습니다.",
   "backup.same_as_console": "지금 본체에 있는 세이브와 같음",
   "backup.clock_note": "날짜는 본체 시계에서 옵니다. 백업을 설명할 뿐, 어느 세이브가 최신인지 결정하지 않습니다.",

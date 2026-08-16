@@ -23,6 +23,16 @@ extern "C" {
 #define DAEMOON_MANIFEST_MAX_BYTES      2048
 #define DAEMOON_TIMESTAMP_MAX           32
 
+/* What created_at says when the platform offered no clock.
+ *
+ * A placeholder rather than a guess - but it is a real timestamp on the wire, so
+ * anything showing it to a person has to know it means "no date" rather than
+ * printing 1970 and letting them conclude the packaging is broken. */
+#define DAEMOON_TIMESTAMP_NONE "1970-01-01T00:00:00Z"
+
+/* 1 when created_at is a real date rather than the placeholder above. */
+int daemoon_manifest_has_date(const char *created_at);
+
 /* No version has been issued yet, i.e. this title has never been uploaded. */
 #define DAEMOON_VERSION_NONE 0u
 

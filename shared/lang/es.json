@@ -24,6 +24,7 @@
   "backup.failed": "La copia de seguridad local ha fallado. No se ha cambiado nada.",
   "backup.list": "Copias de seguridad de {0}",
   "backup.none": "Todavía no hay ninguna copia de seguridad de {0}.",
+  "backup.no_date": "fecha desconocida",
   "backup.deleted": "La copia de seguridad se ha eliminado. No se ha tocado la partida de la consola.",
   "backup.same_as_console": "igual que la partida que hay ahora en la consola",
   "backup.clock_note": "Las fechas vienen del reloj de la consola. Describen una copia; nunca deciden qué partida es más reciente.",

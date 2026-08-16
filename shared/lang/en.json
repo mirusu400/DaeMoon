@@ -24,6 +24,7 @@
   "backup.failed": "Local backup failed. Nothing was changed.",
   "backup.list": "Backups of {0}",
   "backup.none": "No backup of {0} yet.",
+  "backup.no_date": "date unknown",
   "backup.deleted": "The backup was deleted. The save on the console was not touched.",
   "backup.same_as_console": "same as the save on the console now",
   "backup.clock_note": "Dates come from the console clock. They describe a backup; they never decide which save is newer.",

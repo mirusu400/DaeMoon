@@ -558,9 +558,54 @@ TEST_CASE(env_validation_rejects_a_half_wired_environment)
     fixture_close(&f);
 }
 
+/* The empty save guard has to cover the wire, not just the SD card.
+ *
+ * daemoon_sync_backup_local has refused an empty archive since Phase 1, when a
+ * real title produced a package that was a manifest and no payload. The upload
+ * path did not - and that is the half where the damage leaves the device: an
+ * empty read becomes a new server version carrying the digest of nothing, and
+ * every other console then downloads that over its own save.
+ *
+ * Found against a real server, on a title that already had a good version. */
+TEST_CASE(an_empty_save_is_never_uploaded)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+    const fake_version_t *v;
+
+    CHECK_EQ_INT(fixture_open(&f, "empty-upload"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+
+    /* A good version on the server first. This is not about a first upload; it is
+     * about an empty one landing on top of something worth keeping. */
+    CHECK_EQ_INT(fixture_write_save_file(&f, t, "main.sav", "the real save"), 0);
+    memset(&stats, 0, sizeof(stats));
+    CHECK_OK(daemoon_sync_title(&f.env, &f.actx, t, &stats));
+    CHECK_EQ_INT(stats.uploaded, 1);
+
+    /* Now the archive reads as empty. A failed enumeration is indistinguishable
+     * from this here, which is the whole reason both are refused. */
+    CHECK_EQ_INT(fixture_remove_save_file(&f, t, "main.sav"), 0);
+
+    memset(&stats, 0, sizeof(stats));
+    CHECK_RESULT(daemoon_sync_title(&f.env, &f.actx, t, &stats), DAEMOON_ERR_EMPTY_SAVE);
+    CHECK_EQ_INT(stats.uploaded, 0);
+    CHECK_EQ_INT(f.server.uploads, 1);
+
+    /* And the server still has exactly what it had. */
+    v = fake_server_latest(&f.server, DAEMOON_PLATFORM_3DS, "0004000000055D00");
+    CHECK(v != NULL);
+    CHECK_EQ_INT(v->version, 1);
+    CHECK(v->size > 0);
+
+    fixture_close(&f);
+}
+
 void test_sync(void)
 {
     printf("sync\n");
+    RUN(an_empty_save_is_never_uploaded);
     RUN(decide_covers_every_case);
     RUN(decide_never_consults_a_clock);
     RUN(dirty_tracking);

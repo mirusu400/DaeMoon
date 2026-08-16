@@ -14,7 +14,7 @@
 
 /* created_at is informational and the console RTC is not trusted, so when the
  * platform offers no clock the field gets a fixed placeholder rather than a guess. */
-static const char k_epoch[] = "1970-01-01T00:00:00Z";
+static const char k_epoch[] = DAEMOON_TIMESTAMP_NONE;
 
 const char *daemoon_sync_action_name(daemoon_sync_action_t a)
 {
@@ -336,6 +336,23 @@ static daemoon_result_t pack_title_to(const daemoon_env_t *env, daemoon_archive_
     /* The digest is not known until the payload has been written, so the manifest
      * is completed by the packer. */
     r = daemoon_archive_pack(env, actx, save, &m, f);
+
+    if (r == DAEMOON_OK && actx->count == 0) {
+        r = DAEMOON_ERR_EMPTY_SAVE;
+    }
+
+    /* An archive with nothing in it does not become a package.
+     *
+     * The resulting file is a manifest and no payload, and restoring one clears
+     * the archive and writes nothing back - so a package that looks like a save is
+     * the thing that wipes one. Whether the archive is genuinely empty or the
+     * enumeration failed, neither is a save, and both are worth stopping for.
+     *
+     * This lived in daemoon_sync_backup_local, which is the half of the problem
+     * that stays on one device. It was missing here, so an empty read uploaded a
+     * manifest with the empty digest on top of a good version, and every other
+     * console then downloaded nothing over its own save. Found exactly that way,
+     * against a real server. */
 
     if (r == DAEMOON_OK) {
         r = daemoon_stream_close(f);

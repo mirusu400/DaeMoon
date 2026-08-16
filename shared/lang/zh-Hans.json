@@ -24,6 +24,7 @@
   "backup.failed": "本地备份失败，未做任何更改。",
   "backup.list": "{0} 的备份",
   "backup.none": "还没有 {0} 的备份。",
+  "backup.no_date": "日期未知",
   "backup.deleted": "备份已删除。主机上的存档未被改动。",
   "backup.same_as_console": "与主机上现在的存档相同",
   "backup.clock_note": "日期来自主机时钟，仅用于描述备份，绝不决定哪个存档更新。",

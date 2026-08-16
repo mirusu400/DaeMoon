@@ -15,6 +15,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "The backup was deleted. The save on the console was not touched.", /* backup.deleted */
         "Local backup failed. Nothing was changed.", /* backup.failed */
         "Backups of {0}", /* backup.list */
+        "date unknown", /* backup.no_date */
         "No backup of {0} yet.", /* backup.none */
         "same as the save on the console now", /* backup.same_as_console */
         "Cancel", /* btn.cancel */
@@ -90,6 +91,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "백업을 삭제했습니다. 본체의 세이브는 건드리지 않았습니다.", /* backup.deleted */
         "로컬 백업에 실패했습니다. 변경된 내용은 없습니다.", /* backup.failed */
         "{0} 백업 목록", /* backup.list */
+        "날짜 없음", /* backup.no_date */
         "{0}의 백업이 아직 없습니다.", /* backup.none */
         "지금 본체에 있는 세이브와 같음", /* backup.same_as_console */
         "취소", /* btn.cancel */
@@ -165,6 +167,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "バックアップを削除しました。本体のセーブデータは変更していません。", /* backup.deleted */
         "ローカルバックアップに失敗しました。変更はありません。", /* backup.failed */
         "{0} のバックアップ", /* backup.list */
+        "日付なし", /* backup.no_date */
         "{0} のバックアップはまだありません。", /* backup.none */
         "今、本体にあるセーブデータと同じ", /* backup.same_as_console */
         "キャンセル", /* btn.cancel */
@@ -240,6 +243,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "备份已删除。主机上的存档未被改动。", /* backup.deleted */
         "本地备份失败，未做任何更改。", /* backup.failed */
         "{0} 的备份", /* backup.list */
+        "日期未知", /* backup.no_date */
         "还没有 {0} 的备份。", /* backup.none */
         "与主机上现在的存档相同", /* backup.same_as_console */
         "取消", /* btn.cancel */
@@ -315,6 +319,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "備份已刪除。主機上的存檔未被更動。", /* backup.deleted */
         "本機備份失敗，未做任何變更。", /* backup.failed */
         "{0} 的備份", /* backup.list */
+        "日期不明", /* backup.no_date */
         "還沒有 {0} 的備份。", /* backup.none */
         "與主機上目前的存檔相同", /* backup.same_as_console */
         "取消", /* btn.cancel */
@@ -390,6 +395,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "La copia de seguridad se ha eliminado. No se ha tocado la partida de la consola.", /* backup.deleted */
         "La copia de seguridad local ha fallado. No se ha cambiado nada.", /* backup.failed */
         "Copias de seguridad de {0}", /* backup.list */
+        "fecha desconocida", /* backup.no_date */
         "Todavía no hay ninguna copia de seguridad de {0}.", /* backup.none */
         "igual que la partida que hay ahora en la consola", /* backup.same_as_console */
         "Cancelar", /* btn.cancel */
@@ -465,6 +471,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "La sauvegarde a été supprimée. La partie sur la console n'a pas été touchée.", /* backup.deleted */
         "La sauvegarde locale a échoué. Rien n'a été modifié.", /* backup.failed */
         "Sauvegardes de {0}", /* backup.list */
+        "date inconnue", /* backup.no_date */
         "Aucune sauvegarde de {0} pour l'instant.", /* backup.none */
         "identique à la partie actuellement sur la console", /* backup.same_as_console */
         "Annuler", /* btn.cancel */
@@ -540,6 +547,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Die Sicherung wurde gelöscht. Der Spielstand auf der Konsole blieb unberührt.", /* backup.deleted */
         "Lokale Sicherung fehlgeschlagen. Es wurde nichts geändert.", /* backup.failed */
         "Sicherungen von {0}", /* backup.list */
+        "Datum unbekannt", /* backup.no_date */
         "Noch keine Sicherung von {0}.", /* backup.none */
         "identisch mit dem Spielstand, der jetzt auf der Konsole liegt", /* backup.same_as_console */
         "Abbrechen", /* btn.cancel */

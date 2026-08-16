@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include <string.h>
 
 /* Core never allocates a copy buffer, so the app owns one. 64 KiB is generous on a
@@ -169,13 +170,56 @@ static daemoon_result_t discover_titles(app_t *app, const char *saves_dir)
     };
     size_t i;
 
-    (void)saves_dir;
     for (i = 0; i < sizeof(known) / sizeof(known[0]); ++i) {
         daemoon_save_type_t st = (known[i].platform == DAEMOON_PLATFORM_NDS)
                                      ? DAEMOON_SAVE_NDS
                                      : DAEMOON_SAVE_SAVEDATA;
         DAEMOON_TRY(daemoon_posix_save_add_title(&app->save, known[i].id, known[i].id,
                                                  known[i].platform, st));
+    }
+
+    /* Whatever else is in the saves directory.
+     *
+     * A console gets its list from the system and a desktop's nearest equivalent
+     * is this directory, so anything shaped like <platform>_<title id> counts.
+     * Without it this tool can only ever act on three ids somebody typed into a
+     * source file, which is exactly what stopped it standing in for a second
+     * device when a conflict needed making. */
+    {
+        DIR *d = opendir(saves_dir);
+        struct dirent *ent;
+
+        if (d == NULL) {
+            return DAEMOON_OK;
+        }
+        while ((ent = readdir(d)) != NULL) {
+            const char *sep = strchr(ent->d_name, '_');
+            daemoon_platform_t platform;
+            size_t seen;
+            int already = 0;
+
+            if (sep == NULL || sep == ent->d_name || sep[1] == '\0') {
+                continue;
+            }
+            platform = daemoon_platform_parse(ent->d_name, (size_t)(sep - ent->d_name));
+            if (platform == DAEMOON_PLATFORM_UNKNOWN) {
+                continue;
+            }
+            for (seen = 0; seen < sizeof(known) / sizeof(known[0]); ++seen) {
+                if (strcmp(known[seen].id, sep + 1) == 0) {
+                    already = 1;
+                    break;
+                }
+            }
+            if (already) {
+                continue;
+            }
+            (void)daemoon_posix_save_add_title(&app->save, sep + 1, sep + 1, platform,
+                                               platform == DAEMOON_PLATFORM_NDS
+                                                   ? DAEMOON_SAVE_NDS
+                                                   : DAEMOON_SAVE_SAVEDATA);
+        }
+        (void)closedir(d);
     }
     return DAEMOON_OK;
 }

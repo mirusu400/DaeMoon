@@ -114,6 +114,19 @@ int fixture_write_save_file(fixture_t *f, const daemoon_title_t *t, const char *
     return 0;
 }
 
+/* Deletes one file out of a save, so a save can be emptied without the directory
+ * disappearing. An archive that exists and enumerates to nothing is what a failed
+ * read looks like from core, and it is the case worth being able to build. */
+int fixture_remove_save_file(fixture_t *f, const daemoon_title_t *t, const char *rel)
+{
+    char path[640];
+
+    if (save_file_path(f, t, rel, path, sizeof(path)) != 0) {
+        return -1;
+    }
+    return remove(path) == 0 ? 0 : -1;
+}
+
 int fixture_read_save_file(fixture_t *f, const daemoon_title_t *t, const char *rel, char *buf,
                            size_t cap)
 {

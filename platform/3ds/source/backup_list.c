@@ -86,7 +86,17 @@ static void sort_rows(daemoon_3ds_backup_row_t *rows, size_t count)
             if (prev->readable != key.readable) {
                 worse = !prev->readable;
             } else {
-                worse = strcmp(prev->created_at, key.created_at) < 0;
+                int prev_dated = daemoon_manifest_has_date(prev->created_at);
+                int key_dated = daemoon_manifest_has_date(key.created_at);
+
+                if (prev_dated != key_dated) {
+                    /* A package with no date is not the oldest one, it is one
+                     * whose age is unknown. Below the dated ones, above the
+                     * unreadable ones. */
+                    worse = !prev_dated;
+                } else {
+                    worse = strcmp(prev->created_at, key.created_at) < 0;
+                }
             }
             if (!worse) {
                 break;

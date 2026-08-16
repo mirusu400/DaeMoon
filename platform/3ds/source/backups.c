@@ -89,7 +89,14 @@ static void draw_details(const daemoon_3ds_backup_row_t *row, const daemoon_titl
     y += 30.0f;
 
     if (row->readable) {
-        (void)snprintf(line, sizeof(line), "%s   %s", row->created_at, row->device_label);
+        /* A package made before this build had a clock carries the placeholder,
+         * and printing it as 1970-01-01 reads as a packaging bug rather than as
+         * the absence of a date. */
+        (void)snprintf(line, sizeof(line), "%s   %s",
+                       daemoon_manifest_has_date(row->created_at)
+                           ? row->created_at
+                           : daemoon_str(DAEMOON_STR_BACKUP_NO_DATE),
+                       row->device_label);
         daemoon_gfx_text(14.0f, y, 0.42f, GFX_TEXT_DIM, line);
         y += 22.0f;
     }
@@ -133,7 +140,10 @@ static void draw_list(const daemoon_3ds_backup_row_t *rows, size_t count, size_t
 
         if (rows[index].readable) {
             daemoon_3ds_backup_size_text(rows[index].size, size, sizeof(size));
-            (void)snprintf(label, sizeof(label), "%.10s   %s", rows[index].created_at,
+            (void)snprintf(label, sizeof(label), "%.10s   %s",
+                           daemoon_manifest_has_date(rows[index].created_at)
+                               ? rows[index].created_at
+                               : daemoon_str(DAEMOON_STR_BACKUP_NO_DATE),
                            size);
         } else {
             (void)daemoon_strlcpy(label, sizeof(label), "unreadable package");

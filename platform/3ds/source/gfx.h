@@ -39,8 +39,17 @@
 int  daemoon_gfx_init(daemoon_lang_t lang);
 void daemoon_gfx_exit(void);
 
-/* Whether a font covering the selected language was actually found. */
+/* Whether a font covering the selected language was actually found.
+ *
+ * Narrower than it sounds, and it was mistaken for the broader question once
+ * already: this is about an *extra* region font, and the console's own system
+ * font draws its own region's script whether or not one was loaded. For "can this
+ * be shown to the user", ask daemoon_gfx_can_draw. */
 int daemoon_gfx_has_language_font(void);
+
+/* Whether the font being drawn with has a glyph for this codepoint. A font
+ * reports a missing one by handing back its replacement character. */
+int daemoon_gfx_can_draw(unsigned int codepoint);
 
 /* Which one: 0 the built in font, 1 the selected language's region, 2 the
  * console's own region. Written into the survey, because "the names are product

@@ -1113,6 +1113,44 @@ int main(void)
     if (!daemoon_gfx_init(lang)) {
         return 1;
     }
+
+    /* The font decision, made at runtime rather than at build time.
+     *
+     * A console's system font is its own region's, so a Korean console draws
+     * Hangul and a European one does not - and the selected language is a user
+     * choice with nothing to do with the console's region. Rather than bundle a
+     * font, ask the font in use whether it has a representative character of the
+     * language, and fall back to English when it does not.
+     *
+     * English is a poor answer for somebody who does not read it. It is a better
+     * one than a screen of blank boxes on a confirmation they have to answer, and
+     * it is the option docs/fonts.md picked with the sizes written down. */
+    {
+        static const struct {
+            daemoon_lang_t lang;
+            unsigned int   probe;
+        } k_probe[] = {
+            { DAEMOON_LANG_KO,      0xAC00u }, /* 가 */
+            { DAEMOON_LANG_JA,      0x3042u }, /* あ */
+            { DAEMOON_LANG_ZH_HANS, 0x4E2Du }, /* 中 */
+            { DAEMOON_LANG_ZH_HANT, 0x4E2Du },
+            { DAEMOON_LANG_DE,      0x00DFu }, /* ß */
+            { DAEMOON_LANG_FR,      0x00E9u }, /* é */
+            { DAEMOON_LANG_ES,      0x00F1u }  /* ñ */
+        };
+        size_t i;
+
+        for (i = 0; i < sizeof(k_probe) / sizeof(k_probe[0]); ++i) {
+            if (k_probe[i].lang != lang) {
+                continue;
+            }
+            if (!daemoon_gfx_can_draw(k_probe[i].probe)) {
+                daemoon_3ds_trace("font/fallback", daemoon_lang_code(lang));
+                daemoon_i18n_set_language(DAEMOON_LANG_EN);
+            }
+            break;
+        }
+    }
     (void)amInit();
 
     /* A line the trail can be read from. Without it two runs of the same action

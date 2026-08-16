@@ -105,6 +105,29 @@ void daemoon_gfx_exit(void)
     gfxExit();
 }
 
+/* Whether the font actually in use has a glyph for this codepoint.
+ *
+ * citro2d treats a NULL font as the console's own system font, and
+ * C2D_FontGlyphIndexFromCodePoint follows that - so this answers for whichever
+ * font is being drawn with, which is the only question worth asking. A font
+ * reports a missing glyph by handing back its replacement character, so that is
+ * what "missing" is compared against.
+ *
+ * This is what docs/fonts.md was waiting for. Until it existed the code guessed
+ * from whether C2D_FontLoadSystem had returned something, which answers a
+ * different question - whether an *extra* region font was loaded - and got it
+ * wrong on the one console anybody had tested on. */
+int daemoon_gfx_can_draw(unsigned int codepoint)
+{
+    FINF_s *info = C2D_FontGetInfo(g_font);
+    int glyph = C2D_FontGlyphIndexFromCodePoint(g_font, codepoint);
+
+    if (info == NULL) {
+        return 0;
+    }
+    return glyph != (int)info->alterCharIndex;
+}
+
 int daemoon_gfx_has_language_font(void)
 {
     return g_have_font;

@@ -328,6 +328,99 @@ func TestAStrangerWithACodeGetsTheirOwnDevice(t *testing.T) {
 	}
 }
 
+// People is for administrators. The nav link is hidden from everybody else, but a
+// hidden link is not a check - the three handlers behind it are, and this is what
+// says so.
+func TestPeopleIsAdministratorsOnly(t *testing.T) {
+	e := start(t)
+	admin := newPanel(t, e)
+
+	if status, _ := admin.post("/setup", url.Values{
+		"username": {"admin"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("setup: %d", status)
+	}
+	if status, _ := admin.post("/users", url.Values{
+		"username": {"member"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("add a member: %d", status)
+	}
+
+	member := newPanel(t, e)
+	if status, body := member.post("/login", url.Values{
+		"username": {"member"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK || strings.Contains(body, "do not match") {
+		t.Fatalf("member could not sign in: %d\n%s", status, body)
+	}
+
+	// Signed in, and the page is not offered.
+	if _, body := member.get("/"); strings.Contains(body, `href="/users"`) {
+		t.Fatalf("the People link was shown to a member:\n%s", body)
+	}
+
+	// And asking for it directly is refused, which is the part that matters.
+	if status, _ := member.get("/users"); status != http.StatusForbidden {
+		t.Fatalf("GET /users as a member: %d, want 403", status)
+	}
+	if status, _ := member.post("/users", url.Values{
+		"username": {"sneaked"}, "password": {"hunter2hunter2"}, "admin": {"on"},
+	}); status != http.StatusForbidden {
+		t.Fatalf("POST /users as a member: %d, want 403", status)
+	}
+
+	_, body := admin.get("/users")
+	id := regexp.MustCompile(`action="/users/([^/]+)/delete"`).FindStringSubmatch(body)
+	if id == nil {
+		t.Fatalf("no user row:\n%s", body)
+	}
+	if status, _ := member.post("/users/"+id[1]+"/delete", nil); status != http.StatusForbidden {
+		t.Fatalf("a member deleted somebody: %d, want 403", status)
+	}
+}
+
+// The appearance is a cookie, so it survives a reload and is not somebody's
+// account setting - the same person on a phone and a desktop can want different
+// answers.
+func TestAppearanceIsRememberedPerBrowser(t *testing.T) {
+	e := start(t)
+	p := newPanel(t, e)
+
+	if status, _ := p.post("/setup", url.Values{
+		"username": {"mirusu"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("setup: %d", status)
+	}
+
+	// Auto by default: no attribute, so the stylesheet follows the system.
+	if _, body := p.get("/"); strings.Contains(body, "data-theme=") {
+		t.Fatalf("a fresh browser was not on auto:\n%s", body)
+	}
+
+	if status, _ := p.post("/theme", url.Values{"theme": {"light"}, "from": {"/devices"}}); status != http.StatusOK {
+		t.Fatalf("set light: %d", status)
+	}
+	if _, body := p.get("/"); !strings.Contains(body, `data-theme="light"`) {
+		t.Fatalf("light was not kept:\n%s", body)
+	}
+
+	if _, _ = p.post("/theme", url.Values{"theme": {"auto"}, "from": {"/"}}); true {
+		if _, body := p.get("/"); strings.Contains(body, "data-theme=") {
+			t.Fatalf("auto did not clear the choice:\n%s", body)
+		}
+	}
+
+	// A redirect target that came out of a form field is somewhere to send
+	// somebody, so only paths on this site are honoured.
+	if status, _ := p.post("/theme", url.Values{
+		"theme": {"dark"}, "from": {"//example.invalid/"},
+	}); status != http.StatusOK {
+		t.Fatalf("offsite redirect: %d", status)
+	}
+	if _, body := p.get("/"); !strings.Contains(body, `data-theme="dark"`) {
+		t.Fatalf("dark was not kept:\n%s", body)
+	}
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

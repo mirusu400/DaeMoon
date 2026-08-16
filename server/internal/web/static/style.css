@@ -13,7 +13,13 @@
  * megabyte to avoid saying "system-ui".
  */
 
-:root {
+/* Three appearances, one set of names.
+ *
+ * Every rule below uses the variables and none of them names a colour, so a theme
+ * is this block and nothing else. `auto` is the absence of a choice - the system
+ * decides - which is why it is a media query rather than a third palette.
+ */
+:root, [data-theme="dark"] {
   --bg: #17181b;
   --surf: #1e2024;
   --surf2: #25282e;
@@ -34,6 +40,51 @@
   --r: 14px;
   --r-sm: 8px;
   --pill: 999px;
+
+  --shadow: none;
+}
+
+/* Light, derived from the same design rather than inverted from it. Inverting a
+ * dark palette gives grey text on grey paper; these are chosen so the hairlines
+ * stay hairlines and the platform colours keep their contrast on white. */
+[data-theme="light"] {
+  --bg: #f4f5f7;
+  --surf: #ffffff;
+  --surf2: #eceef1;
+  --bd: #d9dce1;
+  --tx: #1b1d21;
+  --mut: #6b7280;
+
+  --ds: #1d78b8;
+  --sw: #c5443f;
+  --nds: #7a4fc0;
+
+  --warn: #a9660a;
+  --ok: #2f7d55;
+  --danger: #c5443f;
+
+  --shadow: 0 1px 2px rgba(16, 18, 22, .05);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #f4f5f7;
+    --surf: #ffffff;
+    --surf2: #eceef1;
+    --bd: #d9dce1;
+    --tx: #1b1d21;
+    --mut: #6b7280;
+
+    --ds: #1d78b8;
+    --sw: #c5443f;
+    --nds: #7a4fc0;
+
+    --warn: #a9660a;
+    --ok: #2f7d55;
+    --danger: #c5443f;
+
+    --shadow: 0 1px 2px rgba(16, 18, 22, .05);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -121,19 +172,27 @@ a:hover { color: var(--ds); }
 .nav a:hover { background: var(--surf2); color: var(--tx); }
 .nav a.on { background: var(--tx); color: var(--bg); font-weight: 700; }
 
-/* A console in the sidebar: name, platform colour, and what it is. */
-.devcard {
-  display: block; width: 100%; text-align: left;
+/* Everything below the navigation, pushed to the bottom on a tall screen so the
+   list above it reads as the point of the sidebar. */
+.side-foot { margin-top: 2rem; }
+
+/* Three small buttons in a row rather than a select: the choice is between three
+   fixed things and a dropdown would hide two of them. */
+.themes { display: flex; gap: .3rem; }
+.theme-btn {
+  flex: 1;
   background: transparent;
+  color: var(--mut);
   border: 1px solid var(--bd);
   border-radius: var(--r-sm);
-  padding: .7rem .8rem;
-  margin-bottom: .5rem;
-  color: var(--tx);
+  padding: .35rem .2rem;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
-.devcard:hover { border-color: var(--mut); }
-.devcard .nm { font-weight: 700; font-size: .9rem; display: block; }
-.devcard .sub { font-size: .72rem; color: var(--mut); }
+.theme-btn:hover { color: var(--tx); border-color: var(--mut); }
+.theme-btn.on { background: var(--tx); color: var(--bg); border-color: var(--tx); }
 
 /* --------------------------------------------------------------- surfaces */
 
@@ -141,6 +200,7 @@ a:hover { color: var(--ds); }
   background: var(--surf);
   border: 1px solid var(--bd);
   border-radius: var(--r);
+  box-shadow: var(--shadow);
 }
 .card.pad { padding: 1.2rem; }
 .card.warn { border-color: var(--warn); }
@@ -173,8 +233,11 @@ button, .btn {
   border: 1px solid transparent;
   display: inline-block;
 }
+/* The one loud button. It is the text colour on the background colour, so it
+   inverts with the theme rather than being white in both - which on a light theme
+   is a white button on white paper. */
 .btn-key { background: var(--tx); color: var(--bg); border-color: var(--tx); }
-.btn-key:hover { background: #fff; border-color: #fff; color: var(--bg); }
+.btn-key:hover { filter: brightness(1.25); }
 .btn-ghost { background: transparent; color: var(--tx); border-color: var(--bd); }
 .btn-ghost:hover { background: var(--surf2); border-color: var(--mut); color: var(--tx); }
 .btn-warn { background: var(--warn); color: var(--bg); border-color: var(--warn); font-weight: 700; }

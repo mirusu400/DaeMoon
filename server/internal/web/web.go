@@ -75,6 +75,8 @@ func (s *Server) Routes() chi.Router {
 	r.Get("/login", s.getLogin)
 	r.Post("/login", s.postLogin)
 	r.Post("/logout", s.postLogout)
+	// Outside the session group: a signed out login page can be themed too.
+	r.Post("/theme", s.postTheme)
 
 	r.Group(func(r chi.Router) {
 		r.Use(s.requireSession)
@@ -178,25 +180,47 @@ func (s *Server) clearSession(w http.ResponseWriter) {
  * rather than by each handler remembering to. */
 type nav struct {
 	Devices []store.DeviceInfo
-	Titles  int
+	// Live rather than all: the sidebar count answers "how many consoles do I
+	// have", and a revoked one is a row in a history, not a console.
+	LiveDevices int
+	Titles      int
+}
+
+/* One appearance choice, as the sidebar draws it. */
+type themeChoice struct {
+	ID      string
+	Label   string
+	Current bool
 }
 
 type page struct {
-	Title string
-	Page  string // which sidebar entry is the current one
-	User  store.User
-	Error string
-	Nav   nav
-	Data  any
+	Title  string
+	Page   string // which sidebar entry is the current one
+	Path   string // where to come back to after changing something about the page
+	Theme  string // "" for auto, which lets the stylesheet follow the system
+	Themes []themeChoice
+	User   store.User
+	Error  string
+	Nav    nav
+	Data   any
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p page) {
 	p.User = userOf(r)
 
+	p.Path = r.URL.Path
+	p.Theme = themeOf(r)
+	p.Themes = themeChoices(p.Theme)
+
 	// A signed out page has no sidebar and nothing to count.
 	if p.User.ID != "" {
 		if devices, err := s.store.ListDevices(r.Context(), p.User.ID); err == nil {
 			p.Nav.Devices = devices
+			for _, d := range devices {
+				if !d.Revoked {
+					p.Nav.LiveDevices++
+				}
+			}
 		}
 		if titles, err := s.store.ListTitles(r.Context(), p.User.ID, ""); err == nil {
 			p.Nav.Titles = len(titles)
@@ -220,6 +244,66 @@ func humanBytes(n uint64) string {
 	default:
 		return fmt.Sprintf("%d B", n)
 	}
+}
+
+// ------------------------------------------------------------------ theme
+
+/* Appearance, in a cookie rather than in local storage.
+ *
+ * The panel is server rendered and this is the only piece of state a page needs
+ * before it draws anything. Reading it from JavaScript would mean the page arrives
+ * in one theme and changes to another a frame later, which is the flash every site
+ * that does it has. A cookie is already on the request.
+ *
+ * It is not stored per account either. A theme is a property of the screen somebody
+ * is looking at, not of who they are, and the same person on a phone and a desktop
+ * can reasonably want different answers.
+ */
+const themeCookie = "daemoon_theme"
+
+func themeOf(r *http.Request) string {
+	c, err := r.Cookie(themeCookie)
+	if err != nil {
+		return ""
+	}
+	switch c.Value {
+	case "dark", "light":
+		return c.Value
+	}
+	return "" // auto
+}
+
+func themeChoices(current string) []themeChoice {
+	return []themeChoice{
+		{ID: "auto", Label: "Auto", Current: current == ""},
+		{ID: "dark", Label: "Dark", Current: current == "dark"},
+		{ID: "light", Label: "Light", Current: current == "light"},
+	}
+}
+
+func (s *Server) postTheme(w http.ResponseWriter, r *http.Request) {
+	value := r.FormValue("theme")
+	cookie := &http.Cookie{
+		Name: themeCookie, Path: "/", HttpOnly: false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   365 * 24 * 60 * 60,
+	}
+	switch value {
+	case "dark", "light":
+		cookie.Value = value
+	default:
+		// Auto is the absence of a preference, so it is stored as one.
+		cookie.MaxAge = -1
+	}
+	http.SetCookie(w, cookie)
+
+	// Back where they were. Only a path from this site: a redirect target from a
+	// form field is somewhere to send somebody if it is not checked.
+	back := r.FormValue("from")
+	if !strings.HasPrefix(back, "/") || strings.HasPrefix(back, "//") {
+		back = "/"
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
 // ------------------------------------------------------------------ setup

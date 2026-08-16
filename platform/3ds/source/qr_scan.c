@@ -352,11 +352,12 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
 
         (void)snprintf(line, sizeof(line),
                        "frames=%u luma=%u codes=%d decfail=%u recvfail=%u "
-                       "timeout=%u cam=%s layout=%d err=%d",
+                       "timeout=%u cam=%s layout=%s err=%d",
                        g_stats.frames, g_stats.mean_luma, g_stats.codes_seen,
                        g_stats.decode_failures, g_stats.receive_failures,
                        g_stats.timeouts, g_stats.camera ? "inner" : "outer",
-                       g_stats.layout, g_stats.last_decode_error);
+                       daemoon_3ds_cam_layout_name(g_stats.layout),
+                       g_stats.last_decode_error);
         daemoon_3ds_trace("qr/stats", line);
     }
 

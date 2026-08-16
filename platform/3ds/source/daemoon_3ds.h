@@ -383,6 +383,9 @@ size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_h);
 #define DAEMOON_3DS_CAM_LAYOUTS 4
 size_t daemoon_3ds_cam_index_as(unsigned x, unsigned y, unsigned cam_w,
                                 unsigned cam_h, int layout);
+/* A name rather than a number: the layouts were renumbered once and the answer
+ * that came back meant two different things depending on which build asked. */
+const char *daemoon_3ds_cam_layout_name(int layout);
 void   daemoon_3ds_cam_to_tiled(const unsigned short *frame, unsigned cam_w,
                                 unsigned cam_h, unsigned short *tex, unsigned tex_w,
                                 unsigned tex_h, int layout);

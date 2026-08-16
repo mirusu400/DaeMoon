@@ -74,6 +74,21 @@ size_t daemoon_3ds_cam_index(unsigned x, unsigned y, unsigned cam_h)
  * Layout 0 is what the evidence says and what ships as the default. The rest exist
  * to be ruled out.
  */
+/* A name for each candidate, because a number is not one.
+ *
+ * The layouts were renumbered between two builds and the answer that came back was
+ * "layout 2", which by then meant two different things. A diagnostic whose answer
+ * depends on which build asked the question is not a diagnostic. */
+const char *daemoon_3ds_cam_layout_name(int layout)
+{
+    switch (layout) {
+    case 1:  return "cols/BL";
+    case 2:  return "rows/TD";
+    case 3:  return "rows/BU";
+    default: return "cols/TL";
+    }
+}
+
 size_t daemoon_3ds_cam_index_as(unsigned x, unsigned y, unsigned cam_w,
                                 unsigned cam_h, int layout)
 {

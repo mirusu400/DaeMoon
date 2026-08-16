@@ -1123,9 +1123,10 @@ static int scan_frame(void *user)
      * a file: no frames is a camera that never started, a mean near zero is a lens
      * covered, and codes seen without a decode is a code too far or out of focus. */
     (void)snprintf(line, sizeof(line),
-                   "frames %u   light %u   codes %d   %s   layout %d",
+                   "frames %u   light %u   codes %d   %s   %s",
                    st->frames, st->mean_luma, st->codes_seen,
-                   st->camera ? "inner" : "outer", st->layout);
+                   st->camera ? "inner" : "outer",
+                   daemoon_3ds_cam_layout_name(st->layout));
     daemoon_gfx_text(10.0f, GFX_SCREEN_H - 40.0f, 0.38f, GFX_TEXT_DIM, line);
     daemoon_gfx_text(10.0f, GFX_SCREEN_H - 20.0f, 0.36f, GFX_TEXT_DIM,
                      daemoon_str(DAEMOON_STR_PAIR_SWITCH));

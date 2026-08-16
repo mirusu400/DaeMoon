@@ -2,18 +2,31 @@
 
 libctru, devkitARM. Implements the interfaces in `core/include/daemoon/backend.h`.
 
-Phase 1 in the roadmap. The save, filesystem and UI backends are written and the
-CIA builds. What is left is the part only a console can answer, and the procedure
-for answering it is `docs/phase1-hardware.md`:
+Phase 1 in the roadmap. **Backup and restore work on hardware.** A dummy title was
+backed up, changed in the game, restored, and the game read the restored save:
 
-- whether the `FileSystemAccess` set in `app.rsf` actually reaches another title's
-  save archive, and which entries of it are needed
-- what the secure value does to a restored save
+```
+save/remove-all      8
+save/remove-all-done ok
+save/commit
+restore/core-done    ok
+```
 
-Until those are answered, `list_titles` marks **every** title as
-`secure_value = 1`, so the warning fires before any restore. That is deliberately
-pessimistic and should be narrowed once hardware says which titles bind their
-saves.
+So the first Phase 1 question is answered: the three `FileSystemAccess` entries in
+`app.rsf` - `CategorySystemApplication`, `DirectSdmc`, `DirectSdmcWrite` - reach
+another title's save archive for reading, writing, clearing and committing. No
+`IoAccessControl` and no wider filesystem rights are needed for any of it.
+
+The second one is not. **What a secure value does to a save from another console
+is still open**, and it cannot be answered on one console: the value is read
+before a restore and written back after, so a same-console round trip never
+presents a mismatch, which is the case Phase 7 depends on. It needs a second
+console, or a title somebody is willing to lose.
+
+Until then `list_titles` marks **every** title as `secure_value = 1`, so the
+warning fires before any restore. That is deliberately pessimistic. Hardware says
+it is also wrong for fifteen of sixteen titles, and narrowing it is a Phase 3
+change, not a Phase 1 one.
 
 ## Non negotiable
 

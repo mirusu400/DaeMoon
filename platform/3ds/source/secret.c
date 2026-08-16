@@ -152,9 +152,29 @@ daemoon_result_t daemoon_3ds_secret_save(const daemoon_env_t *env, const char *t
          *
          * It will not silently destroy anything either. This runs when the archive
          * could not be opened at all, which is not a state a save is in. */
-        daemoon_result_t fr = daemoon_3ds_format_own_save(&self, 128);
+        /* Several shapes, because the service refuses one without saying which
+         * argument it disliked - `RD_INVALID_SELECTION` covers all of them.
+         *
+         * The first is the size the exheader declares, which is the shape a title
+         * is supposed to ask for. The rest are smaller, in case a console has less
+         * provisioned than this build asks for: a title installed when this
+         * declared no save data at all keeps that provisioning across updates, and
+         * on such a console no size will be accepted until it is reinstalled
+         * cleanly. Which of these worked, or that none did, is in the trace. */
+        static const unsigned k_blocks[] = { 256u, 128u, 32u, 8u };
+        daemoon_result_t fr = DAEMOON_ERR_UNSUPPORTED;
+        size_t attempt;
 
-        trace_step("secret/format", fr);
+        for (attempt = 0; attempt < sizeof(k_blocks) / sizeof(k_blocks[0]); ++attempt) {
+            char step[32];
+
+            fr = daemoon_3ds_format_own_save(&self, k_blocks[attempt]);
+            (void)snprintf(step, sizeof(step), "secret/format%u", k_blocks[attempt]);
+            trace_step(step, fr);
+            if (fr == DAEMOON_OK) {
+                break;
+            }
+        }
         if (fr != DAEMOON_OK) {
             return r;
         }

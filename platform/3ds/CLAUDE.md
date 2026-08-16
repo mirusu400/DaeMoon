@@ -391,6 +391,18 @@ is never written back, which is what takes it off the card.
 The conformance suite clears the archive it is pointed at, so it re-saves the token
 afterwards. Running a diagnostic should not unpair a console.
 
+**A console updated from a build that declared `SAVEDATA_SIZE=0K` may not be able
+to format one.** Save provisioning is recorded when a title is first installed and
+an update does not revise it, so the service answers `FSUSER_FormatSaveData` with
+`0xE0E046BC` - FS, invalid selection - no matter what size is asked for. Four sizes
+are tried and the trace records each. A clean uninstall and install is what fixes
+it.
+
+Which is why the fallback exists rather than being a nicety: on such a console the
+token goes on the card, pairing completes, and the settings screen says where the
+token is. A console that cannot pair would be a worse outcome than one whose
+credential is somewhere findable.
+
 ## Proving the backend
 
 `tools/test/backend_conformance.c` is the contract, written against the interface

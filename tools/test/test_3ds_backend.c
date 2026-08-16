@@ -21,6 +21,7 @@
 #include "backend_conformance.h"
 #include "ctru_stub/3ds.h"
 #include "daemoon_posix.h"
+#include "posix_internal.h"
 
 #include "../../platform/3ds/source/daemoon_3ds.h"
 
@@ -766,6 +767,369 @@ TEST_CASE(the_smdh_is_read_whole_from_the_start)
     (void)daemoon_posix_rmtree(root);
 }
 
+
+/* ------------------------------------------------------------ nds-bootstrap */
+
+/* Phase 2's backend, run here rather than through a stub, because it is ordinary
+ * file IO: no permissions, no archive, no service. That is also why it is the one
+ * that goes on the network first - if the sync path corrupts a save here, the
+ * sync path is what is wrong. */
+
+static void write_file(const char *path, const void *data, size_t len)
+{
+    FILE *fp = fopen(path, "wb");
+
+    if (fp == NULL) {
+        return;
+    }
+    (void)fwrite(data, 1, len, fp);
+    (void)fclose(fp);
+}
+
+/* A DS cartridge header is a 12 byte title then a 4 character game code. Only
+ * those first sixteen bytes are read, so that is all a test ROM needs. */
+static void write_rom(const char *path, const char *title, const char *code)
+{
+    unsigned char header[16];
+
+    memset(header, 0, sizeof(header));
+    memcpy(header, title, strlen(title) < 12 ? strlen(title) : 12);
+    memcpy(header + 12, code, 4);
+    write_file(path, header, sizeof(header));
+}
+
+typedef struct {
+    char   name[DAEMOON_PATH_MAX];
+    size_t size;
+    int    seen;
+} nds_seen_t;
+
+static int nds_entry_cb(void *user, const char *path, unsigned long long size)
+{
+    nds_seen_t *seen = (nds_seen_t *)user;
+
+    (void)daemoon_strlcpy(seen->name, sizeof(seen->name), path);
+    seen->size = (size_t)size;
+    seen->seen = 1;
+    return 0;
+}
+
+TEST_CASE(nds_titles_are_named_from_the_cartridge_header)
+{
+    char root[256];
+    char roms[320];
+    char saves[320];
+    char path[512];
+    daemoon_strbuf_t sb;
+    daemoon_3ds_nds_ctx_t ctx;
+    daemoon_title_t *titles = NULL;
+    size_t count = 0;
+    size_t i;
+    int found_rom = 0;
+    int found_orphan = 0;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "nds-titles"), 0);
+
+    daemoon_strbuf_init(&sb, roms, sizeof(roms));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/roms");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+    CHECK_OK(daemoon_posix_mkdir_p(roms));
+
+    daemoon_strbuf_init(&sb, saves, sizeof(saves));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/roms/saves");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+    CHECK_OK(daemoon_posix_mkdir_p(saves));
+
+    /* A real card has names with spaces and Hangul in them, which is exactly why
+     * the id comes from the cartridge header instead. */
+    (void)snprintf(path, sizeof(path), "%s/5684 포켓몬화이트 (K).nds", roms);
+    write_rom(path, "POKEMON W", "IRAK");
+    (void)snprintf(path, sizeof(path), "%s/5684 포켓몬화이트 (K).sav", saves);
+    write_file(path, "save data", 9);
+
+    /* And a save with no ROM beside it, which is a thing people do. */
+    (void)snprintf(path, sizeof(path), "%s/orphan.sav", saves);
+    write_file(path, "x", 1);
+
+    ctx.rom_dir = roms;
+    ctx.save_dir = saves;
+
+    CHECK_OK(daemoon_3ds_nds_backend.list_titles(&ctx, &titles, &count));
+    CHECK_EQ_INT(count, 2);
+
+    for (i = 0; i < count; ++i) {
+        CHECK_EQ_INT(titles[i].platform, DAEMOON_PLATFORM_NDS);
+        CHECK_EQ_INT(titles[i].save_type, DAEMOON_SAVE_NDS);
+        CHECK(titles[i].has_save);
+        /* The manifest schema accepts uppercase, digits, underscore and dash. */
+        {
+            const char *p;
+            for (p = titles[i].id; *p != '\0'; ++p) {
+                CHECK((*p >= '0' && *p <= '9') || (*p >= 'A' && *p <= 'Z') ||
+                      *p == '_' || *p == '-');
+            }
+            CHECK(strlen(titles[i].id) >= 4);
+        }
+        if (strcmp(titles[i].id, "IRAK_POKEMON_W") == 0) {
+            found_rom = 1;
+            CHECK_EQ_INT(titles[i].size_hint, 9);
+        }
+        if (strncmp(titles[i].id, "ORPHAN", 6) == 0) {
+            found_orphan = 1;
+        }
+    }
+    CHECK(found_rom);
+    CHECK(found_orphan);
+
+    daemoon_3ds_nds_backend.free_titles(&ctx, titles, count);
+    (void)daemoon_posix_rmtree(root);
+}
+
+TEST_CASE(an_nds_save_round_trips_through_core)
+{
+    char root[256];
+    char roms[320];
+    char saves[320];
+    char work[320];
+    char backup[512];
+    char path[512];
+    daemoon_strbuf_t sb;
+    daemoon_3ds_nds_ctx_t ctx;
+    daemoon_posix_ui_ctx_t ui;
+    daemoon_archive_ctx_t actx;
+    daemoon_env_t env;
+    daemoon_title_t *titles = NULL;
+    size_t count = 0;
+    static unsigned char scratch[64 * 1024];
+    char buf[64];
+    FILE *fp;
+    size_t got;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "nds-roundtrip"), 0);
+
+    daemoon_strbuf_init(&sb, roms, sizeof(roms));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/roms");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+    CHECK_OK(daemoon_posix_mkdir_p(roms));
+
+    daemoon_strbuf_init(&sb, saves, sizeof(saves));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/roms/saves");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+    CHECK_OK(daemoon_posix_mkdir_p(saves));
+
+    daemoon_strbuf_init(&sb, work, sizeof(work));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/DaeMoon");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+
+    (void)snprintf(path, sizeof(path), "%s/game.nds", roms);
+    write_rom(path, "TEST GAME", "ATGE");
+    (void)snprintf(path, sizeof(path), "%s/game.sav", saves);
+    write_file(path, "the original save", 17);
+
+    ctx.rom_dir = roms;
+    ctx.save_dir = saves;
+    daemoon_posix_ui_init(&ui);
+    actx.count = 0;
+
+    memset(&env, 0, sizeof(env));
+    env.save = &daemoon_3ds_nds_backend;
+    env.fs = &daemoon_3ds_fs_backend;
+    env.ui = &daemoon_posix_ui_backend;
+    env.save_ctx = &ctx;
+    env.ui_ctx = &ui;
+    env.device_label = "3DS";
+    env.work_dir = work;
+    env.scratch = scratch;
+    env.scratch_len = sizeof(scratch);
+    CHECK_OK(daemoon_env_validate(&env));
+
+    CHECK_OK(daemoon_3ds_nds_backend.list_titles(&ctx, &titles, &count));
+    CHECK_EQ_INT(count, 1);
+
+    CHECK_OK(daemoon_sync_backup_local(&env, &actx, &titles[0], backup, sizeof(backup)));
+
+    /* Play on: a shorter save, so a restore that does not clear first would leave
+     * the tail of the longer one behind. */
+    write_file(path, "later", 5);
+
+    CHECK_OK(daemoon_sync_restore_package(&env, &actx, &titles[0], backup));
+    CHECK(ui.confirms > 0);
+
+    fp = fopen(path, "rb");
+    CHECK(fp != NULL);
+    got = fread(buf, 1, sizeof(buf) - 1, fp);
+    (void)fclose(fp);
+    buf[got] = '\0';
+    CHECK_STR(buf, "the original save");
+
+    daemoon_3ds_nds_backend.free_titles(&ctx, titles, count);
+    (void)daemoon_posix_rmtree(root);
+}
+
+TEST_CASE(an_nds_package_only_carries_the_one_entry)
+{
+    /* A package made from something else would write a file the game cannot read,
+     * so the backend refuses any entry but its own. */
+    char root[256];
+    char saves[320];
+    char path[512];
+    daemoon_strbuf_t sb;
+    daemoon_3ds_nds_ctx_t ctx;
+    daemoon_title_t *titles = NULL;
+    daemoon_save_t *save = NULL;
+    daemoon_stream_t *f = NULL;
+    nds_seen_t seen;
+    size_t count = 0;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "nds-entry"), 0);
+
+    daemoon_strbuf_init(&sb, saves, sizeof(saves));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/saves");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+    CHECK_OK(daemoon_posix_mkdir_p(saves));
+
+    (void)snprintf(path, sizeof(path), "%s/game.sav", saves);
+    write_file(path, "data", 4);
+
+    ctx.rom_dir = root;
+    ctx.save_dir = saves;
+
+    CHECK_OK(daemoon_3ds_nds_backend.list_titles(&ctx, &titles, &count));
+    CHECK_EQ_INT(count, 1);
+
+    CHECK_OK(daemoon_3ds_nds_backend.open_save(&ctx, &titles[0], &save));
+
+    memset(&seen, 0, sizeof(seen));
+    CHECK_OK(daemoon_3ds_nds_backend.list_entries(&ctx, save, nds_entry_cb, &seen));
+    CHECK(seen.seen);
+    CHECK_STR(seen.name, "save.sav");
+    CHECK_EQ_INT(seen.size, 4);
+
+    CHECK_RESULT(daemoon_3ds_nds_backend.open_file(&ctx, save, "something-else.bin",
+                                                   DAEMOON_OPEN_READ, &f),
+                 DAEMOON_ERR_NOT_FOUND);
+    /* And a read only save refuses a write, like every other backend. */
+    CHECK_RESULT(daemoon_3ds_nds_backend.open_file(&ctx, save, "save.sav",
+                                                   DAEMOON_OPEN_WRITE, &f),
+                 DAEMOON_ERR_FORBIDDEN);
+
+    CHECK_OK(daemoon_3ds_nds_backend.close_save(&ctx, save));
+    daemoon_3ds_nds_backend.free_titles(&ctx, titles, count);
+    (void)daemoon_posix_rmtree(root);
+}
+
+TEST_CASE(the_nds_backend_conforms)
+{
+    char root[256];
+    char saves[320];
+    char path[512];
+    daemoon_strbuf_t sb;
+    daemoon_3ds_nds_ctx_t ctx;
+    daemoon_title_t *titles = NULL;
+    daemoon_backend_under_test_t ut;
+    size_t count = 0;
+    unsigned char scratch[4096];
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "nds-conformance"), 0);
+
+    daemoon_strbuf_init(&sb, saves, sizeof(saves));
+    daemoon_strbuf_add(&sb, root);
+    daemoon_strbuf_add(&sb, "/saves");
+    CHECK_OK(daemoon_strbuf_result(&sb));
+    CHECK_OK(daemoon_posix_mkdir_p(saves));
+
+    (void)snprintf(path, sizeof(path), "%s/first-game.sav", saves);
+    write_file(path, "one", 3);
+    (void)snprintf(path, sizeof(path), "%s/second-game.sav", saves);
+    write_file(path, "two", 3);
+
+    ctx.rom_dir = root;
+    ctx.save_dir = saves;
+
+    CHECK_OK(daemoon_3ds_nds_backend.list_titles(&ctx, &titles, &count));
+    CHECK_EQ_INT(count, 2);
+
+    memset(&ut, 0, sizeof(ut));
+    ut.name = "nds (plain .sav files)";
+    ut.backend = &daemoon_3ds_nds_backend;
+    ut.ctx = &ctx;
+    ut.title = &titles[0];
+    ut.other = &titles[1];
+    ut.scratch = scratch;
+    ut.scratch_len = sizeof(scratch);
+    /* One file is all an nds save is, so the cases that write a tree do not
+     * apply. */
+    ut.single_entry = 1;
+    ut.entry_name = "save.sav";
+
+    daemoon_backend_conformance(&ut);
+
+    daemoon_3ds_nds_backend.free_titles(&ctx, titles, count);
+    (void)daemoon_posix_rmtree(root);
+}
+
+
+/* ------------------------------------------------------------------ config */
+
+TEST_CASE(the_config_file_is_forgiving_but_not_careless)
+{
+    char root[256];
+    char path[512];
+    daemoon_3ds_config_t cfg;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "cfg"), 0);
+    (void)snprintf(path, sizeof(path), "%s/config.txt", root);
+
+    /* No file is a console that has not been pointed at a server, not a failure:
+     * everything local still works. */
+    CHECK_RESULT(daemoon_3ds_config_load(path, &cfg), DAEMOON_ERR_NOT_FOUND);
+    CHECK_EQ_INT(daemoon_3ds_config_can_sync(&cfg), 0);
+    CHECK_STR(cfg.device_label, "3DS");
+
+    write_file(path,
+               "# edited on a phone, probably\n"
+               "server = https://saves.example.invalid/ \n"
+               "token=abc123\n"
+               "label = 거실 3DS\n"
+               "nonsense without an equals sign\n"
+               "unknown_key = ignored\n",
+               strlen("# edited on a phone, probably\n"
+                      "server = https://saves.example.invalid/ \n"
+                      "token=abc123\n"
+                      "label = 거실 3DS\n"
+                      "nonsense without an equals sign\n"
+                      "unknown_key = ignored\n"));
+
+    CHECK_OK(daemoon_3ds_config_load(path, &cfg));
+    /* The trailing slash is gone: kept, it becomes a double slash in every path
+     * built from it, and servers do not agree about those. */
+    CHECK_STR(cfg.server_url, "https://saves.example.invalid");
+    CHECK_STR(cfg.token, "abc123");
+    /* The label is shown on another console in a conflict dialog, so it has to
+     * survive as UTF-8. */
+    CHECK_STR(cfg.device_label, "거실 3DS");
+    CHECK_EQ_INT(daemoon_3ds_config_can_sync(&cfg), 1);
+
+    /* A server with no token cannot sync, and saying so beats a stack of 401s. */
+    write_file(path, "server=https://x.invalid\n", 25);
+    CHECK_OK(daemoon_3ds_config_load(path, &cfg));
+    CHECK_EQ_INT(daemoon_3ds_config_can_sync(&cfg), 0);
+
+    /* A label that is not valid UTF-8 is dropped rather than carried into a
+     * manifest that the server would reject. */
+    write_file(path, "server=https://x.invalid\ntoken=t\nlabel=\xff\xfe\n", 42);
+    CHECK_OK(daemoon_3ds_config_load(path, &cfg));
+    CHECK_STR(cfg.device_label, "3DS");
+
+    (void)daemoon_posix_rmtree(root);
+}
+
 void test_3ds_backend(void)
 {
     printf("3ds backend (stubbed libctru)\n");
@@ -783,4 +1147,11 @@ void test_3ds_backend(void)
     RUN(a_name_missing_in_the_console_language_falls_back);
     RUN(the_list_prefers_a_name_the_console_can_draw);
     RUN(the_smdh_is_read_whole_from_the_start);
+
+    printf("nds-bootstrap backend\n");
+    RUN(nds_titles_are_named_from_the_cartridge_header);
+    RUN(an_nds_save_round_trips_through_core);
+    RUN(an_nds_package_only_carries_the_one_entry);
+    RUN(the_nds_backend_conforms);
+    RUN(the_config_file_is_forgiving_but_not_careless);
 }

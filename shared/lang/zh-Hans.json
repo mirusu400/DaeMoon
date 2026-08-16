@@ -65,5 +65,6 @@
   "err.unsupported": "不支持该操作。",
   "err.archive_error": "存档包已损坏。",
   "err.buffer_too_small": "内部缓冲区过小。",
-  "err.empty_save": "该标题没有可备份的存档。"
+  "err.empty_save": "该标题没有可备份的存档。",
+  "err.tls_error": "无法验证服务器证书。"
 }

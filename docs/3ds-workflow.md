@@ -51,6 +51,36 @@ clears what it is pointed at, so an unattended run that could pick a title
 somebody plays would be indefensible. A build with `SAVEDATA_SIZE=0K` - the
 shipped one - has no archive of its own and says so instead of running.
 
+## Pointing the console at a server
+
+Phase 2 onwards needs two settings a console has no keyboard for, so they come off
+the SD card at `sdmc:/DaeMoon/config.txt`:
+
+```
+server = http://192.168.1.13:8080
+token  = <from daemoonctl pair, or the pairing flow in Phase 4>
+label  = 거실 3DS
+ca_bundle = sdmc:/DaeMoon/cacert.pem
+```
+
+Lines of `key=value`, everything else ignored. Deliberately not JSON: this gets
+edited on a phone sometimes, and a missing brace should not be why a console
+cannot reach its own server. A trailing slash on the server is stripped, because
+kept it becomes a double slash in every path built from it.
+
+`ca_bundle` is only needed for https. The console's own certificate store is from
+2011 and fails against ordinary modern servers, which is why this build links
+3ds-curl and 3ds-mbedtls rather than using httpc:C - but a bundle still has to come
+from somewhere, and on a self hosted setup that is usually the operator's own CA.
+Verification is never turned off.
+
+Push it with the tool rather than moving the card:
+
+```bash
+printf 'server = http://192.168.1.13:8080\ntoken = %s\n' "$DAEMOON_TOKEN" > /tmp/config.txt
+tools/3ds-deploy.sh push 192.168.1.43 /tmp/config.txt DaeMoon/config.txt
+```
+
 ## Files, either direction
 
 ```bash

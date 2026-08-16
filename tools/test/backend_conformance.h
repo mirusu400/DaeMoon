@@ -38,6 +38,16 @@ typedef struct {
     /* Scratch for the streaming cases. 4 KiB is enough. */
     void  *scratch;
     size_t scratch_len;
+
+    /* The name of the entry the cases read and write. NULL means "main.sav".
+     * A backend that holds exactly one file - an nds .sav is the file - has one
+     * name and refuses every other, so the suite has to use its. */
+    const char *entry_name;
+
+    /* Set for a backend that holds exactly one entry. The cases that build a
+     * directory tree are skipped, because there is no tree to build and refusing
+     * to make one is correct behaviour rather than a failure. */
+    int single_entry;
 } daemoon_backend_under_test_t;
 
 /* Runs the whole battery. Failures are reported through the test harness, so the

@@ -65,5 +65,6 @@
   "err.unsupported": "지원하지 않는 기능입니다.",
   "err.archive_error": "세이브 패키지가 손상되었습니다.",
   "err.buffer_too_small": "내부 버퍼가 너무 작습니다.",
-  "err.empty_save": "이 타이틀에는 백업할 세이브 데이터가 없습니다."
+  "err.empty_save": "이 타이틀에는 백업할 세이브 데이터가 없습니다.",
+  "err.tls_error": "서버 인증서를 확인하지 못했습니다."
 }

@@ -65,5 +65,6 @@
   "err.unsupported": "対応していません。",
   "err.archive_error": "セーブパッケージが壊れています。",
   "err.buffer_too_small": "内部バッファが小さすぎます。",
-  "err.empty_save": "このタイトルにはバックアップするセーブデータがありません。"
+  "err.empty_save": "このタイトルにはバックアップするセーブデータがありません。",
+  "err.tls_error": "サーバーの証明書を確認できませんでした。"
 }

@@ -6,6 +6,7 @@
 #ifndef DAEMOON_3DS_H
 #define DAEMOON_3DS_H
 
+#include <daemoon/api.h>
 #include <daemoon/backend.h>
 
 /* Where the app keeps backups, staging and per title sync state. On the SD card,
@@ -39,6 +40,59 @@ typedef struct {
 } daemoon_3ds_save_ctx_t;
 
 extern const daemoon_save_backend_t daemoon_3ds_save_backend;
+
+/* nds-bootstrap saves: plain .sav files on the SD card, in TWiLightMenu's layout
+ * of ROMs in one directory and saves in another with the same base name.
+ *
+ * Phase 2 syncs these first, because there is nothing here that can go wrong in a
+ * way unique to the platform: no permissions, no archive to commit, no service
+ * that can refuse a read. If the sync path corrupts one of these, it is the sync
+ * path. */
+#define DAEMOON_3DS_NDS_MAX_TITLES 128
+#define DAEMOON_3DS_NDS_ROM_DIR    "sdmc:/roms/nds"
+#define DAEMOON_3DS_NDS_SAVE_DIR   "sdmc:/roms/nds/saves"
+
+typedef struct {
+    const char *rom_dir;
+    const char *save_dir;
+} daemoon_3ds_nds_ctx_t;
+
+extern const daemoon_save_backend_t daemoon_3ds_nds_backend;
+
+/* The network, over 3ds-curl and 3ds-mbedtls rather than httpc:C. That service
+ * ships old cipher suites and a stale root CA store, and a self hosted server is
+ * exactly the case where nobody can be asked to downgrade their TLS to suit a
+ * console. */
+typedef struct {
+    /* A CA bundle on the SD card. Verification is not turned off when it is
+     * missing: a save is not something to hand to whoever answers the
+     * connection. */
+    const char *ca_bundle;
+    /* The last curl code, for a diagnostic that says more than "network error". */
+    int last_curl_code;
+} daemoon_3ds_net_ctx_t;
+
+extern const daemoon_net_backend_t daemoon_3ds_net_backend;
+
+/* The settings a console cannot work out for itself, from a file on the SD card.
+ * Written by hand the first time, and by the pairing flow from Phase 4 on. */
+#define DAEMOON_3DS_CONFIG_PATH DAEMOON_3DS_WORK_DIR "/config.txt"
+
+typedef struct {
+    char server_url[256];
+    char token[DAEMOON_TOKEN_MAX];
+    char device_label[DAEMOON_LABEL_MAX];
+    char ca_bundle[DAEMOON_PATH_MAX];
+} daemoon_3ds_config_t;
+
+void             daemoon_3ds_config_defaults(daemoon_3ds_config_t *cfg);
+daemoon_result_t daemoon_3ds_config_load(const char *path, daemoon_3ds_config_t *cfg);
+int              daemoon_3ds_config_can_sync(const daemoon_3ds_config_t *cfg);
+
+/* soc:U needs a buffer for the lifetime of the session, so the network is opened
+ * once and closed once rather than per request. */
+daemoon_result_t daemoon_3ds_net_init(void);
+void             daemoon_3ds_net_exit(void);
 extern const daemoon_fs_backend_t   daemoon_3ds_fs_backend;
 extern const daemoon_ui_backend_t   daemoon_3ds_ui_backend;
 

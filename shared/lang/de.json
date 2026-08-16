@@ -65,5 +65,6 @@
   "err.unsupported": "Wird nicht unterstützt.",
   "err.archive_error": "Das Spielstandpaket ist beschädigt.",
   "err.buffer_too_small": "Interner Puffer zu klein.",
-  "err.empty_save": "Dieser Titel hat keinen Spielstand zum Sichern."
+  "err.empty_save": "Dieser Titel hat keinen Spielstand zum Sichern.",
+  "err.tls_error": "Das Zertifikat des Servers konnte nicht geprüft werden."
 }

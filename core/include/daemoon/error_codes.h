@@ -36,8 +36,9 @@ enum {
     DAEMOON_ERR_ARCHIVE_ERROR        = 25,
     DAEMOON_ERR_BUFFER_TOO_SMALL     = 26,
     DAEMOON_ERR_EMPTY_SAVE           = 27,
+    DAEMOON_ERR_TLS_ERROR            = 28,
 
-    DAEMOON_ERR_COUNT_ = 28
+    DAEMOON_ERR_COUNT_ = 29
 };
 
 #endif /* DAEMOON_ERROR_CODES_H */

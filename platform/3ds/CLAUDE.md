@@ -35,6 +35,22 @@ treat it as corrupt and delete it. `FSUSER_SetSaveDataSecureValue` and friends.
 Verify the behaviour on hardware during Phase 1 and record the outcome: Phase 7
 sharing depends on the answer.
 
+## Phase 2: two libraries
+
+The grid shows either the console's installed titles or the DS saves
+nds-bootstrap keeps as plain `.sav` files, and L or R switches between them.
+
+The second one is where syncing goes first, and the reason is in
+`nds_backend.c`: no permissions, no archive to commit, no service that can refuse
+a read. A save is one file. If the sync path corrupts something there, it is the
+sync path - which is not a sentence that can be said about the 3DS savedata
+backend, where four rounds of hardware testing went into finding out that a read
+had to start at offset zero.
+
+That backend is ordinary stdio, so the desktop tests run it directly rather than
+through a stub, and the conformance suite grew an option for backends that hold
+exactly one entry.
+
 ## What is checked where
 
 `make core-test` runs this backend on a desktop against a libctru shaped stub in

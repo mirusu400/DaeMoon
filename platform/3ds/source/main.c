@@ -52,6 +52,13 @@ static unsigned char g_scratch[64 * 1024];
 static daemoon_archive_ctx_t g_archive;
 
 static daemoon_3ds_save_ctx_t g_save_ctx;
+static daemoon_3ds_nds_ctx_t  g_nds_ctx;
+static daemoon_3ds_net_ctx_t  g_net_ctx;
+static daemoon_3ds_config_t   g_config;
+/* Which library is on screen: the console's own titles, or the DS saves
+ * nds-bootstrap keeps as plain files. Phase 2 syncs the second one first because
+ * nothing about it can fail in a way unique to the platform. */
+static int g_source_nds;
 static daemoon_3ds_ui_ctx_t   g_ui_ctx;
 static daemoon_env_t          g_env;
 
@@ -157,14 +164,27 @@ static daemoon_result_t reload_titles(void)
         g_title_count = 0;
     }
 
+    /* The backend and its context change together. Getting that pair out of step
+     * would point save operations at the wrong library entirely. */
+    if (g_source_nds) {
+        g_env.save = &daemoon_3ds_nds_backend;
+        g_env.save_ctx = &g_nds_ctx;
+    } else {
+        g_env.save = &daemoon_3ds_save_backend;
+        g_env.save_ctx = &g_save_ctx;
+    }
+
     r = g_env.save->list_titles(g_env.save_ctx, &g_titles, &g_title_count);
     if (r != DAEMOON_OK) {
         return r;
     }
 
-    for (i = 0; i < g_title_count && i < MAX_ICONS; ++i) {
-        draw_loading("reading icons", (unsigned)i, (unsigned)g_title_count);
-        (void)daemoon_3ds_icon_load(g_save_ctx.media, tid_of(&g_titles[i]), &g_icons[i]);
+    if (!g_source_nds) {
+        for (i = 0; i < g_title_count && i < MAX_ICONS; ++i) {
+            draw_loading("reading icons", (unsigned)i, (unsigned)g_title_count);
+            (void)daemoon_3ds_icon_load(g_save_ctx.media, tid_of(&g_titles[i]),
+                                        &g_icons[i]);
+        }
     }
     if (g_selected >= (int)g_title_count) {
         g_selected = g_title_count > 0 ? (int)g_title_count - 1 : 0;
@@ -184,6 +204,8 @@ static void draw_grid(void)
     daemoon_gfx_top();
     daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
     daemoon_gfx_text(10.0f, 5.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_APP_TITLE));
+    daemoon_gfx_text(96.0f, 9.0f, 0.4f, GFX_ACCENT,
+                     g_source_nds ? "nds-bootstrap saves" : "3DS titles");
 
     if (g_title_count > GRID_PAGE) {
         (void)snprintf(right, sizeof(right), "%d/%u   %s", g_selected + 1,
@@ -234,6 +256,7 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
     static const char *const labels[] = {
         "Back up this save",
         "Restore from a backup",
+        "Sync with the server",
         "Survey every title to the SD card",
         "Self test (destroys this save)"
     };
@@ -283,7 +306,7 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
     }
 
     daemoon_gfx_text(8.0f, GFX_SCREEN_H - 16.0f, 0.34f, GFX_TEXT_DIM,
-                     "A back up   Y restore   X survey   START exit");
+                     "A back up   Y restore   X survey   L/R library   START exit");
 }
 
 /* ------------------------------------------------------------------ actions */
@@ -394,6 +417,37 @@ static void append_hex32(daemoon_strbuf_t *sb, unsigned long value)
     }
     hex[10] = '\0';
     daemoon_strbuf_add(sb, hex);
+}
+
+/* Phase 2: the whole sync path, which has been running on a desktop since Phase
+ * 0. Nothing about it is new here except the network underneath it. */
+static void action_sync(void)
+{
+    daemoon_sync_stats_t stats;
+    char body[256];
+    daemoon_result_t r;
+
+    if (g_title_count == 0) {
+        return;
+    }
+    if (!daemoon_3ds_config_can_sync(&g_config)) {
+        message(daemoon_str(DAEMOON_STR_APP_TITLE),
+                "No server configured. Put server= and token= in "
+                DAEMOON_3DS_CONFIG_PATH, GFX_WARN);
+        return;
+    }
+
+    memset(&stats, 0, sizeof(stats));
+    r = daemoon_sync_title(&g_env, &g_archive, &g_titles[g_selected], &stats);
+
+    if (r != DAEMOON_OK) {
+        report("sync", r);
+        return;
+    }
+    (void)snprintf(body, sizeof(body), "uploaded %u  downloaded %u  skipped %u  "
+                   "conflicts %u", stats.uploaded, stats.downloaded, stats.skipped,
+                   stats.conflicts);
+    message(daemoon_str(DAEMOON_STR_APP_TITLE), body, GFX_OK);
 }
 
 static int survey_count_cb(void *user, const char *path, unsigned long long size)
@@ -698,15 +752,30 @@ int main(void)
     daemoon_3ds_ui_init(&g_ui_ctx);
     g_archive.count = 0;
 
+    (void)daemoon_3ds_config_load(DAEMOON_3DS_CONFIG_PATH, &g_config);
+    g_net_ctx.ca_bundle = g_config.ca_bundle;
+
+    g_nds_ctx.rom_dir = DAEMOON_3DS_NDS_ROM_DIR;
+    g_nds_ctx.save_dir = DAEMOON_3DS_NDS_SAVE_DIR;
+
+    /* The network is opened once. Doing it per request would mean a soc:U session
+     * per sync, and that service does not enjoy being churned. */
+    if (daemoon_3ds_config_can_sync(&g_config)) {
+        (void)daemoon_3ds_net_init();
+    }
+
     memset(&g_env, 0, sizeof(g_env));
     g_env.save = &daemoon_3ds_save_backend;
     g_env.fs = &daemoon_3ds_fs_backend;
     g_env.ui = &daemoon_3ds_ui_backend;
-    g_env.net = NULL; /* Phase 2 */
+    g_env.net = &daemoon_3ds_net_backend;
+    g_env.net_ctx = &g_net_ctx;
     g_env.save_ctx = &g_save_ctx;
     g_env.fs_ctx = NULL;
     g_env.ui_ctx = &g_ui_ctx;
-    g_env.device_label = "3DS";
+    g_env.device_label = g_config.device_label;
+    g_env.server_url = g_config.server_url;
+    g_env.token = g_config.token[0] != '\0' ? g_config.token : NULL;
     g_env.work_dir = DAEMOON_3DS_WORK_DIR;
     g_env.scratch = g_scratch;
     g_env.scratch_len = sizeof(g_scratch);
@@ -735,6 +804,15 @@ int main(void)
         if (down & KEY_START) {
             break;
         }
+        if (down & (KEY_L | KEY_R)) {
+            /* The other library. Reading it costs a moment, so it is a deliberate
+             * press rather than something that happens while scrolling. */
+            g_source_nds = !g_source_nds;
+            g_selected = 0;
+            g_scroll = 0;
+            (void)reload_titles();
+            continue;
+        }
         if (g_title_count > 0) {
             if ((down & KEY_RIGHT) && g_selected + 1 < (int)g_title_count) {
                 ++g_selected;
@@ -755,7 +833,7 @@ int main(void)
                 action = 1; /* restore */
             }
             if (down & KEY_X) {
-                action = 2; /* survey */
+                action = 3; /* survey */
             }
 
             /* Keep the selection on screen. */
@@ -775,8 +853,9 @@ int main(void)
         switch (action) {
         case 0: action_backup(); break;
         case 1: action_restore(); break;
-        case 2: action_survey(); break;
-        case 3: action_self_test(); (void)reload_titles(); break;
+        case 2: action_sync(); break;
+        case 3: action_survey(); break;
+        case 4: action_self_test(); (void)reload_titles(); break;
         default: break;
         }
     }
@@ -786,6 +865,7 @@ done:
     if (g_titles != NULL) {
         g_env.save->free_titles(g_env.save_ctx, g_titles, g_title_count);
     }
+    daemoon_3ds_net_exit();
     amExit();
     cfguExit();
     daemoon_gfx_exit();

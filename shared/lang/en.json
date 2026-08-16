@@ -65,5 +65,6 @@
   "err.unsupported": "This is not supported.",
   "err.archive_error": "The save package is damaged.",
   "err.buffer_too_small": "Internal buffer too small.",
-  "err.empty_save": "This title has no save data to back up."
+  "err.empty_save": "This title has no save data to back up.",
+  "err.tls_error": "The server's certificate could not be verified."
 }

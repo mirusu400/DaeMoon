@@ -65,5 +65,6 @@
   "err.unsupported": "Non pris en charge.",
   "err.archive_error": "Le paquet de sauvegarde est endommagé.",
   "err.buffer_too_small": "Tampon interne trop petit.",
-  "err.empty_save": "Ce titre n'a aucune sauvegarde à copier."
+  "err.empty_save": "Ce titre n'a aucune sauvegarde à copier.",
+  "err.tls_error": "Le certificat du serveur n'a pas pu être vérifié."
 }

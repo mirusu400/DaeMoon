@@ -65,5 +65,6 @@
   "err.unsupported": "No es compatible.",
   "err.archive_error": "El paquete de la partida está dañado.",
   "err.buffer_too_small": "Búfer interno demasiado pequeño.",
-  "err.empty_save": "Este título no tiene partida que copiar."
+  "err.empty_save": "Este título no tiene partida que copiar.",
+  "err.tls_error": "No se ha podido verificar el certificado del servidor."
 }

@@ -46,6 +46,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "The save is larger than the server allows.", /* err.save_too_large */
         "This share code has expired.", /* err.share_expired */
         "The server did not answer in time.", /* err.timeout */
+        "The server's certificate could not be verified.", /* err.tls_error */
         "This console is not signed in. Pair it again.", /* err.unauthorized */
         "This is not supported.", /* err.unsupported */
         "This console is not supported by the server.", /* err.unsupported_platform */
@@ -106,6 +107,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "세이브가 서버 허용 크기보다 큽니다.", /* err.save_too_large */
         "이 공유 코드는 만료되었습니다.", /* err.share_expired */
         "서버가 제때 응답하지 않았습니다.", /* err.timeout */
+        "서버 인증서를 확인하지 못했습니다.", /* err.tls_error */
         "이 본체가 로그인되어 있지 않습니다. 다시 연결하세요.", /* err.unauthorized */
         "지원하지 않는 기능입니다.", /* err.unsupported */
         "서버가 이 본체를 지원하지 않습니다.", /* err.unsupported_platform */
@@ -166,6 +168,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "セーブがサーバーの上限を超えています。", /* err.save_too_large */
         "この共有コードは期限切れです。", /* err.share_expired */
         "サーバーが時間内に応答しませんでした。", /* err.timeout */
+        "サーバーの証明書を確認できませんでした。", /* err.tls_error */
         "この本体はサインインしていません。もう一度ペアリングしてください。", /* err.unauthorized */
         "対応していません。", /* err.unsupported */
         "この本体はサーバーに対応していません。", /* err.unsupported_platform */
@@ -226,6 +229,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "存档超过服务器允许的大小。", /* err.save_too_large */
         "该分享码已过期。", /* err.share_expired */
         "服务器未在规定时间内响应。", /* err.timeout */
+        "无法验证服务器证书。", /* err.tls_error */
         "本机尚未登录，请重新配对。", /* err.unauthorized */
         "不支持该操作。", /* err.unsupported */
         "服务器不支持该主机。", /* err.unsupported_platform */
@@ -286,6 +290,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "存檔超過伺服器允許的大小。", /* err.save_too_large */
         "此分享碼已過期。", /* err.share_expired */
         "伺服器未在時間內回應。", /* err.timeout */
+        "無法驗證伺服器憑證。", /* err.tls_error */
         "本機尚未登入，請重新配對。", /* err.unauthorized */
         "不支援此操作。", /* err.unsupported */
         "伺服器不支援這台主機。", /* err.unsupported_platform */
@@ -346,6 +351,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "La partida supera el tamaño permitido por el servidor.", /* err.save_too_large */
         "Este código de compartición ha caducado.", /* err.share_expired */
         "El servidor no ha respondido a tiempo.", /* err.timeout */
+        "No se ha podido verificar el certificado del servidor.", /* err.tls_error */
         "Esta consola no ha iniciado sesión. Vuelve a vincularla.", /* err.unauthorized */
         "No es compatible.", /* err.unsupported */
         "El servidor no admite esta consola.", /* err.unsupported_platform */
@@ -406,6 +412,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "La sauvegarde dépasse la taille autorisée par le serveur.", /* err.save_too_large */
         "Ce code de partage a expiré.", /* err.share_expired */
         "Le serveur n'a pas répondu à temps.", /* err.timeout */
+        "Le certificat du serveur n'a pas pu être vérifié.", /* err.tls_error */
         "Cette console n'est pas connectée. Associez-la de nouveau.", /* err.unauthorized */
         "Non pris en charge.", /* err.unsupported */
         "Cette console n'est pas prise en charge par le serveur.", /* err.unsupported_platform */
@@ -466,6 +473,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Der Spielstand ist größer als der Server erlaubt.", /* err.save_too_large */
         "Dieser Freigabecode ist abgelaufen.", /* err.share_expired */
         "Der Server hat nicht rechtzeitig geantwortet.", /* err.timeout */
+        "Das Zertifikat des Servers konnte nicht geprüft werden.", /* err.tls_error */
         "Diese Konsole ist nicht angemeldet. Koppel sie erneut.", /* err.unauthorized */
         "Wird nicht unterstützt.", /* err.unsupported */
         "Diese Konsole wird vom Server nicht unterstützt.", /* err.unsupported_platform */

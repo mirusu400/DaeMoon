@@ -39,6 +39,7 @@
     { "code": "unsupported",          "value": 24, "http": null, "retryable": false, "detail": ["what"] },
     { "code": "archive_error",        "value": 25, "http": null, "retryable": false, "detail": ["entry"] },
     { "code": "buffer_too_small",     "value": 26, "http": null, "retryable": false, "detail": ["needed"] },
-    { "code": "empty_save",           "value": 27, "http": null, "retryable": false, "detail": ["title"] }
+    { "code": "empty_save",           "value": 27, "http": null, "retryable": false, "detail": ["title"] },
+    { "code": "tls_error",            "value": 28, "http": null, "retryable": false, "detail": ["host"] }
   ]
 }

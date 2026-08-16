@@ -37,6 +37,12 @@ static int walk_cb(void *user, const char *path, unsigned long long size)
     return 0;
 }
 
+/* The entry the cases use, which a single file backend gets to choose. */
+static const char *entry_of(const daemoon_backend_under_test_t *ut)
+{
+    return ut->entry_name != NULL ? ut->entry_name : "main.sav";
+}
+
 static daemoon_result_t write_file(const daemoon_backend_under_test_t *ut, daemoon_save_t *save,
                                    const char *path, const char *body)
 {
@@ -93,30 +99,34 @@ static void case_write_read_round_trip(const daemoon_backend_under_test_t *ut)
 
     CHECK_OK(ut->backend->open_save_write(ut->ctx, ut->title, &save));
     CHECK_OK(ut->backend->remove_all(ut->ctx, save));
-    CHECK_OK(write_file(ut, save, "main.sav", "player data"));
+    CHECK_OK(write_file(ut, save, entry_of(ut), "player data"));
     /* Nested paths exist in real saves. core never creates a directory itself, so
      * open_file for writing has to make whatever the path needs. */
-    CHECK_OK(write_file(ut, save, "sub/dir/extra.bin", "nested"));
+    if (!ut->single_entry) {
+        CHECK_OK(write_file(ut, save, "sub/dir/extra.bin", "nested"));
+    }
     CHECK_OK(ut->backend->commit(ut->ctx, save));
     CHECK_OK(ut->backend->close_save(ut->ctx, save));
 
     /* Reopened read only, everything is there and unchanged. */
     CHECK_OK(ut->backend->open_save(ut->ctx, ut->title, &save));
 
-    CHECK_OK(read_file(ut, save, "main.sav", buf, sizeof(buf), &len));
+    CHECK_OK(read_file(ut, save, entry_of(ut), buf, sizeof(buf), &len));
     CHECK_STR(buf, "player data");
-    CHECK_OK(read_file(ut, save, "sub/dir/extra.bin", buf, sizeof(buf), &len));
-    CHECK_STR(buf, "nested");
+    if (!ut->single_entry) {
+        CHECK_OK(read_file(ut, save, "sub/dir/extra.bin", buf, sizeof(buf), &len));
+        CHECK_STR(buf, "nested");
+    }
 
     /* list_entries reports both, with the size core will put in the digest. A
      * size that disagrees with what a read returns makes daemoon_archive_pack
      * refuse, which is correct but looks like a corrupt save to the user. */
     memset(&walk, 0, sizeof(walk));
-    walk.want_path = "sub/dir/extra.bin";
+    walk.want_path = ut->single_entry ? entry_of(ut) : "sub/dir/extra.bin";
     CHECK_OK(ut->backend->list_entries(ut->ctx, save, walk_cb, &walk));
-    CHECK_EQ_INT(walk.count, 2);
+    CHECK_EQ_INT(walk.count, ut->single_entry ? 1 : 2);
     CHECK(walk.found);
-    CHECK_EQ_INT(walk.want_size, 6);
+    CHECK_EQ_INT(walk.want_size, ut->single_entry ? 11 : 6);
 
     CHECK_OK(ut->backend->close_save(ut->ctx, save));
 }
@@ -128,13 +138,15 @@ static void case_empty_file(const daemoon_backend_under_test_t *ut)
     daemoon_save_t *save = NULL;
     walk_t walk;
 
+    const char *name = ut->single_entry ? entry_of(ut) : "empty.bin";
+
     CHECK_OK(ut->backend->open_save_write(ut->ctx, ut->title, &save));
     CHECK_OK(ut->backend->remove_all(ut->ctx, save));
-    CHECK_OK(write_file(ut, save, "empty.bin", ""));
+    CHECK_OK(write_file(ut, save, name, ""));
     CHECK_OK(ut->backend->commit(ut->ctx, save));
 
     memset(&walk, 0, sizeof(walk));
-    walk.want_path = "empty.bin";
+    walk.want_path = name;
     CHECK_OK(ut->backend->list_entries(ut->ctx, save, walk_cb, &walk));
     CHECK(walk.found);
     CHECK_EQ_INT(walk.want_size, 0);
@@ -153,11 +165,11 @@ static void case_overwrite_truncates(const daemoon_backend_under_test_t *ut)
 
     CHECK_OK(ut->backend->open_save_write(ut->ctx, ut->title, &save));
     CHECK_OK(ut->backend->remove_all(ut->ctx, save));
-    CHECK_OK(write_file(ut, save, "main.sav", "a much longer original value"));
-    CHECK_OK(write_file(ut, save, "main.sav", "short"));
+    CHECK_OK(write_file(ut, save, entry_of(ut), "a much longer original value"));
+    CHECK_OK(write_file(ut, save, entry_of(ut), "short"));
     CHECK_OK(ut->backend->commit(ut->ctx, save));
 
-    CHECK_OK(read_file(ut, save, "main.sav", buf, sizeof(buf), &len));
+    CHECK_OK(read_file(ut, save, entry_of(ut), buf, sizeof(buf), &len));
     CHECK_STR(buf, "short");
     CHECK_EQ_INT(len, 5);
 
@@ -173,9 +185,11 @@ static void case_remove_all_clears_everything(const daemoon_backend_under_test_t
     walk_t walk;
 
     CHECK_OK(ut->backend->open_save_write(ut->ctx, ut->title, &save));
-    CHECK_OK(write_file(ut, save, "top.bin", "x"));
-    CHECK_OK(write_file(ut, save, "a/one.bin", "x"));
-    CHECK_OK(write_file(ut, save, "a/b/two.bin", "x"));
+    CHECK_OK(write_file(ut, save, entry_of(ut), "x"));
+    if (!ut->single_entry) {
+        CHECK_OK(write_file(ut, save, "a/one.bin", "x"));
+        CHECK_OK(write_file(ut, save, "a/b/two.bin", "x"));
+    }
     CHECK_OK(ut->backend->commit(ut->ctx, save));
 
     CHECK_OK(ut->backend->remove_all(ut->ctx, save));
@@ -214,7 +228,18 @@ static void case_read_only_saves_refuse_writes(const daemoon_backend_under_test_
     daemoon_save_t *save = NULL;
     daemoon_stream_t *s = NULL;
 
+    /* Leave something to open. A backend whose save *is* one file has nothing to
+     * open read only once the file is gone, and the previous case removed it. */
+    CHECK_OK(ut->backend->open_save_write(ut->ctx, ut->title, &save));
+    CHECK_OK(write_file(ut, save, entry_of(ut), "present"));
+    CHECK_OK(ut->backend->commit(ut->ctx, save));
+    CHECK_OK(ut->backend->close_save(ut->ctx, save));
+
+    save = NULL;
     CHECK_OK(ut->backend->open_save(ut->ctx, ut->title, &save));
+    if (save == NULL) {
+        return;
+    }
     CHECK(ut->backend->open_file(ut->ctx, save, "should-not-appear.bin",
                                  DAEMOON_OPEN_WRITE, &s) != DAEMOON_OK);
     CHECK(ut->backend->remove_all(ut->ctx, save) != DAEMOON_OK);
@@ -227,6 +252,11 @@ static void case_walk_stops_when_asked(const daemoon_backend_under_test_t *ut)
      * backend that keeps going would write past the caller's table. */
     daemoon_save_t *save = NULL;
     walk_t walk;
+
+    if (ut->single_entry) {
+        /* Nothing to stop early on: there is one entry by construction. */
+        return;
+    }
 
     CHECK_OK(ut->backend->open_save_write(ut->ctx, ut->title, &save));
     CHECK_OK(ut->backend->remove_all(ut->ctx, save));
@@ -261,7 +291,7 @@ static void case_streaming_round_trip(const daemoon_backend_under_test_t *ut)
     CHECK_OK(ut->backend->open_save_write(ut->ctx, ut->title, &save));
     CHECK_OK(ut->backend->remove_all(ut->ctx, save));
 
-    CHECK_OK(ut->backend->open_file(ut->ctx, save, "big.bin", DAEMOON_OPEN_WRITE, &s));
+    CHECK_OK(ut->backend->open_file(ut->ctx, save, entry_of(ut), DAEMOON_OPEN_WRITE, &s));
     for (i = 0; i < sizeof(pattern); i += 97) {
         size_t n = sizeof(pattern) - i;
         CHECK_OK(daemoon_stream_write(s, pattern + i, n < 97 ? n : 97));
@@ -269,7 +299,7 @@ static void case_streaming_round_trip(const daemoon_backend_under_test_t *ut)
     CHECK_OK(daemoon_stream_close(s));
     CHECK_OK(ut->backend->commit(ut->ctx, save));
 
-    CHECK_OK(ut->backend->open_file(ut->ctx, save, "big.bin", DAEMOON_OPEN_READ, &s));
+    CHECK_OK(ut->backend->open_file(ut->ctx, save, entry_of(ut), DAEMOON_OPEN_READ, &s));
     for (;;) {
         size_t got = 0;
         CHECK_OK(daemoon_stream_read(s, check + total, sizeof(check) - total, &got));
@@ -304,7 +334,7 @@ static void case_saves_are_isolated(const daemoon_backend_under_test_t *ut)
 
     CHECK_OK(ut->backend->open_save_write(ut->ctx, ut->title, &a));
     CHECK_OK(ut->backend->remove_all(ut->ctx, a));
-    CHECK_OK(write_file(ut, a, "only-in-a.bin", "a"));
+    CHECK_OK(write_file(ut, a, entry_of(ut), "a"));
     CHECK_OK(ut->backend->commit(ut->ctx, a));
     CHECK_OK(ut->backend->close_save(ut->ctx, a));
 
@@ -315,15 +345,20 @@ static void case_saves_are_isolated(const daemoon_backend_under_test_t *ut)
     memset(&walk, 0, sizeof(walk));
     CHECK_OK(ut->backend->list_entries(ut->ctx, b, walk_cb, &walk));
     CHECK_EQ_INT(walk.count, 0);
-    CHECK_RESULT(ut->backend->open_file(ut->ctx, b, "only-in-a.bin", DAEMOON_OPEN_READ, &s),
+    CHECK_RESULT(ut->backend->open_file(ut->ctx, b, entry_of(ut), DAEMOON_OPEN_READ, &s),
                  DAEMOON_ERR_NOT_FOUND);
+
 
     CHECK_OK(ut->backend->close_save(ut->ctx, b));
 
     /* And the first save is still intact after all of that. */
+    a = NULL;
     CHECK_OK(ut->backend->open_save(ut->ctx, ut->title, &a));
+    if (a == NULL) {
+        return;
+    }
     memset(&walk, 0, sizeof(walk));
-    walk.want_path = "only-in-a.bin";
+    walk.want_path = entry_of(ut);
     CHECK_OK(ut->backend->list_entries(ut->ctx, a, walk_cb, &walk));
     CHECK(walk.found);
     CHECK_OK(ut->backend->close_save(ut->ctx, a));
@@ -337,7 +372,7 @@ static void case_commit_is_reported(const daemoon_backend_under_test_t *ut)
     daemoon_save_t *save = NULL;
 
     CHECK_OK(ut->backend->open_save_write(ut->ctx, ut->title, &save));
-    CHECK_OK(write_file(ut, save, "committed.bin", "x"));
+    CHECK_OK(write_file(ut, save, entry_of(ut), "x"));
     CHECK_OK(ut->backend->commit(ut->ctx, save));
     /* Committing twice with nothing in between is not an error. */
     CHECK_OK(ut->backend->commit(ut->ctx, save));

@@ -290,12 +290,9 @@ func (s *Store) PairingExists(ctx context.Context, code string) bool {
 // conflict wants to see both sides and everything before them.
 func (s *Store) ListVersions(ctx context.Context, userID, platform, titleID string) (
 	[]VersionMeta, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT v.version, v.parent_version, b.sha256, b.size, v.device_label,
-		        v.received_at, b.id
-		   FROM versions v
-		   JOIN titles t ON t.id = v.title_row_id
-		   JOIN blobs  b ON b.id = v.blob_id
+	// The same projection Latest and Version use, so one scanner reads all three
+	// and a column added in one place cannot go missing in another.
+	rows, err := s.db.QueryContext(ctx, versionSelect+`
 		  WHERE t.user_id = ? AND t.platform = ? AND t.title_id = ?
 		  ORDER BY v.version DESC`,
 		userID, platform, titleID)

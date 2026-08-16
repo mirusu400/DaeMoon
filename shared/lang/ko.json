@@ -120,5 +120,14 @@
   "selftest.self": "DaeMoon 자신",
   "settings.language": "언어",
   "settings.language_auto": "본체 설정 따름 ({0})",
-  "settings.no_font": "이 본체에는 {0} 글꼴이 없어 글자가 비어 보입니다. 언어를 바꾸지 않았습니다."
+  "settings.no_font": "이 본체에는 {0} 글꼴이 없어 글자가 비어 보입니다. 언어를 바꾸지 않았습니다.",
+
+  "pair.title": "이 본체 연결",
+  "pair.enter_code": "웹 페이지에 표시된 여섯 자리 코드를 입력하세요.",
+  "pair.no_server": "먼저 서버 주소를 설정하거나, QR 코드를 스캔하세요 — 스캔한 코드에는 주소가 함께 들어 있습니다.",
+  "pair.done": "연결됐습니다. 이제 동기화할 수 있습니다.",
+  "pair.scan": "QR 코드 스캔",
+  "pair.aim": "웹 페이지의 코드에 카메라를 맞추세요.   B 취소",
+  "pair.no_camera": "카메라를 시작하지 못했습니다.",
+  "pair.wrong_code": "DaeMoon 연결 코드가 아닙니다."
 }

@@ -316,6 +316,19 @@ void daemoon_3ds_trace_uint(const char *step, unsigned long long value);
  * only so the autotest can reach it. */
 void daemoon_3ds_pick_backup_render_check(const daemoon_title_t *title, unsigned frames);
 
+/* Reading a pairing code off the camera.
+ *
+ * frame_cb is called once per camera frame so the caller can draw and watch for a
+ * cancel; returning 0 stops the scan. It is the only way out of a screen that is
+ * otherwise waiting on hardware, which is why the receive has a timeout as well.
+ *
+ * Returns not_found when the loop ended without a readable code, user_cancelled
+ * when frame_cb said so, and backend_error when the camera would not start. */
+typedef int (*daemoon_3ds_qr_frame_cb)(void *user);
+
+daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *user,
+                                     char *out, size_t cap);
+
 /* The console UI keeps a little state: which line is selected, what to draw. */
 typedef struct {
     int selection;

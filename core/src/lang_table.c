@@ -87,6 +87,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Secure value", /* op.secure_value */
         "Survey", /* op.survey */
         "Sync", /* op.sync */
+        "Point the camera at the code on the web page.   B cancel", /* pair.aim */
+        "Paired. This console can sync now.", /* pair.done */
+        "Type the six digit code shown on the web page.", /* pair.enter_code */
+        "The camera could not be started.", /* pair.no_camera */
+        "Set the server address first, or scan a code instead - a scanned code carries the address with it.", /* pair.no_server */
+        "Scan a QR code", /* pair.scan */
+        "Pair this console", /* pair.title */
+        "That is not a DaeMoon pairing code.", /* pair.wrong_code */
         "Downloading", /* progress.downloading */
         "Packing save data", /* progress.packing */
         "Unpacking save data", /* progress.unpacking */
@@ -200,6 +208,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "보안 값", /* op.secure_value */
         "조사", /* op.survey */
         "동기화", /* op.sync */
+        "웹 페이지의 코드에 카메라를 맞추세요.   B 취소", /* pair.aim */
+        "연결됐습니다. 이제 동기화할 수 있습니다.", /* pair.done */
+        "웹 페이지에 표시된 여섯 자리 코드를 입력하세요.", /* pair.enter_code */
+        "카메라를 시작하지 못했습니다.", /* pair.no_camera */
+        "먼저 서버 주소를 설정하거나, QR 코드를 스캔하세요 — 스캔한 코드에는 주소가 함께 들어 있습니다.", /* pair.no_server */
+        "QR 코드 스캔", /* pair.scan */
+        "이 본체 연결", /* pair.title */
+        "DaeMoon 연결 코드가 아닙니다.", /* pair.wrong_code */
         "다운로드 중", /* progress.downloading */
         "세이브 데이터 압축 중", /* progress.packing */
         "세이브 데이터 푸는 중", /* progress.unpacking */
@@ -313,6 +329,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "セキュア値", /* op.secure_value */
         "調査", /* op.survey */
         "同期", /* op.sync */
+        "ウェブページのコードにカメラを向けてください。   B キャンセル", /* pair.aim */
+        "登録しました。これで同期できます。", /* pair.done */
+        "ウェブページに表示された 6 桁のコードを入力してください。", /* pair.enter_code */
+        "カメラを起動できませんでした。", /* pair.no_camera */
+        "先にサーバーのアドレスを設定するか、QR コードを読み取ってください。読み取ったコードにはアドレスが含まれています。", /* pair.no_server */
+        "QR コードを読み取る", /* pair.scan */
+        "この本体を登録", /* pair.title */
+        "DaeMoon の登録コードではありません。", /* pair.wrong_code */
         "ダウンロード中", /* progress.downloading */
         "セーブデータを圧縮中", /* progress.packing */
         "セーブデータを展開中", /* progress.unpacking */
@@ -426,6 +450,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "安全值", /* op.secure_value */
         "调查", /* op.survey */
         "同步", /* op.sync */
+        "把摄像头对准网页上的代码。   B 取消", /* pair.aim */
+        "已配对。现在可以同步了。", /* pair.done */
+        "输入网页上显示的六位代码。", /* pair.enter_code */
+        "无法启动摄像头。", /* pair.no_camera */
+        "请先设置服务器地址，或改为扫描二维码——扫描的代码里带着地址。", /* pair.no_server */
+        "扫描二维码", /* pair.scan */
+        "配对这台主机", /* pair.title */
+        "这不是 DaeMoon 的配对代码。", /* pair.wrong_code */
         "正在下载", /* progress.downloading */
         "正在打包存档", /* progress.packing */
         "正在解包存档", /* progress.unpacking */
@@ -539,6 +571,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "安全值", /* op.secure_value */
         "調查", /* op.survey */
         "同步", /* op.sync */
+        "把鏡頭對準網頁上的代碼。   B 取消", /* pair.aim */
+        "已配對。現在可以同步了。", /* pair.done */
+        "輸入網頁上顯示的六位代碼。", /* pair.enter_code */
+        "無法啟動鏡頭。", /* pair.no_camera */
+        "請先設定伺服器位址，或改為掃描 QR 碼——掃描的代碼裡帶著位址。", /* pair.no_server */
+        "掃描 QR 碼", /* pair.scan */
+        "配對這台主機", /* pair.title */
+        "這不是 DaeMoon 的配對代碼。", /* pair.wrong_code */
         "正在下載", /* progress.downloading */
         "正在封裝存檔", /* progress.packing */
         "正在解開存檔", /* progress.unpacking */
@@ -652,6 +692,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Valor seguro", /* op.secure_value */
         "Análisis", /* op.survey */
         "Sincronización", /* op.sync */
+        "Apunta la cámara al código de la página web.   B cancelar", /* pair.aim */
+        "Vinculada. Ya puede sincronizar.", /* pair.done */
+        "Escribe el código de seis dígitos que muestra la página web.", /* pair.enter_code */
+        "No se ha podido iniciar la cámara.", /* pair.no_camera */
+        "Configura primero la dirección del servidor, o escanea un código: el código escaneado lleva la dirección.", /* pair.no_server */
+        "Escanear un código QR", /* pair.scan */
+        "Vincular esta consola", /* pair.title */
+        "Ese no es un código de vinculación de DaeMoon.", /* pair.wrong_code */
         "Descargando", /* progress.downloading */
         "Empaquetando la partida", /* progress.packing */
         "Extrayendo la partida", /* progress.unpacking */
@@ -765,6 +813,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Valeur sécurisée", /* op.secure_value */
         "Analyse", /* op.survey */
         "Synchronisation", /* op.sync */
+        "Vise le code de la page web avec la caméra.   B annuler", /* pair.aim */
+        "Associée. La synchronisation est possible.", /* pair.done */
+        "Saisis le code à six chiffres affiché sur la page web.", /* pair.enter_code */
+        "Impossible de démarrer la caméra.", /* pair.no_camera */
+        "Renseigne d'abord l'adresse du serveur, ou scanne un code : un code scanné contient l'adresse.", /* pair.no_server */
+        "Scanner un code QR", /* pair.scan */
+        "Associer cette console", /* pair.title */
+        "Ce n'est pas un code d'association DaeMoon.", /* pair.wrong_code */
         "Téléchargement en cours", /* progress.downloading */
         "Compression de la sauvegarde", /* progress.packing */
         "Extraction de la sauvegarde", /* progress.unpacking */
@@ -878,6 +934,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Sicherheitswert", /* op.secure_value */
         "Erfassung", /* op.survey */
         "Abgleich", /* op.sync */
+        "Die Kamera auf den Code der Webseite richten.   B abbrechen", /* pair.aim */
+        "Verbunden. Diese Konsole kann jetzt abgleichen.", /* pair.done */
+        "Gib den sechsstelligen Code von der Webseite ein.", /* pair.enter_code */
+        "Die Kamera konnte nicht gestartet werden.", /* pair.no_camera */
+        "Zuerst die Serveradresse eintragen, oder einen Code scannen - ein gescannter Code enthält die Adresse.", /* pair.no_server */
+        "QR-Code scannen", /* pair.scan */
+        "Diese Konsole verbinden", /* pair.title */
+        "Das ist kein DaeMoon-Verbindungscode.", /* pair.wrong_code */
         "Wird heruntergeladen", /* progress.downloading */
         "Spielstand wird gepackt", /* progress.packing */
         "Spielstand wird entpackt", /* progress.unpacking */

@@ -748,11 +748,12 @@ static int edit_field(daemoon_str_id_t label, const char *hint, char *value, siz
     return 1;
 }
 
-#define SETTINGS_ROWS 4
+#define SETTINGS_ROWS 6
 
 static const daemoon_str_id_t k_settings_labels[SETTINGS_ROWS] = {
     DAEMOON_STR_SETTINGS_SERVER, DAEMOON_STR_SETTINGS_TOKEN,
-    DAEMOON_STR_SETTINGS_LABEL, DAEMOON_STR_SETTINGS_LANGUAGE
+    DAEMOON_STR_SETTINGS_LABEL, DAEMOON_STR_SETTINGS_LANGUAGE,
+    DAEMOON_STR_PAIR_SCAN, DAEMOON_STR_PAIR_TITLE
 };
 
 /* What the language row shows: the chosen language, or the console's with a note
@@ -796,29 +797,33 @@ static void draw_settings(int selected)
     values[1] = masked;
     values[2] = g_config.device_label;
     values[3] = language;
+    /* The two pairing rows are actions rather than settings, so their value line
+     * says what they are for rather than repeating the label. */
+    values[4] = daemoon_str(DAEMOON_STR_PAIR_AIM);
+    values[5] = daemoon_str(DAEMOON_STR_PAIR_ENTER_CODE);
 
     daemoon_gfx_top();
     daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
     daemoon_gfx_text(12.0f, 6.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_SETTINGS_TITLE));
 
-    y = 40.0f;
-    for (i = 0; i < SETTINGS_ROWS; ++i) {
-        daemoon_gfx_text(14.0f, y, 0.38f, GFX_TEXT_DIM, daemoon_str(labels[i]));
-        daemoon_gfx_text_fit(14.0f, y + 16.0f, GFX_TOP_W - 28.0f, 0.42f,
-                             (int)i == selected ? GFX_TEXT : GFX_TEXT_DIM, values[i]);
-        y += 42.0f;
-    }
+    /* Only the selected row is spelled out on the top screen. Six rows of label
+     * and value do not fit, and the one under the cursor is the one being read. */
+    daemoon_gfx_text(14.0f, 52.0f, 0.45f, GFX_TEXT_DIM,
+                     daemoon_str(labels[selected]));
+    (void)daemoon_gfx_text_wrapped(14.0f, 76.0f, GFX_TOP_W - 28.0f, 0.5f, GFX_TEXT,
+                                   values[selected]);
+    y = 0.0f;
     daemoon_gfx_text(14.0f, GFX_SCREEN_H - 22.0f, 0.34f, GFX_TEXT_DIM,
                      DAEMOON_3DS_CONFIG_PATH);
 
     daemoon_gfx_bottom();
-    y = 14.0f;
+    y = 10.0f;
     for (i = 0; i < SETTINGS_ROWS; ++i) {
-        daemoon_gfx_rect(10.0f, y, GFX_BOTTOM_W - 20.0f, 32.0f,
+        daemoon_gfx_rect(8.0f, y, GFX_BOTTOM_W - 16.0f, 30.0f,
                          (int)i == selected ? GFX_ACCENT : GFX_PANEL);
-        daemoon_gfx_text_fit(18.0f, y + 7.0f, GFX_BOTTOM_W - 36.0f, 0.45f, GFX_TEXT,
+        daemoon_gfx_text_fit(16.0f, y + 7.0f, GFX_BOTTOM_W - 32.0f, 0.42f, GFX_TEXT,
                              daemoon_str(labels[i]));
-        y += 38.0f;
+        y += 34.0f;
     }
     daemoon_gfx_text(10.0f, GFX_SCREEN_H - 18.0f, 0.34f, GFX_TEXT_DIM,
                      daemoon_str(DAEMOON_STR_HINT_EDIT));
@@ -990,6 +995,150 @@ static int choose_language(void)
     return changed;
 }
 
+/* What both pairing paths end at.
+ *
+ * A typed code and a scanned one differ only in where the six digits and the
+ * server address came from; from here they are the same exchange. The token is
+ * written to the same file the FTP push writes, so a console paired from the
+ * screen and one paired from a desktop are in identical states afterwards.
+ */
+static int finish_pairing(const char *grant, const char *code)
+{
+    char token[DAEMOON_TOKEN_MAX];
+    char device_id[DAEMOON_DEVICE_ID_MAX];
+    daemoon_result_t r;
+
+    if (g_config.server_url[0] == '\0') {
+        message(daemoon_str(DAEMOON_STR_APP_TITLE),
+                daemoon_str(DAEMOON_STR_PAIR_NO_SERVER), GFX_WARN);
+        return 0;
+    }
+
+    /* The network may not have been opened at startup: a console with no server
+     * configured has no reason to hold a soc:U session, and this is the moment it
+     * gets one. */
+    if (daemoon_3ds_net_init() != DAEMOON_OK) {
+        report(DAEMOON_STR_OP_SYNC, DAEMOON_ERR_NETWORK_ERROR);
+        return 0;
+    }
+
+    daemoon_3ds_trace("pair/exchange", grant);
+    draw_loading(DAEMOON_STR_PAIR_TITLE, 0, 0);
+
+    r = daemoon_api_pair(&g_env, grant, code, g_config.device_label,
+                         DAEMOON_PLATFORM_3DS, token, sizeof(token),
+                         device_id, sizeof(device_id));
+    daemoon_3ds_trace("pair/result", daemoon_result_code(r));
+    if (r != DAEMOON_OK) {
+        report(DAEMOON_STR_PAIR_TITLE, r);
+        return 0;
+    }
+
+    (void)daemoon_strlcpy(g_config.token, sizeof(g_config.token), token);
+    g_env.token = g_config.token;
+
+    r = daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
+    if (r != DAEMOON_OK) {
+        /* The token is live but only in memory. Saying so beats a console that
+         * syncs today and is a stranger tomorrow. */
+        report(DAEMOON_STR_PAIR_TITLE, r);
+        return 1;
+    }
+
+    message(daemoon_str(DAEMOON_STR_APP_TITLE),
+            daemoon_str(DAEMOON_STR_PAIR_DONE), GFX_OK);
+    return 1;
+}
+
+static int pair_with_typed_code(void)
+{
+    char code[DAEMOON_PAIR_CODE_MAX];
+
+    code[0] = '\0';
+    if (!edit_field(DAEMOON_STR_PAIR_TITLE, "000000", code, sizeof(code))) {
+        return 0;
+    }
+    if (code[0] == '\0') {
+        return 0;
+    }
+    return finish_pairing("device_code", code);
+}
+
+/* Drawn once per camera frame while the scan runs. Returning 0 stops it, which is
+ * the only way out of a screen that is otherwise waiting on hardware. */
+static int scan_frame(void *user)
+{
+    unsigned *frames = (unsigned *)user;
+    u32 down;
+
+    if (!aptMainLoop()) {
+        return 0;
+    }
+    hidScanInput();
+    down = hidKeysDown();
+
+    daemoon_gfx_frame_begin();
+    daemoon_gfx_top();
+    daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
+    daemoon_gfx_text(12.0f, 6.0f, 0.55f, GFX_TEXT, daemoon_str(DAEMOON_STR_PAIR_SCAN));
+    (void)daemoon_gfx_text_wrapped(14.0f, 90.0f, GFX_TOP_W - 28.0f, 0.45f, GFX_TEXT,
+                                   daemoon_str(DAEMOON_STR_PAIR_AIM));
+    daemoon_gfx_bottom();
+    {
+        /* The camera owns the top screen's frames and there is nothing to preview
+         * here, so the bottom one carries a sign of life. A still screen through a
+         * scan that is working is indistinguishable from one that has hung. */
+        float w = (float)((*frames)++ % 60u) / 60.0f * (GFX_BOTTOM_W - 40.0f);
+
+        daemoon_gfx_rect(20.0f, 120.0f, GFX_BOTTOM_W - 40.0f, 4.0f, GFX_PANEL);
+        daemoon_gfx_rect(20.0f, 120.0f, w, 4.0f, GFX_ACCENT);
+    }
+    daemoon_gfx_frame_end();
+
+    return (down & KEY_B) ? 0 : 1;
+}
+
+static int pair_by_scanning(void)
+{
+    char payload[512];
+    daemoon_pair_payload_t parsed;
+    daemoon_result_t r;
+    unsigned frames = 0;
+
+    daemoon_3ds_trace("pair/scan", NULL);
+    r = daemoon_3ds_qr_scan(scan_frame, &frames, payload, sizeof(payload));
+    daemoon_3ds_trace("pair/scan-done", daemoon_result_code(r));
+
+    if (r == DAEMOON_ERR_USER_CANCELLED) {
+        return 0;
+    }
+    if (r == DAEMOON_ERR_BACKEND_ERROR) {
+        message(daemoon_str(DAEMOON_STR_APP_TITLE),
+                daemoon_str(DAEMOON_STR_PAIR_NO_CAMERA), GFX_DANGER);
+        return 0;
+    }
+    if (r != DAEMOON_OK) {
+        report(DAEMOON_STR_PAIR_TITLE, r);
+        return 0;
+    }
+
+    if (daemoon_pair_parse(payload, strlen(payload), &parsed) != DAEMOON_OK) {
+        /* Something was read and it was not ours. Said plainly, because "scan
+         * failed" would send somebody back to hold the console steadier at a code
+         * that was never going to work. */
+        message(daemoon_str(DAEMOON_STR_APP_TITLE),
+                daemoon_str(DAEMOON_STR_PAIR_WRONG_CODE), GFX_WARN);
+        return 0;
+    }
+
+    /* The address travels with the code, which is the whole reason for scanning
+     * rather than typing. */
+    (void)daemoon_strlcpy(g_config.server_url, sizeof(g_config.server_url),
+                          parsed.server);
+    g_env.server_url = g_config.server_url;
+    return finish_pairing("qr", parsed.code);
+}
+
 static void action_settings(void)
 {
     const daemoon_str_id_t *labels = k_settings_labels;
@@ -1035,11 +1184,17 @@ static void action_settings(void)
                 edited = edit_field(labels[2], "3DS", g_config.device_label,
                                     sizeof(g_config.device_label));
                 break;
-            default:
+            case 3:
                 /* No keyboard for this one - it steps through the list, so the
                  * screen changes language under the cursor and the choice is
                  * judged by reading it. */
                 edited = choose_language();
+                break;
+            case 4:
+                edited = pair_by_scanning();
+                break;
+            default:
+                edited = pair_with_typed_code();
                 break;
             }
             dirty = dirty || edited;

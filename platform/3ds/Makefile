@@ -37,8 +37,8 @@ BUILD_STAMP ?= unknown
 # compiler, one set of flags, and no stale archive to explain.
 SOURCES  := source source/ui \
             ../../core/src ../../core/src/util \
-            ../../vendor/miniz
-INCLUDES := source ../../core/include ../../vendor
+            ../../vendor/miniz ../../vendor/quirc
+INCLUDES := source ../../core/include ../../vendor ../../vendor/quirc
 
 ARCH := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 

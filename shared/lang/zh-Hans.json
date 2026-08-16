@@ -120,5 +120,14 @@
   "selftest.self": "DaeMoon 自身",
   "settings.language": "语言",
   "settings.language_auto": "跟随主机设置（{0}）",
-  "settings.no_font": "这台主机没有{0}字体，文字会是空白。语言未更改。"
+  "settings.no_font": "这台主机没有{0}字体，文字会是空白。语言未更改。",
+
+  "pair.title": "配对这台主机",
+  "pair.enter_code": "输入网页上显示的六位代码。",
+  "pair.no_server": "请先设置服务器地址，或改为扫描二维码——扫描的代码里带着地址。",
+  "pair.done": "已配对。现在可以同步了。",
+  "pair.scan": "扫描二维码",
+  "pair.aim": "把摄像头对准网页上的代码。   B 取消",
+  "pair.no_camera": "无法启动摄像头。",
+  "pair.wrong_code": "这不是 DaeMoon 的配对代码。"
 }

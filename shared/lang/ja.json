@@ -120,5 +120,14 @@
   "selftest.self": "DaeMoon 自身",
   "settings.language": "言語",
   "settings.language_auto": "本体の設定に従う（{0}）",
-  "settings.no_font": "この本体には {0} のフォントがないため、文字が表示されません。言語は変更しませんでした。"
+  "settings.no_font": "この本体には {0} のフォントがないため、文字が表示されません。言語は変更しませんでした。",
+
+  "pair.title": "この本体を登録",
+  "pair.enter_code": "ウェブページに表示された 6 桁のコードを入力してください。",
+  "pair.no_server": "先にサーバーのアドレスを設定するか、QR コードを読み取ってください。読み取ったコードにはアドレスが含まれています。",
+  "pair.done": "登録しました。これで同期できます。",
+  "pair.scan": "QR コードを読み取る",
+  "pair.aim": "ウェブページのコードにカメラを向けてください。   B キャンセル",
+  "pair.no_camera": "カメラを起動できませんでした。",
+  "pair.wrong_code": "DaeMoon の登録コードではありません。"
 }

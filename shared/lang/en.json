@@ -120,5 +120,14 @@
   "selftest.self": "DaeMoon itself",
   "settings.language": "Language",
   "settings.language_auto": "From the console ({0})",
-  "settings.no_font": "This console has no font for {0}, so the text would be blank. The language was not changed."
+  "settings.no_font": "This console has no font for {0}, so the text would be blank. The language was not changed.",
+
+  "pair.title": "Pair this console",
+  "pair.enter_code": "Type the six digit code shown on the web page.",
+  "pair.no_server": "Set the server address first, or scan a code instead - a scanned code carries the address with it.",
+  "pair.done": "Paired. This console can sync now.",
+  "pair.scan": "Scan a QR code",
+  "pair.aim": "Point the camera at the code on the web page.   B cancel",
+  "pair.no_camera": "The camera could not be started.",
+  "pair.wrong_code": "That is not a DaeMoon pairing code."
 }

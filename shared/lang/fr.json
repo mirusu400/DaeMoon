@@ -120,5 +120,14 @@
   "selftest.self": "DaeMoon lui-même",
   "settings.language": "Langue",
   "settings.language_auto": "Selon la console ({0})",
-  "settings.no_font": "Cette console n'a pas de police pour {0}, le texte serait vide. La langue n'a pas été changée."
+  "settings.no_font": "Cette console n'a pas de police pour {0}, le texte serait vide. La langue n'a pas été changée.",
+
+  "pair.title": "Associer cette console",
+  "pair.enter_code": "Saisis le code à six chiffres affiché sur la page web.",
+  "pair.no_server": "Renseigne d'abord l'adresse du serveur, ou scanne un code : un code scanné contient l'adresse.",
+  "pair.done": "Associée. La synchronisation est possible.",
+  "pair.scan": "Scanner un code QR",
+  "pair.aim": "Vise le code de la page web avec la caméra.   B annuler",
+  "pair.no_camera": "Impossible de démarrer la caméra.",
+  "pair.wrong_code": "Ce n'est pas un code d'association DaeMoon."
 }

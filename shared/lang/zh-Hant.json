@@ -120,5 +120,14 @@
   "selftest.self": "DaeMoon 自身",
   "settings.language": "語言",
   "settings.language_auto": "跟隨主機設定（{0}）",
-  "settings.no_font": "這台主機沒有{0}字型，文字會是空白。語言未變更。"
+  "settings.no_font": "這台主機沒有{0}字型，文字會是空白。語言未變更。",
+
+  "pair.title": "配對這台主機",
+  "pair.enter_code": "輸入網頁上顯示的六位代碼。",
+  "pair.no_server": "請先設定伺服器位址，或改為掃描 QR 碼——掃描的代碼裡帶著位址。",
+  "pair.done": "已配對。現在可以同步了。",
+  "pair.scan": "掃描 QR 碼",
+  "pair.aim": "把鏡頭對準網頁上的代碼。   B 取消",
+  "pair.no_camera": "無法啟動鏡頭。",
+  "pair.wrong_code": "這不是 DaeMoon 的配對代碼。"
 }

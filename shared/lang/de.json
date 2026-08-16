@@ -120,5 +120,14 @@
   "selftest.self": "DaeMoon selbst",
   "settings.language": "Sprache",
   "settings.language_auto": "Wie die Konsole ({0})",
-  "settings.no_font": "Diese Konsole hat keine Schrift für {0}, der Text bliebe leer. Die Sprache wurde nicht geändert."
+  "settings.no_font": "Diese Konsole hat keine Schrift für {0}, der Text bliebe leer. Die Sprache wurde nicht geändert.",
+
+  "pair.title": "Diese Konsole verbinden",
+  "pair.enter_code": "Gib den sechsstelligen Code von der Webseite ein.",
+  "pair.no_server": "Zuerst die Serveradresse eintragen, oder einen Code scannen - ein gescannter Code enthält die Adresse.",
+  "pair.done": "Verbunden. Diese Konsole kann jetzt abgleichen.",
+  "pair.scan": "QR-Code scannen",
+  "pair.aim": "Die Kamera auf den Code der Webseite richten.   B abbrechen",
+  "pair.no_camera": "Die Kamera konnte nicht gestartet werden.",
+  "pair.wrong_code": "Das ist kein DaeMoon-Verbindungscode."
 }

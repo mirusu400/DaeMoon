@@ -268,7 +268,10 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
         Result res;
         int action;
         int captured = 0;
+        u64 t0;
+        u64 t1;
 
+        t0 = osGetTime();
         res = CAMU_SetReceiving(&receive, g_frame, PORT_CAM1, CAM_BYTES,
                                 (s16)transfer);
         if (R_FAILED(res)) {
@@ -285,13 +288,22 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
             } else {
                 ++g_stats.frames;
                 captured = 1;
-                frame_to_texture();
             }
+        }
+        t1 = osGetTime();
+        g_stats.ms_capture = (unsigned)(t1 - t0);
+
+        if (captured) {
+            t0 = osGetTime();
+            frame_to_texture();
+            g_stats.ms_tile = (unsigned)(osGetTime() - t0);
         }
 
         /* Drawn after the texture is fresh, and called even when a capture failed,
          * because the callback is the only way out of this screen. */
+        t0 = osGetTime();
         action = frame_cb != NULL ? frame_cb(user) : 1;
+        g_stats.ms_draw = (unsigned)(osGetTime() - t0);
         if (action == 0) {
             cancelled = 1;
             break;
@@ -330,6 +342,7 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
             continue;
         }
 
+        t0 = osGetTime();
         g_stats.mean_luma = frame_to_luma(g_frame, g_luma, CAM_PIXELS);
         {
             int w = 0;
@@ -341,6 +354,7 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
         }
 
         g_stats.codes_seen = quirc_count(q);
+        g_stats.ms_decode = (unsigned)(osGetTime() - t0);
         if (g_stats.codes_seen > 0) {
             struct quirc_code code;
             struct quirc_data data;
@@ -383,12 +397,14 @@ daemoon_result_t daemoon_3ds_qr_scan(daemoon_3ds_qr_frame_cb frame_cb, void *use
 
         (void)snprintf(line, sizeof(line),
                        "frames=%u luma=%u codes=%d decfail=%u recvfail=%u "
-                       "timeout=%u cam=%s layout=%s err=%d",
+                       "timeout=%u cam=%s layout=%s err=%d "
+                       "cap=%u tile=%u draw=%u dec=%u",
                        g_stats.frames, g_stats.mean_luma, g_stats.codes_seen,
                        g_stats.decode_failures, g_stats.receive_failures,
                        g_stats.timeouts, g_stats.camera ? "inner" : "outer",
                        daemoon_3ds_cam_layout_name(g_stats.layout),
-                       g_stats.last_decode_error);
+                       g_stats.last_decode_error, g_stats.ms_capture,
+                       g_stats.ms_tile, g_stats.ms_draw, g_stats.ms_decode);
         daemoon_3ds_trace("qr/stats", line);
     }
 

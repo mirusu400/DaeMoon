@@ -1127,6 +1127,11 @@ static int scan_frame(void *user)
                    st->frames, st->mean_luma, st->codes_seen,
                    st->camera ? "inner" : "outer",
                    daemoon_3ds_cam_layout_name(st->layout));
+    daemoon_gfx_text(10.0f, GFX_SCREEN_H - 58.0f, 0.38f, GFX_TEXT_DIM, line);
+    /* Where the time goes. Four candidates and no way to tell them apart by
+     * reading, so the console reports which one is expensive. */
+    (void)snprintf(line, sizeof(line), "ms  cap %u  tile %u  draw %u  dec %u",
+                   st->ms_capture, st->ms_tile, st->ms_draw, st->ms_decode);
     daemoon_gfx_text(10.0f, GFX_SCREEN_H - 40.0f, 0.38f, GFX_TEXT_DIM, line);
     daemoon_gfx_text(10.0f, GFX_SCREEN_H - 20.0f, 0.36f, GFX_TEXT_DIM,
                      daemoon_str(DAEMOON_STR_PAIR_SWITCH));

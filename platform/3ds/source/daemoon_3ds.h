@@ -366,6 +366,16 @@ typedef struct {
     int      last_decode_error;
     int      camera; /* 0 outer, 1 inner */
     int      layout; /* which candidate sensor layout the preview is drawing */
+    /* Milliseconds in each stage of the last pass.
+     *
+     * The preview was slow twice and both fixes were guesses at which stage was
+     * the expensive one. There are four candidates - waiting for a frame, tiling
+     * it for the GPU, drawing, and decoding - and no amount of reading tells them
+     * apart on a 268 MHz processor. These do. */
+    unsigned ms_capture;
+    unsigned ms_tile;
+    unsigned ms_draw;
+    unsigned ms_decode;
 } daemoon_3ds_qr_stats_t;
 
 const daemoon_3ds_qr_stats_t *daemoon_3ds_qr_last_stats(void);

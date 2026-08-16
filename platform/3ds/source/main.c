@@ -48,6 +48,20 @@
 #define GRID_Y      36.0f
 #define GRID_PAGE   (GRID_COLS * GRID_ROWS)
 
+/* libctru's weak default is 32 KiB, and `StackSize` in app.rsf does not override
+ * it - the exheader value is not what the main thread ends up running on. Thirty
+ * two kilobytes is not enough for this application:
+ *
+ *   - the first restore ever run on hardware died because one function wanted
+ *     fifty of them for a single frame. That frame is gone, but the ceiling it hit
+ *     was this one, and it sat about thirty kilobytes above the floor.
+ *   - curl and mbedtls are linked in. A TLS handshake alone is tens of kilobytes
+ *     of stack, and Phase 2 is where https starts mattering.
+ *
+ * A quarter of a megabyte of address space costs nothing on a console with tens of
+ * megabytes of it, and the failure it prevents is a data abort with no message. */
+unsigned int __stacksize__ = 256 * 1024;
+
 static unsigned char g_scratch[64 * 1024];
 static daemoon_archive_ctx_t g_archive;
 
@@ -321,6 +335,11 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
 
 static void message(const char *title, const char *body, u32 accent)
 {
+    /* main.c has its own dialog loop, so it was the one screen the trail could not
+     * see - two syncs in a row ended at "uploading" in the file with no sign of the
+     * result the user was looking at. */
+    daemoon_3ds_trace("ui/message", body);
+
     while (aptMainLoop()) {
         u32 down;
 
@@ -509,7 +528,9 @@ static void action_sync(void)
     }
 
     memset(&stats, 0, sizeof(stats));
+    daemoon_3ds_trace("sync/begin", g_titles[g_selected].id);
     r = daemoon_sync_title(&g_env, &g_archive, &g_titles[g_selected], &stats);
+    daemoon_3ds_trace("sync/done", daemoon_result_code(r));
 
     if (r != DAEMOON_OK) {
         report("sync", r);

@@ -148,6 +148,7 @@ docker-cia:
 # .3dsx cannot reach another title's save archive; the exheader is the difference,
 # and a missing right there looks exactly like a code bug on hardware.
 cia-verify: docker-cia
+	@$(DOCKER_RUN) -w /work daemoon-3ds:local sh tools/check-stack-size.sh platform/3ds/daemoon.elf
 	@$(DOCKER_RUN) daemoon-ctrtool:local sh tools/verify-cia.sh platform/3ds/daemoon.cia
 
 # Runs the conformance suite as a real ARM binary through real libctru. Not a

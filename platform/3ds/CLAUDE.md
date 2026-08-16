@@ -181,8 +181,21 @@ with `-fstack-usage` and fails on any frame over 8 KiB. It needs no console and
 no cross compiler - the structures are the same size on a desktop, which is the
 part that goes wrong. Reverting the fix makes it name both functions and exit 1.
 
-The two lessons are the same one twice: **the console's limits are not the
-desktop's, so measure them rather than remembering them.**
+And the ceiling that frame hit was not the one `app.rsf` declares. `StackSize` in
+the RSF goes into the exheader and is **not** what the main thread runs on:
+libctru carries a weak `__stacksize__` whose default is **32 KiB**, and that is
+the number that decides whether a call chain fits. The crash registers said so -
+the caller's frames sat around `0x08007xxx` with nothing mapped below
+`0x08000000`.
+
+Thirty two kilobytes does not hold curl and mbedtls; a TLS handshake alone is tens
+of kilobytes. `main.c` sets `__stacksize__` to 256 KiB, and `make cia-verify` reads
+it back out of the binary through `tools/check-stack-size.sh`, because nothing at
+runtime reports how much stack there is until it runs out.
+
+The three lessons are the same one three times: **the console's limits are not the
+desktop's, and they are not what the configuration file says either - so measure
+them rather than remembering them.**
 
 ## Names and icons are read once, ever
 

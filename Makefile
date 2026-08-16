@@ -155,6 +155,11 @@ cia-verify: docker-cia
 # substitute for hardware - emulators do not reproduce save archive behaviour -
 # but it is the difference between code that has been executed on the target
 # instruction set and code that has only been compiled for it.
+# Pairing, in an emulator, against a real server. Everything the QR flow does
+# except the camera - which leaves optics for hardware and nothing else.
+emu-pair:
+	@sh $(ROOT)/tools/emu-pair.sh
+
 emu-selftest:
 	@sh $(ROOT)/tools/emu-selftest.sh
 

@@ -131,13 +131,26 @@ Paths are relative to the SD card root, as ftpd presents it. Pulling a backup of
 the card is how you check one on a desktop: `daemoonctl` reads the same packages,
 so a backup made on hardware can be unpacked and inspected without the console.
 
+## Pairing without moving the card
+
+From Phase 4 the console can get its own token. **Settings → Scan a QR code**, with
+a browser open on `/pair`. The payload carries the server address as well as the
+code, so a console that has never been configured goes from nothing to synced
+without anybody typing a URL on a touchscreen. **Pair this console** is the same
+thing with the six digits typed instead, for when the camera will not cooperate.
+
+The panel is at the same address as the API - one binary, one port. The first visit
+asks for an account.
+
 ## What each layer actually proves
 
 | Command | Runs where | Says |
 |---|---|---|
 | `make core-test` | desktop, sanitizers | the logic is not obviously wrong |
-| `make cia-verify` | desktop | the CIA carries the rights `app.rsf` asks for |
+| `make cia-verify` | desktop | the CIA carries the rights `app.rsf` asks for, and a stack big enough |
+| `make e2e` | desktop | the real binaries agree with each other, panel included |
 | `make emu-selftest` | emulator | it runs as an ARM binary through real libctru |
+| `make emu-pair` | emulator | it pairs itself against a real server, everything but the camera |
 | `make 3ds-selftest` | **hardware** | the FS service behaves the way core assumes |
 
 Only the last one counts for the roadmap. The first three exist so that when the

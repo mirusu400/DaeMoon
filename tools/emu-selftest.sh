@@ -53,6 +53,9 @@ xvfb-run -a "$azahar" --install "$cia" >/dev/null 2>&1
 
 mkdir -p "$sd/DaeMoon"
 : > "$sd/DaeMoon/AUTOTEST"
+# And clear the other unattended flag, so whichever script ran last is the one
+# that decides what this run does.
+rm -f "$sd/DaeMoon/AUTOPAIR"
 rm -f "$sd/DaeMoon/selftest.txt"
 
 app=$(ls -t "$sd/Nintendo 3DS/"*/*/title/00040000/0dae0000/content/*.app 2>/dev/null | head -1)

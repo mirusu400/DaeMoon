@@ -1528,6 +1528,92 @@ static void run_autotest(void)
     message(daemoon_str(DAEMOON_STR_APP_TITLE), line, failures == 0 ? GFX_OK : GFX_DANGER);
 }
 
+/* Pairing, unattended, from a payload on the card.
+ *
+ * The camera is the only part of the QR path a desktop cannot stand in for. This
+ * runs everything else as a real ARM binary against a real server: the same parser
+ * the camera feeds, the same network backend, the same token write. What is left
+ * for hardware is whether a 3DS camera can read a screen, which is a question about
+ * optics rather than about this code.
+ *
+ * The flag file holds exactly what a scan would produce, so the emulator run and
+ * the hardware run differ in one step and nothing else.
+ */
+static void run_autopair(void)
+{
+    char payload[512];
+    daemoon_pair_payload_t parsed;
+    daemoon_stream_t *in = NULL;
+    daemoon_stream_t *out = NULL;
+    daemoon_strbuf_t sb;
+    char line[256];
+    size_t got = 0;
+    daemoon_result_t r;
+
+    if (g_env.fs->open(g_env.fs_ctx, DAEMOON_3DS_AUTOPAIR_PATH, DAEMOON_OPEN_READ,
+                       &in) != DAEMOON_OK) {
+        return;
+    }
+    r = daemoon_stream_read(in, payload, sizeof(payload) - 1, &got);
+    (void)daemoon_stream_close(in);
+    if (r != DAEMOON_OK) {
+        got = 0;
+    }
+    payload[got] = '\0';
+    while (got > 0 && (payload[got - 1] == '\n' || payload[got - 1] == '\r')) {
+        payload[--got] = '\0';
+    }
+
+    daemoon_strbuf_init(&sb, line, sizeof(line));
+    daemoon_strbuf_add(&sb, "build=");
+    daemoon_strbuf_add(&sb, DAEMOON_BUILD_STAMP);
+
+    r = daemoon_pair_parse(payload, got, &parsed);
+    daemoon_strbuf_add(&sb, " parse=");
+    daemoon_strbuf_add(&sb, daemoon_result_code(r));
+
+    if (r == DAEMOON_OK) {
+        char token[DAEMOON_TOKEN_MAX];
+        char device_id[DAEMOON_DEVICE_ID_MAX];
+
+        (void)daemoon_strlcpy(g_config.server_url, sizeof(g_config.server_url),
+                              parsed.server);
+        g_env.server_url = g_config.server_url;
+
+        r = daemoon_3ds_net_init();
+        daemoon_strbuf_add(&sb, " net=");
+        daemoon_strbuf_add(&sb, daemoon_result_code(r));
+
+        if (r == DAEMOON_OK) {
+            r = daemoon_api_pair(&g_env, "qr", parsed.code, g_config.device_label,
+                                 DAEMOON_PLATFORM_3DS, token, sizeof(token),
+                                 device_id, sizeof(device_id));
+            daemoon_strbuf_add(&sb, " pair=");
+            daemoon_strbuf_add(&sb, daemoon_result_code(r));
+
+            if (r == DAEMOON_OK) {
+                (void)daemoon_strlcpy(g_config.token, sizeof(g_config.token), token);
+                g_env.token = g_config.token;
+                r = daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
+                daemoon_strbuf_add(&sb, " save=");
+                daemoon_strbuf_add(&sb, daemoon_result_code(r));
+                daemoon_strbuf_add(&sb, " device=");
+                daemoon_strbuf_add(&sb, device_id);
+            }
+        }
+    }
+    daemoon_strbuf_addc(&sb, '\n');
+
+    if (g_env.fs->open(g_env.fs_ctx, DAEMOON_3DS_WORK_DIR "/autopair.txt",
+                       DAEMOON_OPEN_WRITE, &out) == DAEMOON_OK) {
+        (void)daemoon_stream_write(out, line, sb.len);
+        (void)daemoon_stream_close(out);
+    }
+
+    message(daemoon_str(DAEMOON_STR_APP_TITLE), line,
+            r == DAEMOON_OK ? GFX_OK : GFX_DANGER);
+}
+
 /* --------------------------------------------------------------------- main */
 
 int main(void)
@@ -1654,6 +1740,10 @@ int main(void)
 
     if (g_env.fs->exists(g_env.fs_ctx, DAEMOON_3DS_WORK_DIR "/AUTOTEST")) {
         run_autotest();
+        goto done;
+    }
+    if (g_env.fs->exists(g_env.fs_ctx, DAEMOON_3DS_AUTOPAIR_PATH)) {
+        run_autopair();
         goto done;
     }
 

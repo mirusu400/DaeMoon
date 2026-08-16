@@ -320,6 +320,34 @@ save could be uploaded over a good server version. See the commit; the guard was
 on the local backup path and not on the wire, which is the half where the damage
 leaves the device.
 
+## Phase 4: the console pairs itself
+
+Two rows in Settings, meeting at one exchange. Typing six digits uses the keyboard
+the rules call painful and is there because it always works; scanning the code off
+a browser is the one worth having, because the payload carries the server address
+and a console that has never been configured needs nothing typed at all.
+
+`qr_scan.c` is the camera, and three things about it are load bearing:
+
+- The frame is RGB565 and quirc wants luma. The conversion is here, because a
+  decoder has no idea what a 3DS frame looks like.
+- `camuInit` is not enough. Select, configure, set the buffer, activate - and a
+  frame taken before the camera settles is black, which decodes as nothing and
+  looks exactly like a code that will not scan.
+- The receive is a blocking service call. It has a timeout, because a camera that
+  stops delivering must not become an application that never returns on a screen
+  whose only way out is the frame callback.
+
+**Only the optics need hardware.** `make emu-pair` runs the whole flow in an
+emulator against a real server, with the camera replaced by a file holding exactly
+what a scan would have produced - same parser, same network backend, same token
+write. It comes back `parse=ok net=ok pair=ok save=ok`. What is left to find out on
+a console is whether a 3DS camera can read a code off a monitor.
+
+The two unattended modes now clear each other's flag. A leftover `AUTOTEST` turned
+the first pairing run into a conformance run and reported that the app "did not get
+as far as the pairing call", which is true and says nothing.
+
 ## Proving the backend
 
 `tools/test/backend_conformance.c` is the contract, written against the interface

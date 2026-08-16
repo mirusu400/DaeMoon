@@ -308,6 +308,12 @@ daemoon_result_t daemoon_3ds_pick_backup(const daemoon_env_t *env, const char *d
  * another trip to the console. */
 #define DAEMOON_3DS_TRACE_PATH DAEMOON_3DS_WORK_DIR "/trace.txt"
 
+/* An unattended pairing, from a payload on the card in exactly the form a scan
+ * would produce. The camera is the only part of the QR path a desktop cannot stand
+ * in for; this runs the rest as a real ARM binary against a real server, so the
+ * emulator run and the hardware run differ in one step and nothing else. */
+#define DAEMOON_3DS_AUTOPAIR_PATH DAEMOON_3DS_WORK_DIR "/AUTOPAIR"
+
 void daemoon_3ds_trace(const char *step, const char *detail);
 void daemoon_3ds_trace_uint(const char *step, unsigned long long value);
 

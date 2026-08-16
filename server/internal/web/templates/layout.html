@@ -2,24 +2,48 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}}</title>
+<title>{{.Title}} — DaeMoon</title>
 <link rel="stylesheet" href="/static/style.css">
 </head><body>
 {{if .User.ID}}
-<header>
-  <span class="brand">DaeMoon</span>
-  <nav>
-    <a href="/">Saves</a>
-    <a href="/devices">Consoles</a>
-    <a href="/pair">Add a console</a>
-    {{if .User.IsAdmin}}<a href="/users">People</a>{{end}}
-    <span class="muted">{{.User.Username}}</span>
-    <form method="post" action="/logout"><button class="quiet">Sign out</button></form>
-  </nav>
-</header>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="sq">大</span> DaeMoon</div>
+
+    {{if .Nav.Devices}}
+    <p class="sechead">Consoles</p>
+    {{range .Nav.Devices}}
+    <a class="devcard" href="/devices">
+      <span class="nm">{{.Label}}</span>
+      <span class="sub mono">{{.Platform}}{{if .Revoked}} · revoked{{end}}</span>
+    </a>
+    {{end}}
+    {{end}}
+    <a class="btn btn-ghost btn-sm" href="/pair" style="width:100%;text-align:center;margin-bottom:1.4rem">+ Add a console</a>
+
+    <p class="sechead">Library</p>
+    <ul class="nav">
+      <li><a href="/" {{if eq .Page "saves"}}class="on"{{end}}>Saves <span class="mono">{{.Nav.Titles}}</span></a></li>
+      <li><a href="/devices" {{if eq .Page "devices"}}class="on"{{end}}>Consoles <span class="mono">{{len .Nav.Devices}}</span></a></li>
+      {{if .User.IsAdmin}}
+      <li><a href="/users" {{if eq .Page "users"}}class="on"{{end}}>People</a></li>
+      {{end}}
+    </ul>
+
+    <p class="sechead">Signed in</p>
+    <div class="mono t-mut" style="margin-bottom:.6rem">{{.User.Username}}{{if .User.IsAdmin}} · admin{{end}}</div>
+    <form method="post" action="/logout"><button class="btn btn-ghost btn-sm">Sign out</button></form>
+  </aside>
+
+  <main class="content">
+{{else}}
+<div class="gate"><div class="box">
 {{end}}
-<main>
 {{if .Error}}<div class="error">{{.Error}}</div>{{end}}
 {{end}}
 
-{{define "foot"}}</main></body></html>{{end}}
+{{define "foot"}}
+{{if .User.ID}}  </main></div>
+{{else}}</div></div>
+{{end}}
+</body></html>{{end}}

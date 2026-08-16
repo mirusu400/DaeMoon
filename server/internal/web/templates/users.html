@@ -1,31 +1,42 @@
 {{template "head" .}}
-<h1>People</h1>
-<table>
-  <tr><th>Name</th><th>Role</th><th>Added</th><th></th></tr>
-  {{range .Data}}
-  <tr>
-    <td>{{if .Username}}{{.Username}}{{else}}<span class="muted mono">{{.ID}}</span>{{end}}
-        {{if not .HasPassword}}<span class="pill">no password</span>{{end}}</td>
-    <td>{{if .IsAdmin}}<span class="pill admin">administrator</span>{{else}}<span class="muted">member</span>{{end}}</td>
-    <td class="muted mono">{{.CreatedAt}}</td>
-    <td>
-      <form method="post" action="/users/{{.ID}}/delete"
-            onsubmit="return confirm('Remove this person and every save they have synced?')">
-        <button class="danger">Remove</button>
-      </form>
-    </td>
-  </tr>
-  {{end}}
-</table>
+<div class="pagehead"><div><h1>People</h1>
+<div class="sub mono">each one sees only their own consoles and saves</div></div></div>
 
-<h2>Add someone</h2>
 <div class="card">
+  <table>
+    <thead><tr><th>Name</th><th>Role</th><th>Added</th><th></th></tr></thead>
+    <tbody>
+    {{range .Data}}
+    <tr>
+      <td class="title-cell">
+        {{if .Username}}{{.Username}}{{else}}<span class="mono t-mut">{{.ID}}</span>{{end}}
+        {{if not .HasPassword}}<span class="tg tg-mut">no password</span>{{end}}
+      </td>
+      <td>{{if .IsAdmin}}<span class="tg tg-3ds">administrator</span>
+          {{else}}<span class="t-mut">member</span>{{end}}</td>
+      <td class="mono t-mut">{{.CreatedAt}}</td>
+      <td class="row-actions" style="justify-content:flex-end">
+        <form method="post" action="/users/{{.ID}}/delete"
+              onsubmit="return confirm('Remove this person and every save they have synced?')">
+          <button class="btn-danger btn-sm">Remove</button>
+        </form>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+
+<p class="sechead" style="margin-top:2rem">Add someone</p>
+<div class="card pad" style="max-width:26rem">
   <form class="stack" method="post" action="/users">
     <label>Name<input type="text" name="username"></label>
     <label>Password<input type="password" name="password"></label>
-    <label style="display:flex;gap:.5rem;align-items:center">
-      <input type="checkbox" name="admin"> Administrator</label>
-    <button>Add</button>
+    <label class="check"><input type="checkbox" name="admin"> Administrator</label>
+    <button class="btn-key">Add</button>
   </form>
 </div>
+<p class="t-mut" style="font-size:.85rem;margin-top:1rem">The last administrator cannot
+be removed. An instance with saves on it and nobody who can administer it is not a
+state worth being one click away from.</p>
 {{template "foot" .}}

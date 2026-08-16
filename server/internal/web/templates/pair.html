@@ -1,20 +1,24 @@
 {{template "head" .}}
-<h1>Add a console</h1>
+<div class="pagehead"><div><h1>Add a console</h1>
+<div class="sub mono">the code carries this server's address with it</div></div></div>
+
 {{if .Data}}{{with .Data}}
-<div class="split">
-  <div class="card">
-    <p class="muted">Scan this with the console's camera.</p>
-    <div class="qr"><img src="/pair/{{.Code}}/qr.svg" alt="pairing code" width="256" height="256"></div>
+<div class="pair-split">
+  <div class="card pad">
+    <p class="sechead">Scan this</p>
+    <div class="qr"><img src="/pair/{{.Code}}/qr.svg" alt="pairing code" width="240" height="240"></div>
+    <p class="t-mut mono" style="margin:.7rem 0 0;font-size:.75rem">Settings → Scan a QR code</p>
   </div>
-  <div class="card">
-    <p class="muted">Or type this into the console.</p>
+  <div class="card pad" style="flex:1;min-width:16rem">
+    <p class="sechead">Or type this</p>
     <p class="code">{{.Code}}</p>
-    <p class="muted">It expires shortly, and works once.</p>
-    <p id="status" class="muted">Waiting for a console…</p>
+    <p class="t-mut" style="font-size:.88rem;margin:0 0 1rem">Expires shortly, and works once.
+    A console that is already paired keeps its place in the list.</p>
+    <p id="status" class="mono t-mut">Waiting for a console…</p>
   </div>
 </div>
 <script>
-// The only script in the panel: it watches for the code being used so nobody has
+// The only script in the panel: it watches for the code being used, so nobody has
 // to guess whether the console got it. A claimed code is deleted as the token is
 // handed over, so its absence is the signal.
 (function () {
@@ -26,15 +30,17 @@
         if (!s.claimed) return;
         clearInterval(timer);
         el.textContent = "Paired. The console has its token.";
+        el.className = "mono t-ok";
         setTimeout(function () { location.href = "/devices"; }, 1200);
       }).catch(function () { /* a home network blinking is not worth a message */ });
   }, 2000);
 })();
 </script>
 {{end}}{{else}}
-<p class="muted">A console is added once. It gets a token of its own, stored on its
-SD card, which can be revoked without touching any other console.</p>
-<div class="card">
+<div class="card pad" style="max-width:26rem">
+  <p class="t-mut" style="margin:0 0 1rem;font-size:.9rem">A console gets a token of its
+  own. Pairing one that is already here rotates its token rather than adding a second
+  row, and either can be cut off without touching the other.</p>
   <form class="stack" method="post" action="/pair">
     <label>Platform
       <select name="platform">
@@ -42,7 +48,7 @@ SD card, which can be revoked without touching any other console.</p>
         <option value="nx">Switch</option>
       </select>
     </label>
-    <button>Show a code</button>
+    <button class="btn-key">Show a code</button>
   </form>
 </div>
 {{end}}

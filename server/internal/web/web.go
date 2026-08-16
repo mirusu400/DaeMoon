@@ -171,15 +171,38 @@ func (s *Server) clearSession(w http.ResponseWriter) {
 
 // ------------------------------------------------------------------ rendering
 
+/* What every page needs regardless of what it is about.
+ *
+ * The sidebar names the consoles and counts the saves on every screen, so it
+ * cannot come from whichever handler happens to be rendering. Filled once, here,
+ * rather than by each handler remembering to. */
+type nav struct {
+	Devices []store.DeviceInfo
+	Titles  int
+}
+
 type page struct {
 	Title string
+	Page  string // which sidebar entry is the current one
 	User  store.User
 	Error string
+	Nav   nav
 	Data  any
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p page) {
 	p.User = userOf(r)
+
+	// A signed out page has no sidebar and nothing to count.
+	if p.User.ID != "" {
+		if devices, err := s.store.ListDevices(r.Context(), p.User.ID); err == nil {
+			p.Nav.Devices = devices
+		}
+		if titles, err := s.store.ListTitles(r.Context(), p.User.ID, ""); err == nil {
+			p.Nav.Titles = len(titles)
+		}
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := s.tpl.ExecuteTemplate(w, name, p); err != nil {
 		// The status line is already out by the time a template fails partway, so

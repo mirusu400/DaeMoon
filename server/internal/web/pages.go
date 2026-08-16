@@ -20,6 +20,11 @@ import (
 type dashboardData struct {
 	Titles  []store.TitleSummary
 	Devices []store.DeviceInfo
+	// Counted here rather than in the template: a template that can do arithmetic
+	// is a template that will.
+	LiveDevices int
+	Versions    int
+	Stored      uint64
 }
 
 func (s *Server) getDashboard(w http.ResponseWriter, r *http.Request) {
@@ -35,9 +40,30 @@ func (s *Server) getDashboard(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err, "could not list devices")
 		return
 	}
+	data := dashboardData{Titles: titles, Devices: devices}
+	for _, d := range devices {
+		if !d.Revoked {
+			data.LiveDevices++
+		}
+	}
+	// Every version of every title, and what they take up. Cheap at the scale a
+	// self hosted instance runs at, and it is the number somebody actually wants
+	// when they wonder whether this is filling a disk.
+	for _, t := range titles {
+		versions, err := s.store.ListVersions(r.Context(), user.ID, t.Platform, t.TitleID)
+		if err != nil {
+			continue
+		}
+		data.Versions += len(versions)
+		for _, v := range versions {
+			data.Stored += v.Size
+		}
+	}
+
 	s.render(w, r, "dashboard.html", page{
-		Title: "DaeMoon",
-		Data:  dashboardData{Titles: titles, Devices: devices},
+		Title: "Saves",
+		Page:  "saves",
+		Data:  data,
 	})
 }
 
@@ -49,7 +75,7 @@ func (s *Server) getDevices(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err, "could not list devices")
 		return
 	}
-	s.render(w, r, "devices.html", page{Title: "Consoles", Data: devices})
+	s.render(w, r, "devices.html", page{Title: "Consoles", Page: "devices", Data: devices})
 }
 
 func (s *Server) postRevokeDevice(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +98,7 @@ type pairData struct {
 }
 
 func (s *Server) getPair(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, "pair.html", page{Title: "Add a console"})
+	s.render(w, r, "pair.html", page{Title: "Add a console", Page: "pair"})
 }
 
 // postPair mints a pairing code and marks it approved in the same step.
@@ -102,6 +128,7 @@ func (s *Server) postPair(w http.ResponseWriter, r *http.Request) {
 
 	s.render(w, r, "pair.html", page{
 		Title: "Add a console",
+		Page:  "pair",
 		Data: pairData{
 			Code:     code,
 			QRTarget: s.pairPayload(r, code),
@@ -192,9 +219,10 @@ func (s *Server) getPairQR(w http.ResponseWriter, r *http.Request) {
 // ------------------------------------------------------------------ titles
 
 type titleData struct {
-	Platform string
-	TitleID  string
-	Versions []store.VersionMeta
+	Platform  string
+	TitleID   string
+	TitleName string
+	Versions  []store.VersionMeta
 }
 
 func (s *Server) getTitle(w http.ResponseWriter, r *http.Request) {
@@ -210,9 +238,23 @@ func (s *Server) getTitle(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err, "could not list versions")
 		return
 	}
+	// The name is on the title row, not on a version, so it comes from the list.
+	name := ""
+	if titles, err := s.store.ListTitles(r.Context(), userOf(r).ID, platform); err == nil {
+		for _, t := range titles {
+			if t.TitleID == tid {
+				name = t.TitleName
+				break
+			}
+		}
+	}
+
 	s.render(w, r, "title.html", page{
 		Title: tid,
-		Data:  titleData{Platform: platform, TitleID: tid, Versions: versions},
+		Page:  "saves",
+		Data: titleData{
+			Platform: platform, TitleID: tid, TitleName: name, Versions: versions,
+		},
 	})
 }
 
@@ -257,7 +299,7 @@ func (s *Server) getUsers(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err, "could not list users")
 		return
 	}
-	s.render(w, r, "users.html", page{Title: "People", Data: users})
+	s.render(w, r, "users.html", page{Title: "People", Page: "users", Data: users})
 }
 
 func (s *Server) postUsers(w http.ResponseWriter, r *http.Request) {
@@ -276,7 +318,8 @@ func (s *Server) postUsers(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, r, err, "could not list users")
 			return
 		}
-		s.render(w, r, "users.html", page{Title: "People", Data: users, Error: msg})
+		s.render(w, r, "users.html", page{Title: "People", Page: "users", Data: users,
+			Error: msg})
 	}
 
 	if msg := checkCredentials(username, password); msg != "" {

@@ -284,11 +284,15 @@ func TestPairingAgainRotatesTheSameDevice(t *testing.T) {
 	}
 
 	// One console, one row, still live.
+	//
+	// Matched on the words the page shows rather than on a class name: the panel
+	// was restyled once already and a test that breaks on a colour change is a test
+	// that gets deleted rather than read.
 	_, body := p.get("/devices")
-	if n := strings.Count(body, `class="danger">Revoke`); n != 1 {
+	if n := strings.Count(body, ">live<"); n != 1 {
 		t.Fatalf("expected one live console, found %d:\n%s", n, body)
 	}
-	if strings.Contains(body, "pill revoked") {
+	if strings.Contains(body, ">revoked<") {
 		t.Fatalf("rotation left a revoked row behind:\n%s", body)
 	}
 }

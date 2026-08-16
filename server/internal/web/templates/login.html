@@ -1,10 +1,11 @@
 {{template "head" .}}
-<h1>Sign in</h1>
-<div class="card">
+<div class="brand"><span class="sq">大</span> DaeMoon</div>
+<div class="card pad">
+  <h1 style="font-size:1.2rem;margin-bottom:1rem">Sign in</h1>
   <form class="stack" method="post" action="/login">
     <label>Name<input type="text" name="username" autocomplete="username" autofocus></label>
     <label>Password<input type="password" name="password" autocomplete="current-password"></label>
-    <button>Sign in</button>
+    <button class="btn-key">Sign in</button>
   </form>
 </div>
 {{template "foot" .}}

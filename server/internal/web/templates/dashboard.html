@@ -1,46 +1,52 @@
 {{template "head" .}}
-<h1>Saves</h1>
 {{with .Data}}
-{{if .Titles}}
-<table>
-  <tr><th>Title</th><th>Platform</th><th>Kind</th><th class="num">Version</th><th>Updated</th></tr>
-  {{range .Titles}}
-  <tr>
-    <td>
-      {{if .TitleName}}
-        <a href="/titles/{{.Platform}}/{{.TitleID}}">{{.TitleName}}</a>
-        <div class="muted mono" style="font-size:.75rem">{{.TitleID}}</div>
-      {{else}}
-        <a class="mono" href="/titles/{{.Platform}}/{{.TitleID}}">{{.TitleID}}</a>
-      {{end}}
-    </td>
-    <td>{{.Platform}}</td>
-    <td class="muted">{{.SaveType}}</td>
-    <td class="num">{{.LatestVersion}}</td>
-    <td class="muted mono">{{.UpdatedAt}}</td>
-  </tr>
-  {{end}}
-</table>
-{{else}}
-<p class="empty">Nothing has been synced yet. <a href="/pair">Add a console</a> and
-sync a save from it.</p>
-{{end}}
+<div class="pagehead">
+  <div>
+    <h1>Saves</h1>
+    <div class="sub mono">{{len .Titles}} synced · {{.LiveDevices}} of {{len .Devices}} consoles live</div>
+  </div>
+  <div class="row-actions"><a class="btn btn-key" href="/pair">Add a console</a></div>
+</div>
 
-<h2>Consoles</h2>
-{{if .Devices}}
-<table>
-  <tr><th>Name</th><th>Platform</th><th>Added</th><th></th></tr>
-  {{range .Devices}}
-  <tr>
-    <td>{{.Label}} {{if .Revoked}}<span class="pill revoked">revoked</span>{{end}}</td>
-    <td>{{.Platform}}</td>
-    <td class="muted mono">{{.CreatedAt}}</td>
-    <td></td>
-  </tr>
-  {{end}}
-</table>
+<div class="stats">
+  <div class="card stat"><div class="k">Titles</div><div class="v">{{len .Titles}}</div></div>
+  <div class="card stat"><div class="k">Versions</div><div class="v">{{.Versions}}</div></div>
+  <div class="card stat"><div class="k">Stored</div><div class="v">{{bytes .Stored}}</div></div>
+  <div class="card stat"><div class="k">Consoles</div><div class="v">{{.LiveDevices}}</div></div>
+</div>
+
+{{if .Titles}}
+<div class="card">
+  <table>
+    <thead><tr>
+      <th>Title</th><th>Platform</th><th>Kind</th>
+      <th class="num">Version</th><th>Updated</th>
+    </tr></thead>
+    <tbody>
+    {{range .Titles}}
+    <tr>
+      <td class="title-cell">
+        {{if .TitleName}}
+          <a href="/titles/{{.Platform}}/{{.TitleID}}">{{.TitleName}}</a>
+          <span class="id mono t-mut">{{.TitleID}}</span>
+        {{else}}
+          <a class="mono" href="/titles/{{.Platform}}/{{.TitleID}}">{{.TitleID}}</a>
+        {{end}}
+      </td>
+      <td><span class="tg tg-{{.Platform}}">{{.Platform}}</span></td>
+      <td class="t-mut">{{.SaveType}}</td>
+      <td class="num">{{.LatestVersion}}</td>
+      <td class="mono t-mut">{{.UpdatedAt}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
 {{else}}
-<p class="empty">No consoles yet.</p>
+<div class="card pad">
+  <p class="empty" style="padding:.5rem 0">Nothing has been synced yet.
+  <a href="/pair">Add a console</a> and sync a save from it.</p>
+</div>
 {{end}}
 {{end}}
 {{template "foot" .}}

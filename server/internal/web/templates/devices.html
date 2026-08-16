@@ -1,24 +1,43 @@
 {{template "head" .}}
-<h1>Consoles</h1>
-<p class="muted">A token lives on an SD card, and SD cards come out of consoles.
-Revoking one stops that card and nothing else.</p>
+<div class="pagehead">
+  <div>
+    <h1>Consoles</h1>
+    <div class="sub mono">a token lives in each console, and can be cut off on its own</div>
+  </div>
+  <div class="row-actions"><a class="btn btn-key" href="/pair">Add a console</a></div>
+</div>
+
 {{if .Data}}
-<table>
-  <tr><th>Name</th><th>Platform</th><th>Added</th><th></th></tr>
-  {{range .Data}}
-  <tr>
-    <td>{{.Label}} {{if .Revoked}}<span class="pill revoked">revoked</span>{{end}}</td>
-    <td>{{.Platform}}</td>
-    <td class="muted mono">{{.CreatedAt}}</td>
-    <td>{{if not .Revoked}}
-      <form method="post" action="/devices/{{.ID}}/revoke">
-        <button class="danger">Revoke</button>
-      </form>
-    {{else}}<span class="muted mono">{{.RevokedAt}}</span>{{end}}</td>
-  </tr>
-  {{end}}
-</table>
+<div class="card">
+  <table>
+    <thead><tr><th>Name</th><th>Platform</th><th>Added</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {{range .Data}}
+    <tr>
+      <td class="title-cell">{{.Label}}<span class="id mono t-mut">{{.ID}}</span></td>
+      <td><span class="tg tg-{{.Platform}}">{{.Platform}}</span></td>
+      <td class="mono t-mut">{{.CreatedAt}}</td>
+      <td>
+        {{if .Revoked}}<span class="tg tg-mut">revoked</span>
+        {{else}}<span class="tg tg-ok">live</span>{{end}}
+      </td>
+      <td class="row-actions" style="justify-content:flex-end">
+        {{if not .Revoked}}
+        <form method="post" action="/devices/{{.ID}}/revoke">
+          <button class="btn-danger btn-sm">Revoke</button>
+        </form>
+        {{else}}<span class="mono t-mut">{{.RevokedAt}}</span>{{end}}
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+<p class="t-mut" style="font-size:.85rem;margin-top:1rem">Pairing a console again rotates
+its token in place, so one console stays one row. Revoking cuts that console off and
+nothing else.</p>
 {{else}}
-<p class="empty">No consoles yet. <a href="/pair">Add one</a>.</p>
+<div class="card pad"><p class="empty" style="padding:.5rem 0">No consoles yet.
+<a href="/pair">Add one</a>.</p></div>
 {{end}}
 {{template "foot" .}}

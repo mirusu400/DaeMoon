@@ -367,6 +367,42 @@ The two unattended modes now clear each other's flag. A leftover `AUTOTEST` turn
 the first pairing run into a conformance run and reported that the app "did not get
 as far as the pairing call", which is true and says nothing.
 
+## The first launch says what this is
+
+`welcome.c` runs once, before the library is read, and asks two things: whether the
+pages were read, and how to reach a server.
+
+Three pages, and the third is the one somebody has to have seen - syncing while a
+game holds its archive open loses a save with this application working exactly as
+designed, and no code here can prevent it. The other two are what the reader came
+for, so they go first; a page nobody reads is worse placed before the page that
+matters.
+
+**There is no "official server or your own" step**, and the reason is in the
+payload: a pairing code is `DAEMOON|1|<server>|<code>`, so scanning answers the
+address and the credential at once. An address step before a scan is a step the next
+one overwrites, and it teaches the wrong thing about how pairing works. What the
+screen offers instead is *how*: scan, type both by hand, or neither for now.
+
+Typing needs the address first because pairing by code has to know where to send it.
+That is the whole argument for preferring the camera.
+
+`welcomed` in `config.txt` records that the screens had their turn - not that they
+succeeded. Deducing it from "is there a server" is the version that annoys: somebody
+who chose Not now has read them and still has no server, and would be shown them
+every launch. A file written before the flag existed reads as "not yet", so an
+existing install sees them once, which is the safe direction for the page about
+running games. Settings has a row that brings them back on purpose.
+
+The unattended runs skip it. `AUTOTEST` and `AUTOPAIR` answer to a file rather than
+to a person and must not stop at a screen waiting for A.
+
+`welcome_steps.c` holds the decisions - which pages, in what order, whether they are
+due - and has no citro2d in it, so `make core-test` checks them. Drawing needs a
+console; the order of the pages does not. The test also pins that "not now" is the
+last choice, because leaving the screen returns the last one and a reorder would
+make START pair the console.
+
 ## The token is not on the SD card
 
 It lives in this application's own save archive, which is why the shipped build
@@ -402,6 +438,86 @@ Which is why the fallback exists rather than being a nicety: on such a console t
 token goes on the card, pairing completes, and the settings screen says where the
 token is. A console that cannot pair would be a worse outcome than one whose
 credential is somewhere findable.
+
+## One run over a whole library
+
+`batch.c` is Back up everything and Sync everything, and it exists because the per
+title buttons were the whole interface: forty installed games meant forty presses of
+the same two buttons, which is not a feature people use carefully but one they stop
+using.
+
+Sync asks a second question, because a run over a library meets conflicts and being
+asked forty times is a dialog somebody holds A through rather than a decision.
+`daemoon_conflict_policy_t` in core answers it in advance: ask, keep this console's,
+or keep the server's. The cursor starts on **ask**, and an index off the end of the
+list is also ask, because the answer to a bug on that screen must not be a policy
+nobody chose.
+
+**Neither policy is a `--force`.** Rule 7 is about confirmation and rule 2 is about
+merging, and both still hold:
+
+- Keeping this console's uploads on top. The server keeps every version it had, so
+  the other side is still downloadable. Nothing is discarded and nothing is merged.
+- Keeping the server's goes through `daemoon_sync_restore_package`, which backs the
+  console's save up to the card first and checks the digest before writing. Rule 1
+  does not bend for a policy, and `make core-test` asserts that as well as asserting
+  that the restore confirmation is still asked.
+
+What the policy replaces is one question, and the confirmation it replaces it with is
+asked where the decision actually is: over a library, "back up 41 saves" with the
+count in it is the thing being agreed to.
+
+Three questions, not a hundred and twenty. `daemoon_sync_opts_t` carries what the run
+already asked: the conflict answer, `upload_confirmed`, and `restore_confirmed`.
+
+The first two are easy. An upload changes nothing on the console and the server adds
+a version rather than replacing one, so that dialog is about intent, and asking it
+once per title made a bulk upload worse than doing them by hand.
+
+`restore_confirmed` is rule 7 and is not easy, so the terms are written down. When
+the answer is to take the server's, the confirmation is **its own sentence** - it
+names the count, says saves on this console will be overwritten, and says each is
+backed up to the card first - rather than the generic one. One screen that says that,
+read once, is worth more than forty identical dialogs, and forty identical dialogs is
+what a person holds A through.
+
+What has no field, and cannot be turned off by anything, is **rule 1**. Every restore
+still writes a package to the SD card before it writes to an archive and still aborts
+if that fails. That is what makes the answer recoverable rather than final, and it is
+the reason the field can exist at all. `daemoon_sync_restore_package` - the published
+restore, which is what the Restore button uses - always asks: a caller holding a
+package has not been through a screen that named a count.
+
+`make core-test` pins all of it: that a conflict policy alone does not skip the
+restore question, that the flag does skip it, that the backup still happens and the
+server still holds the replaced version when it does, and that the published restore
+has no way to skip its own.
+
+Coming back out is cheap. `action_batch` returns whether a save archive on this
+console actually changed, and only then is the library re-read - so pressing B on the
+way in costs nothing, and a batch backup or a batch upload costs nothing either.
+Re-reading opens every archive on the console, which is long enough to look like a
+hang; paying that for a screen somebody opened by accident is what it used to do.
+
+B stops after the title in flight rather than during it. Every write in core is
+temp-then-rename or archive-then-commit, so stopping between titles cannot leave
+anything half written - and stopping inside one is not something this screen could
+promise.
+
+`batch_steps.c` holds the order and what each answer means, has no citro2d in it, and
+is checked on a desktop. Same split as the welcome, for the same reason.
+
+## The self test is not a button any more
+
+It used to sit on the grid, run against whichever title the cursor was on, and it
+clears that title's save archive to prove clearing works - two rows above Back up, on
+a screen whose other buttons are things you do to a game you care about.
+
+The contract has not gone anywhere. `tools/test/backend_conformance.c` is still
+linked in, `make core-test` still runs it against the stub, and `run_autotest` still
+runs it on hardware against **this application's own save archive**, which is the
+only archive it has any business destroying. What is gone is the one press between a
+real save and a wipe.
 
 ## Proving the backend
 

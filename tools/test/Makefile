@@ -38,6 +38,8 @@ TDS_SRC := $(ROOT)/platform/3ds/source/save_backend.c \
            $(ROOT)/platform/3ds/source/config.c \
            $(ROOT)/platform/3ds/source/title_cache.c \
            $(ROOT)/platform/3ds/source/backup_list.c \
+           $(ROOT)/platform/3ds/source/welcome_steps.c \
+           $(ROOT)/platform/3ds/source/batch_steps.c \
            $(ROOT)/platform/3ds/source/trace.c \
            $(ROOT)/platform/3ds/source/title_id.c
 VENDOR_SRC := $(ROOT)/vendor/miniz/miniz.c $(wildcard $(ROOT)/vendor/quirc/*.c)

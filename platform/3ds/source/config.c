@@ -105,6 +105,8 @@ daemoon_result_t daemoon_3ds_config_load(const char *path, daemoon_3ds_config_t 
             if (daemoon_i18n_language_from_code(value, &parsed) == DAEMOON_OK) {
                 (void)daemoon_strlcpy(cfg->language, sizeof(cfg->language), value);
             }
+        } else if (strcmp(key, "welcomed") == 0) {
+            cfg->welcomed = value[0] == '1';
         } else if (strcmp(key, "ca_bundle") == 0) {
             (void)daemoon_strlcpy(cfg->ca_bundle, sizeof(cfg->ca_bundle), value);
         }
@@ -161,6 +163,9 @@ daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_con
         /* Absent rather than empty when unset, so the file says "follow the
          * console" by not mentioning it. */
         ok = fprintf(fp, "language = %s\n", cfg->language) > 0;
+    }
+    if (ok && cfg->welcomed) {
+        ok = fprintf(fp, "welcomed = 1\n") > 0;
     }
     if (ok && cfg->ca_bundle[0] != '\0') {
         ok = fprintf(fp, "ca_bundle = %s\n", cfg->ca_bundle) > 0;

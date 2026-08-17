@@ -18,6 +18,27 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "date unknown", /* backup.no_date */
         "No backup of {0} yet.", /* backup.none */
         "same as the save on the console now", /* backup.same_as_console */
+        "Back every save up to the SD card", /* batch.backup */
+        "Backed up {0}, skipped {1}, failed {2}.", /* batch.backup_done */
+        "Reads every save in this library and writes a package for each. Nothing on the console or the server is changed.", /* batch.backup_hint */
+        "Back up all {0} saves in this library to the SD card?", /* batch.confirm_backup */
+        "Sync all {0} titles? Where both sides changed: {1}", /* batch.confirm_sync */
+        "Sync all {0} titles, taking the server's version wherever the two differ? Saves on this console will be overwritten. Each one is backed up to the SD card first.", /* batch.confirm_sync_server */
+        "There is nothing in this library to work on.", /* batch.empty */
+        "A start   up/down move   B back", /* batch.hint */
+        "B stop after this title", /* batch.hint_running */
+        "When both sides changed", /* batch.policy */
+        "Ask me for each one", /* batch.policy_ask */
+        "The same dialog a single title shows, once per title that differs. Right when a few differ, tiring when many do.", /* batch.policy_ask_hint */
+        "Send this console's up", /* batch.policy_local */
+        "This console's save goes on top as a new version. The server keeps everything it already had, so the other side is still there to go back to.", /* batch.policy_local_hint */
+        "Take the server's down", /* batch.policy_server */
+        "The server's save is written over this console's. Each one is backed up to the SD card first, so what is replaced is still on the card.", /* batch.policy_server_hint */
+        "{0} of {1}", /* batch.running */
+        "Stopped. Everything finished before this point is done and nothing was left half written.", /* batch.stopped */
+        "Sync every title with the server", /* batch.sync */
+        "Uploads what only this console changed and downloads what only the server changed. What happens when both changed is the next question.", /* batch.sync_hint */
+        "All titles", /* batch.title */
         "Cancel", /* btn.cancel */
         "No", /* btn.no */
         "OK", /* btn.ok */
@@ -77,6 +98,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Reading icons", /* loading.icons */
         "Reading titles", /* loading.titles */
         "Back up this save", /* menu.backup */
+        "All titles", /* menu.batch */
         "Restore from a backup", /* menu.restore */
         "Self test (destroys this save)", /* menu.selftest */
         "Settings", /* menu.settings */
@@ -116,6 +138,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Settings", /* settings.title */
         "Device token", /* settings.token */
         "not set", /* settings.unset */
+        "Show the welcome again", /* settings.welcome */
         "Conflict", /* sync.action_conflict */
         "Download", /* sync.action_download */
         "Up to date", /* sync.action_none */
@@ -129,6 +152,22 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Running in applet mode with limited memory. Launch the app over a game to enable every feature.", /* warn.applet_mode */
         "Close the game before syncing. Syncing while a game is running corrupts the save.", /* warn.game_running */
         "{0} ties its save to this console. A save from another console may be deleted by the game.", /* warn.secure_value */
+        "Connect to your server", /* welcome.connect */
+        "Sign in to the panel in a browser and press Add a console. It shows a code.", /* welcome.connect_how */
+        "A select   up/down move   START skip", /* welcome.hint_choose */
+        "A next   START skip", /* welcome.hint_intro */
+        "Nothing is connected, and backing up to the SD card works anyway. Settings has the server and the pairing rows when you want them.", /* welcome.later */
+        "Type the address and the code", /* welcome.opt_code */
+        "For when the camera cannot read a screen. Two things to type on the keyboard, and it always works.", /* welcome.opt_code_hint */
+        "Not now", /* welcome.opt_later */
+        "Backing up to the SD card works without a server. Settings has this screen's choices whenever you want them.", /* welcome.opt_later_hint */
+        "Scan the QR code", /* welcome.opt_qr */
+        "Nothing to type. The code carries the server address with it, so this console needs no address set first.", /* welcome.opt_qr_hint */
+        "This console is connected. Back one save up first and restore it, on a game you are not attached to, before trusting it with one you are.", /* welcome.ready */
+        "A local backup is always made before anything is restored, and a conflict is never merged for you: both versions are kept and you choose.", /* welcome.safe */
+        "Welcome", /* welcome.title */
+        "DaeMoon copies this console's saves to a server you run, and brings them back. The same save on two consoles, without moving the card.", /* welcome.what */
+        "Sync before you start a game or after you quit it, never while one is running. A game holds its save open, and writing to it then breaks it.", /* welcome.when */
     },
     /* ko */ {
         "DaeMoon", /* app.title */
@@ -140,6 +179,27 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "날짜 없음", /* backup.no_date */
         "{0}의 백업이 아직 없습니다.", /* backup.none */
         "지금 본체에 있는 세이브와 같음", /* backup.same_as_console */
+        "모든 세이브를 SD 카드에 백업", /* batch.backup */
+        "백업 {0}개, 건너뜀 {1}개, 실패 {2}개.", /* batch.backup_done */
+        "이 목록의 모든 세이브를 읽어 각각 패키지로 씁니다. 본체와 서버의 어떤 것도 바뀌지 않습니다.", /* batch.backup_hint */
+        "이 목록의 세이브 {0}개를 모두 SD 카드에 백업할까요?", /* batch.confirm_backup */
+        "타이틀 {0}개를 모두 동기화할까요? 양쪽 다 바뀐 경우: {1}", /* batch.confirm_sync */
+        "타이틀 {0}개를 모두 동기화하고, 다른 것은 서버 버전을 받을까요? 이 본체의 세이브를 덮어씁니다. 덮기 전에 하나씩 SD 카드에 백업합니다.", /* batch.confirm_sync_server */
+        "이 목록에는 작업할 것이 없습니다.", /* batch.empty */
+        "A 시작   위/아래 이동   B 뒤로", /* batch.hint */
+        "B 이 타이틀까지 하고 중단", /* batch.hint_running */
+        "양쪽 다 바뀌었을 때", /* batch.policy */
+        "하나씩 물어보기", /* batch.policy_ask */
+        "타이틀 하나를 동기화할 때 나오는 그 대화상자를, 다른 것마다 한 번씩 띄웁니다. 몇 개일 때는 이게 맞고, 많으면 지칩니다.", /* batch.policy_ask_hint */
+        "이 본체 것을 올리기", /* batch.policy_local */
+        "이 본체의 세이브가 새 버전으로 올라갑니다. 서버는 가지고 있던 것을 모두 그대로 두므로, 반대쪽도 언제든 되돌아갈 수 있습니다.", /* batch.policy_local_hint */
+        "서버 것을 받기", /* batch.policy_server */
+        "서버의 세이브를 이 본체 위에 씁니다. 하나하나 먼저 SD 카드에 백업하므로, 덮인 것은 카드에 그대로 남습니다.", /* batch.policy_server_hint */
+        "{1}개 중 {0}개", /* batch.running */
+        "중단했습니다. 그 전까지 끝난 것은 그대로 완료됐고, 반쯤 쓰인 것은 없습니다.", /* batch.stopped */
+        "모든 타이틀을 서버와 동기화", /* batch.sync */
+        "이 본체만 바뀐 것은 올리고, 서버만 바뀐 것은 받습니다. 양쪽 다 바뀐 경우를 어떻게 할지는 다음에 묻습니다.", /* batch.sync_hint */
+        "일괄 작업", /* batch.title */
         "취소", /* btn.cancel */
         "아니오", /* btn.no */
         "확인", /* btn.ok */
@@ -199,6 +259,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "아이콘 읽는 중", /* loading.icons */
         "타이틀 목록 읽는 중", /* loading.titles */
         "이 세이브 백업", /* menu.backup */
+        "일괄 작업", /* menu.batch */
         "백업에서 복원", /* menu.restore */
         "자체 검사 (이 세이브를 파괴함)", /* menu.selftest */
         "설정", /* menu.settings */
@@ -238,6 +299,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "설정", /* settings.title */
         "기기 토큰", /* settings.token */
         "설정 안 됨", /* settings.unset */
+        "시작 안내 다시 보기", /* settings.welcome */
         "충돌", /* sync.action_conflict */
         "다운로드", /* sync.action_download */
         "최신 상태", /* sync.action_none */
@@ -251,6 +313,22 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "메모리가 제한된 애플릿 모드입니다. 모든 기능을 쓰려면 게임 위에서 실행하세요.", /* warn.applet_mode */
         "동기화 전에 게임을 종료하세요. 게임 실행 중 동기화하면 세이브가 손상됩니다.", /* warn.game_running */
         "{0}은(는) 세이브를 이 본체에 묶습니다. 다른 본체의 세이브는 게임이 삭제할 수 있습니다.", /* warn.secure_value */
+        "서버에 연결", /* welcome.connect */
+        "브라우저에서 패널에 로그인하고 '본체 추가'를 누르면 코드가 나옵니다.", /* welcome.connect_how */
+        "A 선택   위/아래 이동   START 건너뛰기", /* welcome.hint_choose */
+        "A 다음   START 건너뛰기", /* welcome.hint_intro */
+        "연결된 것은 없지만 SD 카드 백업은 그대로 됩니다. 서버와 연결은 설정 화면에 있습니다.", /* welcome.later */
+        "주소와 코드 직접 입력", /* welcome.opt_code */
+        "카메라가 화면을 못 읽을 때 씁니다. 키보드로 두 가지를 입력하면 되고, 이 방법은 항상 됩니다.", /* welcome.opt_code_hint */
+        "나중에", /* welcome.opt_later */
+        "서버 없이도 SD 카드로 백업은 됩니다. 이 화면의 선택은 설정에서 언제든 다시 할 수 있습니다.", /* welcome.opt_later_hint */
+        "QR 코드 스캔", /* welcome.opt_qr */
+        "입력할 것이 없습니다. 코드에 서버 주소가 함께 들어 있어서, 주소를 먼저 설정할 필요가 없습니다.", /* welcome.opt_qr_hint */
+        "본체가 연결됐습니다. 아끼지 않는 게임으로 백업하고 되돌려 보는 것을 먼저 해 보세요. 아끼는 세이브는 그다음입니다.", /* welcome.ready */
+        "무엇을 되돌리든 그 전에 항상 로컬 백업을 먼저 만듭니다. 충돌은 마음대로 합치지 않고, 양쪽을 모두 남긴 뒤 선택하게 합니다.", /* welcome.safe */
+        "시작하기", /* welcome.title */
+        "DaeMoon은 이 본체의 세이브를 직접 운영하는 서버에 올리고 다시 받아옵니다. 카드를 옮기지 않고 두 본체에서 같은 세이브를 씁니다.", /* welcome.what */
+        "동기화는 게임을 켜기 전이나 끈 뒤에 하세요. 실행 중에는 안 됩니다. 게임이 세이브를 붙잡고 있어서, 그때 쓰면 깨집니다.", /* welcome.when */
     },
     /* ja */ {
         "DaeMoon", /* app.title */
@@ -262,6 +340,27 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "日付なし", /* backup.no_date */
         "{0} のバックアップはまだありません。", /* backup.none */
         "今、本体にあるセーブデータと同じ", /* backup.same_as_console */
+        "すべてのセーブを SD カードにバックアップ", /* batch.backup */
+        "バックアップ {0} 件、スキップ {1} 件、失敗 {2} 件。", /* batch.backup_done */
+        "この一覧のすべてのセーブを読み、それぞれをパッケージとして書き出します。本体もサーバーも変更しません。", /* batch.backup_hint */
+        "この一覧のセーブ {0} 件をすべて SD カードにバックアップしますか。", /* batch.confirm_backup */
+        "タイトル {0} 件をすべて同期しますか。両方が変わっていた場合は {1}", /* batch.confirm_sync */
+        "タイトル {0} 件をすべて同期し、食い違うものはサーバーのバージョンを受け取りますか。この本体のセーブは上書きされます。上書き前にひとつずつ SD カードへバックアップします。", /* batch.confirm_sync_server */
+        "この一覧に処理できるものがありません。", /* batch.empty */
+        "A 開始   上下 移動   B 戻る", /* batch.hint */
+        "B このタイトルで中断", /* batch.hint_running */
+        "両方が変わっていたとき", /* batch.policy */
+        "ひとつずつ尋ねる", /* batch.policy_ask */
+        "タイトルを一つ同期するときと同じダイアログを、食い違うものごとに出します。数個なら適切で、多いと疲れます。", /* batch.policy_ask_hint */
+        "この本体のものを送る", /* batch.policy_local */
+        "この本体のセーブが新しいバージョンとして上に載ります。サーバーは持っていたものをすべて残すので、もう一方にも戻れます。", /* batch.policy_local_hint */
+        "サーバーのものを受け取る", /* batch.policy_server */
+        "サーバーのセーブをこの本体に上書きします。ひとつずつ先に SD カードへバックアップするので、上書きされたものはカードに残ります。", /* batch.policy_server_hint */
+        "{1} 件中 {0} 件", /* batch.running */
+        "中断しました。それまでに終わったものはそのまま完了しており、書きかけのものはありません。", /* batch.stopped */
+        "すべてのタイトルをサーバーと同期", /* batch.sync */
+        "この本体だけが変わったものは送り、サーバーだけが変わったものは受け取ります。両方が変わった場合をどうするかは次に尋ねます。", /* batch.sync_hint */
+        "一括処理", /* batch.title */
         "キャンセル", /* btn.cancel */
         "いいえ", /* btn.no */
         "OK", /* btn.ok */
@@ -321,6 +420,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "アイコンを読み込み中", /* loading.icons */
         "タイトルを読み込み中", /* loading.titles */
         "このセーブをバックアップ", /* menu.backup */
+        "一括処理", /* menu.batch */
         "バックアップから復元", /* menu.restore */
         "セルフテスト（このセーブを破壊します）", /* menu.selftest */
         "設定", /* menu.settings */
@@ -360,6 +460,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "設定", /* settings.title */
         "本体のトークン", /* settings.token */
         "未設定", /* settings.unset */
+        "はじめの案内をもう一度", /* settings.welcome */
         "競合", /* sync.action_conflict */
         "ダウンロード", /* sync.action_download */
         "最新", /* sync.action_none */
@@ -373,6 +474,22 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "メモリが制限されたアプレットモードです。すべての機能を使うにはゲーム上から起動してください。", /* warn.applet_mode */
         "同期の前にゲームを終了してください。ゲーム実行中の同期はセーブを壊します。", /* warn.game_running */
         "{0} はセーブをこの本体に紐付けます。他の本体のセーブはゲームに削除されることがあります。", /* warn.secure_value */
+        "サーバーに接続", /* welcome.connect */
+        "ブラウザーでパネルにサインインし、「本体を追加」を押すとコードが表示されます。", /* welcome.connect_how */
+        "A 決定   上下 移動   START スキップ", /* welcome.hint_choose */
+        "A 次へ   START スキップ", /* welcome.hint_intro */
+        "接続はされていませんが、SD カードへのバックアップはそのまま使えます。サーバーと登録は設定画面にあります。", /* welcome.later */
+        "アドレスとコードを入力", /* welcome.opt_code */
+        "カメラが画面を読み取れないときに使います。キーボードで二つ入力するだけで、こちらは必ず動きます。", /* welcome.opt_code_hint */
+        "あとで", /* welcome.opt_later */
+        "サーバーがなくても SD カードへのバックアップはできます。この画面の選択は設定からいつでも行えます。", /* welcome.opt_later_hint */
+        "QR コードを読み取る", /* welcome.opt_qr */
+        "入力は不要です。コードにサーバーのアドレスが含まれているので、先にアドレスを設定する必要はありません。", /* welcome.opt_qr_hint */
+        "この本体は接続されました。まずは惜しくないゲームでバックアップと復元を試してから、大事なセーブを預けてください。", /* welcome.ready */
+        "復元の前には必ずローカルバックアップを作ります。競合を勝手に統合することはなく、両方を残してあなたが選びます。", /* welcome.safe */
+        "はじめに", /* welcome.title */
+        "DaeMoon はこの本体のセーブを自分で動かすサーバーに上げ、また取り戻します。カードを差し替えずに二台で同じセーブを使えます。", /* welcome.what */
+        "同期はゲームを起動する前か終了した後に行ってください。実行中はできません。ゲームがセーブを掴んでいるため、そのとき書き込むと壊れます。", /* welcome.when */
     },
     /* zh-Hans */ {
         "DaeMoon", /* app.title */
@@ -384,6 +501,27 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "日期未知", /* backup.no_date */
         "还没有 {0} 的备份。", /* backup.none */
         "与主机上现在的存档相同", /* backup.same_as_console */
+        "把所有存档备份到 SD 卡", /* batch.backup */
+        "已备份 {0} 个，跳过 {1} 个，失败 {2} 个。", /* batch.backup_done */
+        "读取本列表里的每个存档，各写出一个包。主机和服务器上的东西都不会改动。", /* batch.backup_hint */
+        "把本列表里的 {0} 个存档全部备份到 SD 卡吗？", /* batch.confirm_backup */
+        "同步全部 {0} 个游戏吗？两边都变过时：{1}", /* batch.confirm_sync */
+        "同步全部 {0} 个游戏，凡是不一致的都取服务器的版本吗？本机的存档会被覆盖。每一个都会先备份到 SD 卡。", /* batch.confirm_sync_server */
+        "这个列表里没有可处理的内容。", /* batch.empty */
+        "A 开始   上下 移动   B 返回", /* batch.hint */
+        "B 做完这个游戏后停止", /* batch.hint_running */
+        "两边都变过时", /* batch.policy */
+        "逐个询问我", /* batch.policy_ask */
+        "和同步单个游戏时一样的对话框，每有一个不一致就弹一次。少数几个时合适，多了会累。", /* batch.policy_ask_hint */
+        "上传本机的", /* batch.policy_local */
+        "本机的存档作为新版本盖上去。服务器保留原有的一切，另一边随时还能取回。", /* batch.policy_local_hint */
+        "下载服务器的", /* batch.policy_server */
+        "用服务器的存档覆盖本机的。每一个都会先备份到 SD 卡，所以被覆盖的仍在卡上。", /* batch.policy_server_hint */
+        "{1} 个中的第 {0} 个", /* batch.running */
+        "已停止。此前完成的都已完成，没有留下写到一半的东西。", /* batch.stopped */
+        "把所有游戏与服务器同步", /* batch.sync */
+        "只有本机变过的上传，只有服务器变过的下载。两边都变过时怎么办，下一步再问。", /* batch.sync_hint */
+        "批量操作", /* batch.title */
         "取消", /* btn.cancel */
         "否", /* btn.no */
         "确定", /* btn.ok */
@@ -443,6 +581,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "正在读取图标", /* loading.icons */
         "正在读取游戏列表", /* loading.titles */
         "备份此存档", /* menu.backup */
+        "批量操作", /* menu.batch */
         "从备份恢复", /* menu.restore */
         "自检（会销毁此存档）", /* menu.selftest */
         "设置", /* menu.settings */
@@ -482,6 +621,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "设置", /* settings.title */
         "设备令牌", /* settings.token */
         "未设置", /* settings.unset */
+        "重新查看欢迎说明", /* settings.welcome */
         "冲突", /* sync.action_conflict */
         "下载", /* sync.action_download */
         "已是最新", /* sync.action_none */
@@ -495,6 +635,22 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "当前为内存受限的小程序模式。请在游戏之上启动本应用以使用全部功能。", /* warn.applet_mode */
         "同步前请先关闭游戏。游戏运行时同步会损坏存档。", /* warn.game_running */
         "{0} 会把存档绑定到本机。来自其他主机的存档可能被游戏删除。", /* warn.secure_value */
+        "连接到你的服务器", /* welcome.connect */
+        "在浏览器里登录面板，按下“添加主机”，就会显示一个代码。", /* welcome.connect_how */
+        "A 选择   上下 移动   START 跳过", /* welcome.hint_choose */
+        "A 下一步   START 跳过", /* welcome.hint_intro */
+        "没有连接任何东西，但备份到 SD 卡照样可用。服务器和配对都在设置里。", /* welcome.later */
+        "手动输入地址和代码", /* welcome.opt_code */
+        "摄像头读不到屏幕时用这个。用键盘输入两项，这条路总是行得通。", /* welcome.opt_code_hint */
+        "以后再说", /* welcome.opt_later */
+        "没有服务器也能备份到 SD 卡。这个画面上的选项在设置里随时都能再用。", /* welcome.opt_later_hint */
+        "扫描二维码", /* welcome.opt_qr */
+        "不用输入任何东西。代码里带着服务器地址，所以不必先设置地址。", /* welcome.opt_qr_hint */
+        "这台主机已连接。先拿一个不心疼的游戏做一次备份和还原，再把要紧的存档交给它。", /* welcome.ready */
+        "任何还原之前都会先做一份本地备份。冲突不会替你合并：两个版本都保留，由你来选。", /* welcome.safe */
+        "欢迎", /* welcome.title */
+        "DaeMoon 把这台主机的存档上传到你自己运行的服务器，也能取回来。不用换卡就能在两台主机上用同一份存档。", /* welcome.what */
+        "在开始游戏之前或退出之后同步，正在运行时不要同步。游戏占着存档，此时写入会把它弄坏。", /* welcome.when */
     },
     /* zh-Hant */ {
         "DaeMoon", /* app.title */
@@ -506,6 +662,27 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "日期不明", /* backup.no_date */
         "還沒有 {0} 的備份。", /* backup.none */
         "與主機上目前的存檔相同", /* backup.same_as_console */
+        "把所有存檔備份到 SD 卡", /* batch.backup */
+        "已備份 {0} 個，跳過 {1} 個，失敗 {2} 個。", /* batch.backup_done */
+        "讀取本清單裡的每個存檔，各寫出一個包。主機和伺服器上的東西都不會改動。", /* batch.backup_hint */
+        "把本清單裡的 {0} 個存檔全部備份到 SD 卡嗎？", /* batch.confirm_backup */
+        "同步全部 {0} 個遊戲嗎？兩邊都變過時：{1}", /* batch.confirm_sync */
+        "同步全部 {0} 個遊戲，凡是不一致的都取伺服器的版本嗎？本機的存檔會被覆蓋。每一個都會先備份到 SD 卡。", /* batch.confirm_sync_server */
+        "這個清單裡沒有可處理的內容。", /* batch.empty */
+        "A 開始   上下 移動   B 返回", /* batch.hint */
+        "B 做完這個遊戲後停止", /* batch.hint_running */
+        "兩邊都變過時", /* batch.policy */
+        "逐個詢問我", /* batch.policy_ask */
+        "和同步單個遊戲時一樣的對話框，每有一個不一致就彈一次。少數幾個時合適，多了會累。", /* batch.policy_ask_hint */
+        "上傳本機的", /* batch.policy_local */
+        "本機的存檔作為新版本蓋上去。伺服器保留原有的一切，另一邊隨時還能取回。", /* batch.policy_local_hint */
+        "下載伺服器的", /* batch.policy_server */
+        "用伺服器的存檔覆蓋本機的。每一個都會先備份到 SD 卡，所以被覆蓋的仍在卡上。", /* batch.policy_server_hint */
+        "{1} 個中的第 {0} 個", /* batch.running */
+        "已停止。此前完成的都已完成，沒有留下寫到一半的東西。", /* batch.stopped */
+        "把所有遊戲與伺服器同步", /* batch.sync */
+        "只有本機變過的上傳，只有伺服器變過的下載。兩邊都變過時怎麼辦，下一步再問。", /* batch.sync_hint */
+        "批次操作", /* batch.title */
         "取消", /* btn.cancel */
         "否", /* btn.no */
         "確定", /* btn.ok */
@@ -565,6 +742,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "正在讀取圖示", /* loading.icons */
         "正在讀取遊戲清單", /* loading.titles */
         "備份此存檔", /* menu.backup */
+        "批次操作", /* menu.batch */
         "從備份還原", /* menu.restore */
         "自我測試（會銷毀此存檔）", /* menu.selftest */
         "設定", /* menu.settings */
@@ -604,6 +782,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "設定", /* settings.title */
         "裝置權杖", /* settings.token */
         "未設定", /* settings.unset */
+        "重新查看歡迎說明", /* settings.welcome */
         "衝突", /* sync.action_conflict */
         "下載", /* sync.action_download */
         "已是最新", /* sync.action_none */
@@ -617,6 +796,22 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "目前為記憶體受限的小程式模式。請在遊戲之上啟動本程式以使用完整功能。", /* warn.applet_mode */
         "同步前請先關閉遊戲。遊戲執行中同步會損壞存檔。", /* warn.game_running */
         "{0} 會將存檔綁定到本機。來自其他主機的存檔可能被遊戲刪除。", /* warn.secure_value */
+        "連線到你的伺服器", /* welcome.connect */
+        "在瀏覽器裡登入面板，按下「新增主機」，就會顯示一個代碼。", /* welcome.connect_how */
+        "A 選擇   上下 移動   START 跳過", /* welcome.hint_choose */
+        "A 下一步   START 跳過", /* welcome.hint_intro */
+        "沒有連線任何東西，但備份到 SD 卡照樣可用。伺服器和配對都在設定裡。", /* welcome.later */
+        "手動輸入位址和代碼", /* welcome.opt_code */
+        "相機讀不到螢幕時用這個。用鍵盤輸入兩項，這條路總是行得通。", /* welcome.opt_code_hint */
+        "之後再說", /* welcome.opt_later */
+        "沒有伺服器也能備份到 SD 卡。這個畫面上的選項在設定裡隨時都能再用。", /* welcome.opt_later_hint */
+        "掃描 QR 碼", /* welcome.opt_qr */
+        "不用輸入任何東西。代碼裡帶著伺服器位址，所以不必先設定位址。", /* welcome.opt_qr_hint */
+        "這台主機已連線。先拿一個不心疼的遊戲做一次備份和還原，再把要緊的存檔交給它。", /* welcome.ready */
+        "任何還原之前都會先做一份本機備份。衝突不會替你合併：兩個版本都保留，由你來選。", /* welcome.safe */
+        "歡迎", /* welcome.title */
+        "DaeMoon 把這台主機的存檔上傳到你自己運行的伺服器，也能取回來。不用換卡就能在兩台主機上用同一份存檔。", /* welcome.what */
+        "在開始遊戲之前或退出之後同步，正在執行時不要同步。遊戲佔著存檔，此時寫入會把它弄壞。", /* welcome.when */
     },
     /* es */ {
         "DaeMoon", /* app.title */
@@ -628,6 +823,27 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "fecha desconocida", /* backup.no_date */
         "Todavía no hay ninguna copia de seguridad de {0}.", /* backup.none */
         "igual que la partida que hay ahora en la consola", /* backup.same_as_console */
+        "Copiar todas las partidas a la tarjeta SD", /* batch.backup */
+        "{0} copiadas, {1} omitidas, {2} fallidas.", /* batch.backup_done */
+        "Lee todas las partidas de esta biblioteca y escribe un paquete por cada una. No cambia nada en la consola ni en el servidor.", /* batch.backup_hint */
+        "¿Copiar las {0} partidas de esta biblioteca a la tarjeta SD?", /* batch.confirm_backup */
+        "¿Sincronizar los {0} juegos? Donde cambiaron ambos lados: {1}", /* batch.confirm_sync */
+        "¿Sincronizar los {0} juegos tomando la versión del servidor donde difieran? Se sobrescribirán partidas de esta consola. Cada una se copia antes a la tarjeta SD.", /* batch.confirm_sync_server */
+        "No hay nada en esta biblioteca sobre lo que trabajar.", /* batch.empty */
+        "A empezar   arriba/abajo mover   B atrás", /* batch.hint */
+        "B parar tras este juego", /* batch.hint_running */
+        "Cuando cambiaron ambos lados", /* batch.policy */
+        "Preguntarme una por una", /* batch.policy_ask */
+        "El mismo diálogo que muestra un juego suelto, una vez por cada uno que difiera. Va bien con unos pocos, cansa con muchos.", /* batch.policy_ask_hint */
+        "Subir las de esta consola", /* batch.policy_local */
+        "La partida de esta consola sube como una versión nueva. El servidor conserva todo lo que ya tenía, así que el otro lado sigue ahí para volver.", /* batch.policy_local_hint */
+        "Bajar las del servidor", /* batch.policy_server */
+        "La partida del servidor se escribe sobre la de esta consola. Cada una se copia antes a la tarjeta SD, así que lo reemplazado sigue en la tarjeta.", /* batch.policy_server_hint */
+        "{0} de {1}", /* batch.running */
+        "Detenido. Todo lo terminado antes de este punto está hecho y nada quedó a medio escribir.", /* batch.stopped */
+        "Sincronizar todos los juegos con el servidor", /* batch.sync */
+        "Sube lo que solo cambió en esta consola y baja lo que solo cambió en el servidor. Qué pasa cuando cambiaron los dos es la siguiente pregunta.", /* batch.sync_hint */
+        "Todos los juegos", /* batch.title */
         "Cancelar", /* btn.cancel */
         "No", /* btn.no */
         "Aceptar", /* btn.ok */
@@ -687,6 +903,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Leyendo los iconos", /* loading.icons */
         "Leyendo los juegos", /* loading.titles */
         "Copiar esta partida", /* menu.backup */
+        "Todos los juegos", /* menu.batch */
         "Restaurar desde una copia", /* menu.restore */
         "Autocomprobación (destruye esta partida)", /* menu.selftest */
         "Ajustes", /* menu.settings */
@@ -726,6 +943,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Ajustes", /* settings.title */
         "Token del dispositivo", /* settings.token */
         "sin definir", /* settings.unset */
+        "Volver a ver la bienvenida", /* settings.welcome */
         "Conflicto", /* sync.action_conflict */
         "Descargar", /* sync.action_download */
         "Al día", /* sync.action_none */
@@ -739,6 +957,22 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "En modo applet con memoria limitada. Abre la aplicación desde un juego para tener todas las funciones.", /* warn.applet_mode */
         "Cierra el juego antes de sincronizar. Sincronizar con el juego abierto daña la partida.", /* warn.game_running */
         "{0} vincula su partida a esta consola. El juego puede borrar una partida de otra consola.", /* warn.secure_value */
+        "Conecta con tu servidor", /* welcome.connect */
+        "Inicia sesión en el panel desde un navegador y pulsa Añadir consola. Aparecerá un código.", /* welcome.connect_how */
+        "A elegir   arriba/abajo mover   START saltar", /* welcome.hint_choose */
+        "A siguiente   START saltar", /* welcome.hint_intro */
+        "No hay nada conectado, y las copias en la tarjeta SD funcionan igual. En Ajustes están el servidor y el emparejamiento cuando los quieras.", /* welcome.later */
+        "Escribir la dirección y el código", /* welcome.opt_code */
+        "Para cuando la cámara no puede leer una pantalla. Dos cosas que escribir con el teclado, y siempre funciona.", /* welcome.opt_code_hint */
+        "Ahora no", /* welcome.opt_later */
+        "Hacer copias en la tarjeta SD funciona sin servidor. Ajustes tiene las opciones de esta pantalla cuando las quieras.", /* welcome.opt_later_hint */
+        "Escanear el código QR", /* welcome.opt_qr */
+        "No hay que escribir nada. El código lleva la dirección del servidor, así que no hace falta configurarla antes.", /* welcome.opt_qr_hint */
+        "Esta consola está conectada. Haz primero una copia y una restauración con un juego que no te importe, antes de confiarle uno que sí.", /* welcome.ready */
+        "Siempre se hace una copia local antes de restaurar nada, y un conflicto nunca se fusiona por ti: se guardan ambas versiones y eliges tú.", /* welcome.safe */
+        "Bienvenida", /* welcome.title */
+        "DaeMoon copia las partidas de esta consola a un servidor tuyo, y las trae de vuelta. La misma partida en dos consolas, sin mover la tarjeta.", /* welcome.what */
+        "Sincroniza antes de empezar un juego o después de salir, nunca mientras uno está en marcha. Un juego mantiene su partida abierta, y escribir entonces la rompe.", /* welcome.when */
     },
     /* fr */ {
         "DaeMoon", /* app.title */
@@ -750,6 +984,27 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "date inconnue", /* backup.no_date */
         "Aucune sauvegarde de {0} pour l'instant.", /* backup.none */
         "identique à la partie actuellement sur la console", /* backup.same_as_console */
+        "Sauvegarder toutes les parties sur la carte SD", /* batch.backup */
+        "{0} sauvegardées, {1} ignorées, {2} en échec.", /* batch.backup_done */
+        "Lit toutes les sauvegardes de cette bibliothèque et écrit un paquet pour chacune. Rien n'est modifié sur la console ni sur le serveur.", /* batch.backup_hint */
+        "Sauvegarder les {0} parties de cette bibliothèque sur la carte SD ?", /* batch.confirm_backup */
+        "Synchroniser les {0} jeux ? Là où les deux côtés ont changé : {1}", /* batch.confirm_sync */
+        "Synchroniser les {0} jeux en prenant la version du serveur là où elles diffèrent ? Des sauvegardes de cette console seront écrasées. Chacune est d'abord copiée sur la carte SD.", /* batch.confirm_sync_server */
+        "Il n'y a rien à traiter dans cette bibliothèque.", /* batch.empty */
+        "A démarrer   haut/bas déplacer   B retour", /* batch.hint */
+        "B arrêter après ce jeu", /* batch.hint_running */
+        "Quand les deux côtés ont changé", /* batch.policy */
+        "Me demander pour chacun", /* batch.policy_ask */
+        "La même boîte de dialogue qu'un jeu seul, une fois par jeu divergent. Bien pour quelques-uns, fatigant pour beaucoup.", /* batch.policy_ask_hint */
+        "Envoyer celles de cette console", /* batch.policy_local */
+        "La sauvegarde de cette console est envoyée comme nouvelle version. Le serveur garde tout ce qu'il avait, l'autre côté reste donc récupérable.", /* batch.policy_local_hint */
+        "Récupérer celles du serveur", /* batch.policy_server */
+        "La sauvegarde du serveur écrase celle de cette console. Chacune est d'abord copiée sur la carte SD, donc ce qui est remplacé y reste.", /* batch.policy_server_hint */
+        "{0} sur {1}", /* batch.running */
+        "Arrêté. Tout ce qui était terminé avant ce point l'est, et rien n'est resté à moitié écrit.", /* batch.stopped */
+        "Synchroniser tous les jeux avec le serveur", /* batch.sync */
+        "Envoie ce que seule cette console a changé et récupère ce que seul le serveur a changé. Ce qui se passe quand les deux ont changé est la question suivante.", /* batch.sync_hint */
+        "Tous les jeux", /* batch.title */
         "Annuler", /* btn.cancel */
         "Non", /* btn.no */
         "OK", /* btn.ok */
@@ -809,6 +1064,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Lecture des icônes", /* loading.icons */
         "Lecture des jeux", /* loading.titles */
         "Sauvegarder cette partie", /* menu.backup */
+        "Tous les jeux", /* menu.batch */
         "Restaurer depuis une sauvegarde", /* menu.restore */
         "Autotest (détruit cette partie)", /* menu.selftest */
         "Réglages", /* menu.settings */
@@ -848,6 +1104,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Réglages", /* settings.title */
         "Jeton de l'appareil", /* settings.token */
         "non défini", /* settings.unset */
+        "Revoir l'accueil", /* settings.welcome */
         "Conflit", /* sync.action_conflict */
         "Télécharger", /* sync.action_download */
         "À jour", /* sync.action_none */
@@ -861,6 +1118,22 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Mode applet avec mémoire limitée. Lancez l'application depuis un jeu pour accéder à toutes les fonctions.", /* warn.applet_mode */
         "Fermez le jeu avant de synchroniser. Synchroniser pendant une partie corrompt la sauvegarde.", /* warn.game_running */
         "{0} lie sa sauvegarde à cette console. Une sauvegarde venant d'une autre console peut être supprimée par le jeu.", /* warn.secure_value */
+        "Connecte-toi à ton serveur", /* welcome.connect */
+        "Connecte-toi au panneau dans un navigateur et appuie sur Ajouter une console. Un code s'affiche.", /* welcome.connect_how */
+        "A choisir   haut/bas déplacer   START passer", /* welcome.hint_choose */
+        "A suivant   START passer", /* welcome.hint_intro */
+        "Rien n'est connecté, et la sauvegarde sur carte SD fonctionne quand même. Le serveur et l'association sont dans Réglages quand tu veux.", /* welcome.later */
+        "Saisir l'adresse et le code", /* welcome.opt_code */
+        "Pour quand la caméra n'arrive pas à lire un écran. Deux choses à saisir au clavier, et ça marche toujours.", /* welcome.opt_code_hint */
+        "Pas maintenant", /* welcome.opt_later */
+        "La sauvegarde sur la carte SD fonctionne sans serveur. Les choix de cet écran sont dans Réglages quand tu veux.", /* welcome.opt_later_hint */
+        "Scanner le code QR", /* welcome.opt_qr */
+        "Rien à saisir. Le code contient l'adresse du serveur, donc aucune adresse n'est à régler d'abord.", /* welcome.opt_qr_hint */
+        "Cette console est connectée. Fais d'abord une sauvegarde et une restauration sur un jeu qui ne compte pas, avant de lui confier celui qui compte.", /* welcome.ready */
+        "Une sauvegarde locale est toujours faite avant toute restauration, et un conflit n'est jamais fusionné à ta place : les deux versions sont gardées et tu choisis.", /* welcome.safe */
+        "Bienvenue", /* welcome.title */
+        "DaeMoon copie les sauvegardes de cette console vers un serveur que tu héberges, et les ramène. La même sauvegarde sur deux consoles, sans déplacer la carte.", /* welcome.what */
+        "Synchronise avant de lancer un jeu ou après l'avoir quitté, jamais pendant qu'il tourne. Un jeu garde sa sauvegarde ouverte, et y écrire à ce moment la casse.", /* welcome.when */
     },
     /* de */ {
         "DaeMoon", /* app.title */
@@ -872,6 +1145,27 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Datum unbekannt", /* backup.no_date */
         "Noch keine Sicherung von {0}.", /* backup.none */
         "identisch mit dem Spielstand, der jetzt auf der Konsole liegt", /* backup.same_as_console */
+        "Alle Spielstände auf die SD-Karte sichern", /* batch.backup */
+        "{0} gesichert, {1} übersprungen, {2} fehlgeschlagen.", /* batch.backup_done */
+        "Liest jeden Spielstand dieser Bibliothek und schreibt je ein Paket. Auf Konsole und Server ändert sich nichts.", /* batch.backup_hint */
+        "Alle {0} Spielstände dieser Bibliothek auf die SD-Karte sichern?", /* batch.confirm_backup */
+        "Alle {0} Titel abgleichen? Wo beide Seiten geändert wurden: {1}", /* batch.confirm_sync */
+        "Alle {0} Titel abgleichen und überall dort die Version des Servers nehmen, wo sie sich unterscheiden? Spielstände auf dieser Konsole werden überschrieben. Jeder wird vorher auf die SD-Karte gesichert.", /* batch.confirm_sync_server */
+        "In dieser Bibliothek gibt es nichts zu tun.", /* batch.empty */
+        "A starten   hoch/runter bewegen   B zurück", /* batch.hint */
+        "B nach diesem Titel anhalten", /* batch.hint_running */
+        "Wenn beide Seiten geändert wurden", /* batch.policy */
+        "Bei jedem nachfragen", /* batch.policy_ask */
+        "Derselbe Dialog wie bei einem einzelnen Titel, einmal je abweichendem Titel. Bei wenigen richtig, bei vielen ermüdend.", /* batch.policy_ask_hint */
+        "Die dieser Konsole hochladen", /* batch.policy_local */
+        "Der Spielstand dieser Konsole kommt als neue Version obenauf. Der Server behält alles, was er hatte, die andere Seite bleibt also erreichbar.", /* batch.policy_local_hint */
+        "Die des Servers herunterladen", /* batch.policy_server */
+        "Der Spielstand des Servers wird über den dieser Konsole geschrieben. Jeder wird vorher auf die SD-Karte gesichert, das Ersetzte bleibt also auf der Karte.", /* batch.policy_server_hint */
+        "{0} von {1}", /* batch.running */
+        "Angehalten. Alles vor diesem Punkt Abgeschlossene ist fertig, und nichts blieb halb geschrieben.", /* batch.stopped */
+        "Alle Titel mit dem Server abgleichen", /* batch.sync */
+        "Lädt hoch, was nur diese Konsole geändert hat, und herunter, was nur der Server geändert hat. Was passiert, wenn beide geändert haben, ist die nächste Frage.", /* batch.sync_hint */
+        "Alle Titel", /* batch.title */
         "Abbrechen", /* btn.cancel */
         "Nein", /* btn.no */
         "OK", /* btn.ok */
@@ -931,6 +1225,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Symbole werden gelesen", /* loading.icons */
         "Titel werden gelesen", /* loading.titles */
         "Diesen Spielstand sichern", /* menu.backup */
+        "Alle Titel", /* menu.batch */
         "Aus einer Sicherung wiederherstellen", /* menu.restore */
         "Selbsttest (zerstört diesen Spielstand)", /* menu.selftest */
         "Einstellungen", /* menu.settings */
@@ -970,6 +1265,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Einstellungen", /* settings.title */
         "Gerätetoken", /* settings.token */
         "nicht gesetzt", /* settings.unset */
+        "Willkommen erneut anzeigen", /* settings.welcome */
         "Konflikt", /* sync.action_conflict */
         "Herunterladen", /* sync.action_download */
         "Aktuell", /* sync.action_none */
@@ -983,6 +1279,22 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Applet-Modus mit stark begrenztem Speicher. Starte die Anwendung über ein Spiel, um alle Funktionen zu nutzen.", /* warn.applet_mode */
         "Beende das Spiel vor dem Abgleich. Ein Abgleich bei laufendem Spiel beschädigt den Spielstand.", /* warn.game_running */
         "{0} bindet seinen Spielstand an diese Konsole. Ein Spielstand von einer anderen Konsole kann vom Spiel gelöscht werden.", /* warn.secure_value */
+        "Mit deinem Server verbinden", /* welcome.connect */
+        "Melde dich im Browser am Panel an und drücke Konsole hinzufügen. Es zeigt einen Code.", /* welcome.connect_how */
+        "A wählen   hoch/runter bewegen   START überspringen", /* welcome.hint_choose */
+        "A weiter   START überspringen", /* welcome.hint_intro */
+        "Es ist nichts verbunden, und Sichern auf die SD-Karte funktioniert trotzdem. Server und Verbindung stehen in den Einstellungen bereit.", /* welcome.later */
+        "Adresse und Code eintippen", /* welcome.opt_code */
+        "Für den Fall, dass die Kamera einen Bildschirm nicht lesen kann. Zwei Dinge über die Tastatur, und es klappt immer.", /* welcome.opt_code_hint */
+        "Jetzt nicht", /* welcome.opt_later */
+        "Sichern auf die SD-Karte geht auch ohne Server. Die Auswahl dieses Bildschirms steht jederzeit in den Einstellungen.", /* welcome.opt_later_hint */
+        "QR-Code scannen", /* welcome.opt_qr */
+        "Nichts zu tippen. Der Code enthält die Serveradresse, es muss also vorher keine Adresse gesetzt werden.", /* welcome.opt_qr_hint */
+        "Diese Konsole ist verbunden. Sichere und stelle zuerst ein Spiel wieder her, an dem dir nichts liegt, bevor du ihr eines anvertraust, an dem dir etwas liegt.", /* welcome.ready */
+        "Vor jeder Wiederherstellung wird zuerst lokal gesichert, und ein Konflikt wird nie für dich zusammengeführt: beide Fassungen bleiben, und du entscheidest.", /* welcome.safe */
+        "Willkommen", /* welcome.title */
+        "DaeMoon kopiert die Spielstände dieser Konsole auf einen Server, den du selbst betreibst, und holt sie zurück. Derselbe Spielstand auf zwei Konsolen, ohne die Karte zu tauschen.", /* welcome.what */
+        "Synchronisiere vor dem Start eines Spiels oder nach dem Beenden, nie während eines läuft. Ein Spiel hält seinen Spielstand offen, und ein Schreibzugriff zerstört ihn dann.", /* welcome.when */
     },
 };
 

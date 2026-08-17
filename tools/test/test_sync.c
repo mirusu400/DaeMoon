@@ -451,6 +451,237 @@ TEST_CASE(conflict_keeping_the_server_copy_backs_up_first)
     fixture_close(&f);
 }
 
+/* A policy answers the conflict without asking, and answers it the same way the
+ * dialog would have. These are the two that a run over a whole library offers, and
+ * the property that makes them safe is that neither loses a version. */
+TEST_CASE(a_policy_of_keeping_local_never_asks_and_keeps_every_server_version)
+{
+    fixture_t f;
+    daemoon_sync_opts_t opts = { DAEMOON_CONFLICT_POLICY_ASK, 0 };
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+    char buf[256];
+
+    CHECK_EQ_INT(fixture_open(&f, "policy-local"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    make_conflict(&f, t);
+
+    /* Answering DEFER would be the outcome if the dialog were reached, so the
+     * result below is only possible if it was not. */
+    f.ui.choose_answer = DAEMOON_CONFLICT_DEFER;
+    memset(&stats, 0, sizeof(stats));
+    opts.conflict = DAEMOON_CONFLICT_POLICY_KEEP_LOCAL;
+    CHECK_OK(daemoon_sync_title_with(&f.env, &f.actx, t, &opts, &stats));
+
+    CHECK_EQ_INT(f.ui.chooses, 0);
+    CHECK_EQ_INT(stats.uploaded, 1);
+    CHECK_EQ_INT(stats.conflicts, 0);
+
+    /* Nothing was discarded: the server's two versions are still there under the
+     * new one. This is what makes the policy recoverable rather than a force flag. */
+    CHECK_EQ_INT(f.server.titles[0].nversions, 3);
+    CHECK_EQ_INT(f.server.titles[0].latest_version, 3);
+    CHECK_EQ_INT(fixture_read_save_file(&f, t, "main.sav", buf, sizeof(buf)), 0);
+    CHECK_STR(buf, "local progress");
+
+    fixture_close(&f);
+}
+
+TEST_CASE(a_policy_of_keeping_the_server_still_backs_the_console_up_first)
+{
+    fixture_t f;
+    daemoon_sync_opts_t opts = { DAEMOON_CONFLICT_POLICY_ASK, 0 };
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+    char buf[256];
+
+    CHECK_EQ_INT(fixture_open(&f, "policy-server"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    make_conflict(&f, t);
+
+    f.ui.choose_answer = DAEMOON_CONFLICT_DEFER;
+    memset(&stats, 0, sizeof(stats));
+    opts.conflict = DAEMOON_CONFLICT_POLICY_KEEP_SERVER;
+    CHECK_OK(daemoon_sync_title_with(&f.env, &f.actx, t, &opts, &stats));
+
+    CHECK_EQ_INT(f.ui.chooses, 0);
+    CHECK_EQ_INT(stats.downloaded, 1);
+    CHECK_EQ_INT(fixture_read_save_file(&f, t, "main.sav", buf, sizeof(buf)), 0);
+    CHECK_STR(buf, "server side progress");
+
+    /* Rule 1 does not bend for a policy. The save that was overwritten is on the
+     * card, which is the whole reason this option can be offered at all. */
+    CHECK(fixture_backup_count(&f) >= 1);
+
+    fixture_close(&f);
+}
+
+/* A conflict policy on its own does not touch the restore confirmation. Answering
+ * "which side wins" is not answering "overwrite this console's save": a caller has
+ * to say so separately, and this is what says the two are separate. */
+TEST_CASE(a_policy_alone_does_not_skip_the_confirmation_before_a_restore)
+{
+    fixture_t f;
+    daemoon_sync_opts_t opts = { DAEMOON_CONFLICT_POLICY_ASK, 0 };
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+    char buf[256];
+
+    CHECK_EQ_INT(fixture_open(&f, "policy-confirm"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    make_conflict(&f, t);
+
+    f.ui.choose_answer = DAEMOON_CONFLICT_DEFER;
+    f.ui.confirm_answer = 0;
+    memset(&stats, 0, sizeof(stats));
+    opts.conflict = DAEMOON_CONFLICT_POLICY_KEEP_SERVER;
+    opts.upload_confirmed = 1;
+    (void)daemoon_sync_title_with(&f.env, &f.actx, t, &opts, &stats);
+
+    CHECK(f.ui.confirms > 0);
+    CHECK_EQ_INT(stats.downloaded, 0);
+    /* Refused, so the console still holds its own save. */
+    CHECK_EQ_INT(fixture_read_save_file(&f, t, "main.sav", buf, sizeof(buf)), 0);
+    CHECK_STR(buf, "local progress");
+
+    fixture_close(&f);
+}
+
+/* A run over a library answers the upload question once. Every title that only
+ * moved here goes up without a dialog of its own. */
+TEST_CASE(an_answered_upload_question_is_not_asked_again_per_title)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+    daemoon_sync_opts_t opts = { DAEMOON_CONFLICT_POLICY_ASK, 1 };
+
+    CHECK_EQ_INT(fixture_open(&f, "opts-upload"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    (void)fixture_write_save_file(&f, t, "main.sav", "only here");
+
+    /* Refusing every confirmation, so an upload that happens anyway is one that was
+     * never asked about. */
+    f.ui.confirm_answer = 0;
+    memset(&stats, 0, sizeof(stats));
+    CHECK_OK(daemoon_sync_title_with(&f.env, &f.actx, t, &opts, &stats));
+
+    CHECK_EQ_INT(f.ui.confirms, 0);
+    CHECK_EQ_INT(stats.uploaded, 1);
+    CHECK_EQ_INT(f.server.titles[0].nversions, 1);
+
+    fixture_close(&f);
+}
+
+/* And without it the question is asked, which is what the single title path does. */
+TEST_CASE(the_upload_question_is_asked_when_it_has_not_been_answered)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+
+    CHECK_EQ_INT(fixture_open(&f, "opts-upload-ask"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    (void)fixture_write_save_file(&f, t, "main.sav", "only here");
+
+    f.ui.confirm_answer = 0;
+    memset(&stats, 0, sizeof(stats));
+    CHECK_EQ_INT((int)daemoon_sync_title(&f.env, &f.actx, t, &stats),
+                 (int)DAEMOON_ERR_USER_CANCELLED);
+
+    CHECK_EQ_INT(f.ui.confirms, 1);
+    CHECK_EQ_INT(stats.uploaded, 0);
+    CHECK_EQ_INT(f.server.uploads, 0);
+
+    fixture_close(&f);
+}
+
+/* And with it, a run that already asked does not ask again. This is rule 7 being
+ * answered once for a batch rather than bypassed: the caller has shown a sentence
+ * naming the count and saying that saves will be overwritten.
+ *
+ * The two things that must survive it are checked here, because they are what make
+ * the answer recoverable rather than final: the save is on the card afterwards, and
+ * the server still holds the version that was replaced. */
+TEST_CASE(an_answered_restore_question_is_not_asked_again_but_the_backup_still_happens)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+    daemoon_sync_opts_t opts = { DAEMOON_CONFLICT_POLICY_KEEP_SERVER, 1, 1 };
+    char buf[256];
+
+    CHECK_EQ_INT(fixture_open(&f, "opts-restore"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    make_conflict(&f, t);
+
+    /* Every dialog answers no, so anything that happens was never asked about. */
+    f.ui.confirm_answer = 0;
+    f.ui.choose_answer = DAEMOON_CONFLICT_DEFER;
+    memset(&stats, 0, sizeof(stats));
+    CHECK_OK(daemoon_sync_title_with(&f.env, &f.actx, t, &opts, &stats));
+
+    CHECK_EQ_INT(f.ui.confirms, 0);
+    CHECK_EQ_INT(f.ui.chooses, 0);
+    CHECK_EQ_INT(stats.downloaded, 1);
+    CHECK_EQ_INT(fixture_read_save_file(&f, t, "main.sav", buf, sizeof(buf)), 0);
+    CHECK_STR(buf, "server side progress");
+
+    /* Rule 1 does not have a field and cannot be turned off. The save that was
+     * overwritten is on the card. */
+    CHECK(fixture_backup_count(&f) >= 1);
+    /* And the other side is still on the server, so neither version is gone. */
+    CHECK_EQ_INT(f.server.titles[0].nversions, 2);
+
+    fixture_close(&f);
+}
+
+/* The published restore always asks, whatever a batch elsewhere has answered. A
+ * caller holding a package has not been through a screen that named a count. */
+TEST_CASE(the_published_restore_has_no_way_to_skip_its_question)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    char pkg_path[DAEMOON_PATH_MAX];
+    char buf[256];
+
+    CHECK_EQ_INT(fixture_open(&f, "restore-always-asks"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    (void)fixture_write_save_file(&f, t, "main.sav", "what is there now");
+    CHECK_OK(daemoon_sync_backup_local(&f.env, &f.actx, t, pkg_path, sizeof(pkg_path)));
+    (void)fixture_write_save_file(&f, t, "main.sav", "changed since");
+
+    f.ui.confirm_answer = 0;
+    CHECK_EQ_INT((int)daemoon_sync_restore_package(&f.env, &f.actx, t, pkg_path),
+                 (int)DAEMOON_ERR_USER_CANCELLED);
+    CHECK(f.ui.confirms > 0);
+    CHECK_EQ_INT(fixture_read_save_file(&f, t, "main.sav", buf, sizeof(buf)), 0);
+    CHECK_STR(buf, "changed since");
+
+    fixture_close(&f);
+}
+
+/* The plain entry point is the asking one. A caller that has not thought about
+ * policies gets the behaviour the rules describe. */
+TEST_CASE(sync_title_is_the_asking_policy)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+
+    CHECK_EQ_INT(fixture_open(&f, "policy-default"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    make_conflict(&f, t);
+
+    f.ui.choose_answer = DAEMOON_CONFLICT_DEFER;
+    memset(&stats, 0, sizeof(stats));
+    CHECK_OK(daemoon_sync_title(&f.env, &f.actx, t, &stats));
+    CHECK_EQ_INT(f.ui.chooses, 1);
+    CHECK_EQ_INT(stats.conflicts, 1);
+
+    fixture_close(&f);
+}
+
 TEST_CASE(conflict_deferring_touches_nothing)
 {
     fixture_t f;
@@ -696,6 +927,14 @@ void test_sync(void)
     RUN(conflict_keeping_local_uploads_without_discarding_the_server_copy);
     RUN(conflict_keeping_the_server_copy_backs_up_first);
     RUN(conflict_deferring_touches_nothing);
+    RUN(a_policy_of_keeping_local_never_asks_and_keeps_every_server_version);
+    RUN(a_policy_of_keeping_the_server_still_backs_the_console_up_first);
+    RUN(a_policy_alone_does_not_skip_the_confirmation_before_a_restore);
+    RUN(an_answered_upload_question_is_not_asked_again_per_title);
+    RUN(the_upload_question_is_asked_when_it_has_not_been_answered);
+    RUN(an_answered_restore_question_is_not_asked_again_but_the_backup_still_happens);
+    RUN(the_published_restore_has_no_way_to_skip_its_question);
+    RUN(sync_title_is_the_asking_policy);
     RUN(cancelling_the_conflict_dialog_is_the_same_as_deferring);
     RUN(a_race_at_upload_time_becomes_a_conflict_not_an_overwrite);
     RUN(env_validation_rejects_a_half_wired_environment);

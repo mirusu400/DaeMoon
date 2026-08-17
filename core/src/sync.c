@@ -498,8 +498,18 @@ static daemoon_result_t check_not_running(const daemoon_env_t *env, const daemoo
     return DAEMOON_OK;
 }
 
-daemoon_result_t daemoon_sync_restore_package(const daemoon_env_t *env, daemoon_archive_ctx_t *actx,
-                                              const daemoon_title_t *title, const char *pkg_path)
+/* The restore, with the one question it asks made optional.
+ *
+ * `confirmed` is only ever set by a run that already asked, with a count and with
+ * the sentence about overwriting in front of the person. Everything below the
+ * question is unconditional and stays that way: the warning about a secure value,
+ * the local backup that has to succeed, the digest check before a byte is written,
+ * the commit afterwards. Rule 1 is what makes this survivable, and no caller can
+ * turn it off.
+ */
+static daemoon_result_t restore_package(const daemoon_env_t *env, daemoon_archive_ctx_t *actx,
+                                        const daemoon_title_t *title, const char *pkg_path,
+                                        int confirmed)
 {
     daemoon_manifest_t m;
     daemoon_str_ref_t ask;
@@ -520,9 +530,11 @@ daemoon_result_t daemoon_sync_restore_package(const daemoon_env_t *env, daemoon_
         notify(env, DAEMOON_STR_WARN_SECURE_VALUE, title->name);
     }
 
-    str_ref(&ask, DAEMOON_STR_CONFIRM_RESTORE, title->name, NULL);
-    if (!env->ui->confirm(env->ui_ctx, &ask)) {
-        return DAEMOON_ERR_USER_CANCELLED;
+    if (!confirmed) {
+        str_ref(&ask, DAEMOON_STR_CONFIRM_RESTORE, title->name, NULL);
+        if (!env->ui->confirm(env->ui_ctx, &ask)) {
+            return DAEMOON_ERR_USER_CANCELLED;
+        }
     }
 
     /* 1. Back up first. If the backup fails, the restore does not happen.
@@ -646,7 +658,8 @@ static daemoon_result_t do_upload(const daemoon_env_t *env, daemoon_archive_ctx_
 static daemoon_result_t do_download(const daemoon_env_t *env, daemoon_archive_ctx_t *actx,
                                     const daemoon_title_t *title,
                                     const daemoon_remote_meta_t *remote,
-                                    daemoon_local_state_t *local)
+                                    daemoon_local_state_t *local,
+                                    int restore_confirmed)
 {
     char path[SYNC_PATH_MAX];
     char tmp[SYNC_PATH_MAX];
@@ -706,7 +719,7 @@ static daemoon_result_t do_download(const daemoon_env_t *env, daemoon_archive_ct
         }
     }
 
-    r = daemoon_sync_restore_package(env, actx, title, path);
+    r = restore_package(env, actx, title, path, restore_confirmed);
     (void)env->fs->remove(env->fs_ctx, path);
     if (r != DAEMOON_OK) {
         return r;
@@ -717,19 +730,27 @@ static daemoon_result_t do_download(const daemoon_env_t *env, daemoon_archive_ct
     return daemoon_sync_state_save(env, title->platform, title->id, local);
 }
 
+daemoon_result_t daemoon_sync_restore_package(const daemoon_env_t *env, daemoon_archive_ctx_t *actx,
+                                              const daemoon_title_t *title, const char *pkg_path)
+{
+    /* The published entry point always asks. A caller holding a package and a title
+     * has not been through a screen that said how many saves are about to be
+     * overwritten, so it does not get to skip the question. */
+    return restore_package(env, actx, title, pkg_path, 0);
+}
+
 /* ---------------------------------------------------------------- conflict */
 
-static daemoon_result_t resolve_conflict(const daemoon_env_t *env, daemoon_archive_ctx_t *actx,
-                                         const daemoon_title_t *title,
-                                         const daemoon_remote_meta_t *remote,
-                                         daemoon_local_state_t *local,
-                                         daemoon_sync_stats_t *stats)
+/* The dialog. Both sides described well enough to tell apart: a choice between two
+ * saves that says nothing about either is not a choice. */
+static int ask_conflict(const daemoon_env_t *env, const daemoon_title_t *title,
+                        const daemoon_remote_meta_t *remote,
+                        const daemoon_local_state_t *local)
 {
     daemoon_str_ref_t msg;
     daemoon_str_ref_t opts[3];
     char local_size[24];
     char remote_size[24];
-    int choice;
 
     daemoon_fmt_bytes(local_size, sizeof(local_size), local->size);
     daemoon_fmt_bytes(remote_size, sizeof(remote_size), remote->size);
@@ -743,7 +764,35 @@ static daemoon_result_t resolve_conflict(const daemoon_env_t *env, daemoon_archi
             remote->device_label[0] != '\0' ? remote->device_label : remote->received_at);
     str_ref(&opts[2], DAEMOON_STR_CONFLICT_KEEP_BOTH, NULL, NULL);
 
-    choice = env->ui->choose(env->ui_ctx, &msg, opts, 3);
+    return env->ui->choose(env->ui_ctx, &msg, opts, 3);
+}
+
+static daemoon_result_t resolve_conflict(const daemoon_env_t *env, daemoon_archive_ctx_t *actx,
+                                         const daemoon_title_t *title,
+                                         const daemoon_remote_meta_t *remote,
+                                         daemoon_local_state_t *local,
+                                         daemoon_conflict_policy_t policy,
+                                         int restore_confirmed,
+                                         daemoon_sync_stats_t *stats)
+{
+    int choice;
+
+    /* A policy answers the question that ask_conflict would have asked, and nothing
+     * else. Everything below is the same code either way: the same upload, which
+     * leaves every server version in place, and the same download, which goes
+     * through a restore that backs the console's save up first. */
+    switch (policy) {
+    case DAEMOON_CONFLICT_POLICY_KEEP_LOCAL:
+        choice = DAEMOON_CONFLICT_KEEP_LOCAL;
+        break;
+    case DAEMOON_CONFLICT_POLICY_KEEP_SERVER:
+        choice = DAEMOON_CONFLICT_KEEP_SERVER;
+        break;
+    case DAEMOON_CONFLICT_POLICY_ASK:
+    default:
+        choice = ask_conflict(env, title, remote, local);
+        break;
+    }
     if (choice < 0 || choice == DAEMOON_CONFLICT_DEFER) {
         /* Both versions stay where they are. Nothing is merged and nothing is lost. */
         stats->conflicts++;
@@ -765,7 +814,7 @@ static daemoon_result_t resolve_conflict(const daemoon_env_t *env, daemoon_archi
     }
 
     {
-        daemoon_result_t r = do_download(env, actx, title, remote, local);
+        daemoon_result_t r = do_download(env, actx, title, remote, local, restore_confirmed);
         if (r == DAEMOON_OK) {
             stats->downloaded++;
         }
@@ -778,6 +827,20 @@ static daemoon_result_t resolve_conflict(const daemoon_env_t *env, daemoon_archi
 daemoon_result_t daemoon_sync_title(const daemoon_env_t *env, daemoon_archive_ctx_t *actx,
                                     const daemoon_title_t *title, daemoon_sync_stats_t *stats)
 {
+    return daemoon_sync_title_with(env, actx, title, NULL, stats);
+}
+
+daemoon_result_t daemoon_sync_title_with(const daemoon_env_t *env, daemoon_archive_ctx_t *actx,
+                                         const daemoon_title_t *title,
+                                         const daemoon_sync_opts_t *opts,
+                                         daemoon_sync_stats_t *stats)
+{
+    /* NULL is "ask about everything", so a caller that has not thought about any of
+     * this gets the behaviour the rules describe. */
+    static const daemoon_sync_opts_t k_ask_everything = {
+        DAEMOON_CONFLICT_POLICY_ASK, 0, 0
+    };
+
     daemoon_local_state_t local;
     daemoon_remote_meta_t remote;
     daemoon_sync_stats_t dummy;
@@ -787,6 +850,9 @@ daemoon_result_t daemoon_sync_title(const daemoon_env_t *env, daemoon_archive_ct
 
     if (env == NULL || actx == NULL || title == NULL) {
         return DAEMOON_ERR_INVALID_REQUEST;
+    }
+    if (opts == NULL) {
+        opts = &k_ask_everything;
     }
     if (stats == NULL) {
         memset(&dummy, 0, sizeof(dummy));
@@ -816,10 +882,17 @@ daemoon_result_t daemoon_sync_title(const daemoon_env_t *env, daemoon_archive_ct
     case DAEMOON_SYNC_UPLOAD: {
         daemoon_conflict_t conflict;
 
-        str_ref(&ask, DAEMOON_STR_CONFIRM_UPLOAD, title->name, NULL);
-        if (!env->ui->confirm(env->ui_ctx, &ask)) {
-            stats->skipped++;
-            return DAEMOON_ERR_USER_CANCELLED;
+        /* Already answered, when a run over a library asked once with the count in
+         * front of the person. Nothing on the console changes here and the server
+         * adds a version rather than replacing one, so this is a question about
+         * intent - and asking it forty more times does not make the answer better
+         * informed. */
+        if (!opts->upload_confirmed) {
+            str_ref(&ask, DAEMOON_STR_CONFIRM_UPLOAD, title->name, NULL);
+            if (!env->ui->confirm(env->ui_ctx, &ask)) {
+                stats->skipped++;
+                return DAEMOON_ERR_USER_CANCELLED;
+            }
         }
 
         memset(&conflict, 0, sizeof(conflict));
@@ -829,7 +902,8 @@ daemoon_result_t daemoon_sync_title(const daemoon_env_t *env, daemoon_archive_ct
             /* Someone else uploaded between the check and the upload. Re-read and
              * hand it to the user rather than overwriting. */
             DAEMOON_TRY(daemoon_api_get_latest(env, title->platform, title->id, &remote));
-            return resolve_conflict(env, actx, title, &remote, &local, stats);
+            return resolve_conflict(env, actx, title, &remote, &local, opts->conflict,
+                                opts->restore_confirmed, stats);
         }
         if (r != DAEMOON_OK) {
             stats->failed++;
@@ -840,7 +914,7 @@ daemoon_result_t daemoon_sync_title(const daemoon_env_t *env, daemoon_archive_ct
     }
 
     case DAEMOON_SYNC_DOWNLOAD:
-        r = do_download(env, actx, title, &remote, &local);
+        r = do_download(env, actx, title, &remote, &local, opts->restore_confirmed);
         if (r != DAEMOON_OK) {
             if (r != DAEMOON_ERR_USER_CANCELLED) {
                 stats->failed++;
@@ -852,7 +926,8 @@ daemoon_result_t daemoon_sync_title(const daemoon_env_t *env, daemoon_archive_ct
 
     case DAEMOON_SYNC_CONFLICT:
     default:
-        r = resolve_conflict(env, actx, title, &remote, &local, stats);
+        r = resolve_conflict(env, actx, title, &remote, &local, opts->conflict,
+                             opts->restore_confirmed, stats);
         if (r != DAEMOON_OK && r != DAEMOON_ERR_USER_CANCELLED) {
             stats->failed++;
         }

@@ -66,6 +66,25 @@ typedef enum {
     DAEMOON_CONFLICT_DEFER
 } daemoon_conflict_choice_t;
 
+/* How a conflict is answered.
+ *
+ * ASK is what a single title does and what the rules describe: the user chooses and
+ * both versions are kept. The other two exist for a run that covers a whole
+ * library, where being asked once per title is not a decision anybody makes forty
+ * times - it is a dialog somebody holds A through, which is worse than choosing.
+ *
+ * Neither of them merges and neither discards a version. KEEP_LOCAL uploads on top,
+ * and the server keeps everything it had. KEEP_SERVER downloads, and the restore it
+ * goes through backs the console's save up to the SD card first, exactly as rule 1
+ * requires. So both sides of every conflict still exist afterwards, which is the
+ * property the "never auto merge" rule is protecting.
+ */
+typedef enum {
+    DAEMOON_CONFLICT_POLICY_ASK = 0,
+    DAEMOON_CONFLICT_POLICY_KEEP_LOCAL,
+    DAEMOON_CONFLICT_POLICY_KEEP_SERVER
+} daemoon_conflict_policy_t;
+
 typedef struct {
     unsigned uploaded;
     unsigned downloaded;
@@ -85,6 +104,53 @@ typedef struct {
  */
 daemoon_result_t daemoon_sync_title(const daemoon_env_t *env, daemoon_archive_ctx_t *actx,
                                     const daemoon_title_t *title, daemoon_sync_stats_t *stats);
+
+/* The questions a run over many titles has already asked.
+ *
+ * Both fields exist because asking per title turns a decision into a reflex when the
+ * run covers a library, and a person holding A through forty dialogs is not somebody
+ * who was consulted. What they may replace is carefully bounded:
+ *
+ *   conflict        - which side wins. Neither answer merges and neither discards a
+ *                     version. See daemoon_conflict_policy_t.
+ *   upload_confirmed - the "send this save to the server?" question. An upload is not
+ *                     destructive: nothing on the console changes, and the server
+ *                     adds a version rather than replacing one. The question is about
+ *                     intent, and the caller states that it has been answered.
+ *   restore_confirmed - the "overwrite this console's save?" question. This one is
+ *                     rule 7, and setting it is a real decision rather than a
+ *                     convenience, so a caller that does has obligations:
+ *
+ *                       - it asked, and the sentence it asked said that saves on the
+ *                         console will be overwritten and how many
+ *                       - it is a run the person started deliberately, not a step
+ *                         inside something else
+ *
+ *                     What does not move is rule 1. Every restore still backs the
+ *                     console's save up to local storage first and still aborts if
+ *                     that backup fails, so what gets overwritten is recoverable.
+ *                     That is the whole reason this field can exist at all, and it
+ *                     is why there is no field that turns the backup off.
+ *
+ * daemoon_sync_restore_package - the published restore - always asks. A caller
+ * holding a package has not been through such a screen.
+ */
+typedef struct {
+    daemoon_conflict_policy_t conflict;
+    int                       upload_confirmed;
+    int                       restore_confirmed;
+} daemoon_sync_opts_t;
+
+/* The same thing, with those questions answered in advance. NULL opts means ask
+ * about everything, which is what daemoon_sync_title passes.
+ *
+ * Every other guarantee is identical: the confirmation before a restore, the local
+ * backup, the digest check, the commit.
+ */
+daemoon_result_t daemoon_sync_title_with(const daemoon_env_t *env, daemoon_archive_ctx_t *actx,
+                                         const daemoon_title_t *title,
+                                         const daemoon_sync_opts_t *opts,
+                                         daemoon_sync_stats_t *stats);
 
 /* Back up a title's save into work_dir/backups without touching the server. This is
  * the whole of Phase 1 and the first half of every restore. out_path receives the

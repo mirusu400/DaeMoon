@@ -66,6 +66,19 @@ unsigned int __stacksize__ = 256 * 1024;
 static unsigned char g_scratch[64 * 1024];
 static daemoon_archive_ctx_t g_archive;
 
+/* The tally for a run over a whole library.
+ *
+ * A file scope structure rather than something threaded through batch.c, because
+ * batch.c drives the loop and counting is not its business: it knows how many
+ * titles there are and which one is in flight, and what each one turned into is
+ * this file's answer to give. */
+static struct {
+    unsigned ok;
+    unsigned skipped;
+    unsigned failed;
+    daemoon_sync_stats_t sync;
+} g_batch;
+
 static daemoon_3ds_save_ctx_t g_save_ctx;
 static daemoon_3ds_nds_ctx_t  g_nds_ctx;
 static daemoon_3ds_net_ctx_t  g_net_ctx;
@@ -396,9 +409,9 @@ static void draw_grid(void)
 static void draw_details(u32 down, touchPosition touch, int *out_action)
 {
     static const daemoon_str_id_t labels[] = {
-        DAEMOON_STR_MENU_BACKUP,   DAEMOON_STR_MENU_RESTORE,
-        DAEMOON_STR_MENU_SYNC,     DAEMOON_STR_MENU_SURVEY,
-        DAEMOON_STR_MENU_SELFTEST, DAEMOON_STR_MENU_SETTINGS
+        DAEMOON_STR_MENU_BACKUP, DAEMOON_STR_MENU_RESTORE,
+        DAEMOON_STR_MENU_SYNC,   DAEMOON_STR_MENU_BATCH,
+        DAEMOON_STR_MENU_SURVEY, DAEMOON_STR_MENU_SETTINGS
     };
     const daemoon_title_t *t = NULL;
     char line[160];
@@ -748,12 +761,13 @@ static int edit_field(daemoon_str_id_t label, const char *hint, char *value, siz
     return 1;
 }
 
-#define SETTINGS_ROWS 6
+#define SETTINGS_ROWS 7
 
 static const daemoon_str_id_t k_settings_labels[SETTINGS_ROWS] = {
     DAEMOON_STR_SETTINGS_SERVER, DAEMOON_STR_SETTINGS_TOKEN,
     DAEMOON_STR_SETTINGS_LABEL, DAEMOON_STR_SETTINGS_LANGUAGE,
-    DAEMOON_STR_PAIR_SCAN, DAEMOON_STR_PAIR_TITLE
+    DAEMOON_STR_PAIR_SCAN, DAEMOON_STR_PAIR_TITLE,
+    DAEMOON_STR_SETTINGS_WELCOME
 };
 
 /* What the language row shows: the chosen language, or the console's with a note
@@ -804,6 +818,7 @@ static void draw_settings(int selected)
      * says what they are for rather than repeating the label. */
     values[4] = daemoon_str(DAEMOON_STR_PAIR_AIM);
     values[5] = daemoon_str(DAEMOON_STR_PAIR_ENTER_CODE);
+    values[6] = daemoon_str(DAEMOON_STR_WELCOME_CONNECT_HOW);
 
     daemoon_gfx_top();
     daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
@@ -820,13 +835,16 @@ static void draw_settings(int selected)
                      DAEMOON_3DS_CONFIG_PATH);
 
     daemoon_gfx_bottom();
-    y = 10.0f;
+    /* Seven rows and 240 pixels. The last row used to start at 214 and run to 244,
+     * which is off the bottom of the screen - a settings entry nobody could see or
+     * reach. Adding a row means checking this arithmetic, every time. */
+    y = 6.0f;
     for (i = 0; i < SETTINGS_ROWS; ++i) {
-        daemoon_gfx_rect(8.0f, y, GFX_BOTTOM_W - 16.0f, 30.0f,
+        daemoon_gfx_rect(8.0f, y, GFX_BOTTOM_W - 16.0f, 27.0f,
                          (int)i == selected ? GFX_ACCENT : GFX_PANEL);
-        daemoon_gfx_text_fit(16.0f, y + 7.0f, GFX_BOTTOM_W - 32.0f, 0.42f, GFX_TEXT,
+        daemoon_gfx_text_fit(16.0f, y + 6.0f, GFX_BOTTOM_W - 32.0f, 0.42f, GFX_TEXT,
                              daemoon_str(labels[i]));
-        y += 34.0f;
+        y += 31.0f;
     }
     daemoon_gfx_text(10.0f, GFX_SCREEN_H - 18.0f, 0.34f, GFX_TEXT_DIM,
                      daemoon_str(DAEMOON_STR_HINT_EDIT));
@@ -1207,6 +1225,207 @@ static int pair_by_scanning(void)
     return finish_pairing("qr", parsed.code);
 }
 
+/* The address, with the trailing slash rule applied.
+ *
+ * Shared by Settings and the first run rather than typed twice: a trailing slash
+ * becomes a double slash in every path built from it, and some servers answer
+ * those differently. Two copies of that rule is one copy that gets forgotten. */
+static int edit_server_url(void)
+{
+    size_t len;
+
+    if (!edit_field(DAEMOON_STR_SETTINGS_SERVER, "http://192.168.1.10:8080",
+                    g_config.server_url, sizeof(g_config.server_url))) {
+        return 0;
+    }
+    len = strlen(g_config.server_url);
+    while (len > 0 && g_config.server_url[len - 1] == '/') {
+        g_config.server_url[--len] = '\0';
+    }
+    g_env.server_url = g_config.server_url;
+    return 1;
+}
+
+/* The typed route out of the first run: the address, then the six digits.
+ *
+ * Both, in that order, because pairing by code needs a server to send it to and a
+ * console that has just been installed has none. The scanned route needs neither,
+ * which is the entire argument for preferring it. */
+static int welcome_pair_manual(void)
+{
+    if (!edit_server_url()) {
+        return 0;
+    }
+    if (g_config.server_url[0] == '\0') {
+        message(daemoon_str(DAEMOON_STR_APP_TITLE),
+                daemoon_str(DAEMOON_STR_PAIR_NO_SERVER), GFX_WARN);
+        return 0;
+    }
+    return pair_with_typed_code();
+}
+
+static void run_welcome(void)
+{
+    static const daemoon_3ds_welcome_actions_t acts = {
+        pair_by_scanning, welcome_pair_manual
+    };
+    int paired = daemoon_3ds_welcome_run(&acts);
+
+    /* Recorded whatever the outcome. The flag says these screens have had their
+     * turn, not that they succeeded, and a console shown them again every launch
+     * because the answer was Not now is an application arguing with a decision it
+     * asked for. */
+    g_config.welcomed = 1;
+    {
+        daemoon_result_t r = daemoon_3ds_config_save(DAEMOON_3DS_CONFIG_PATH, &g_config);
+
+        daemoon_3ds_trace("welcome/save", daemoon_result_code(r));
+    }
+
+    message(daemoon_str(DAEMOON_STR_APP_TITLE),
+            daemoon_str(paired ? DAEMOON_STR_WELCOME_READY : DAEMOON_STR_WELCOME_LATER),
+            paired ? GFX_OK : GFX_ACCENT);
+}
+
+/* ------------------------------------------------------------------ batch */
+
+/* What the batch screen borrows. Indices are into the library that is showing, so
+ * batch.c never learns that there are two of them and switching with L or R before
+ * opening it is the whole of "which library does this run over". */
+static const char *batch_name(void *user, size_t index)
+{
+    (void)user;
+    return CUR->titles[index].name;
+}
+
+static void batch_backup_one(void *user, size_t index)
+{
+    daemoon_result_t r;
+
+    (void)user;
+    daemoon_3ds_trace("batch/backup", CUR->titles[index].id);
+    r = daemoon_sync_backup_local(&g_env, &g_archive, &CUR->titles[index], NULL, 0);
+    daemoon_3ds_trace("batch/backup-done", daemoon_result_code(r));
+    /* A title that fails is a line in the trace and not a dialog. Stopping a run
+     * over forty titles to say that one of them has an empty archive is how a
+     * person ends up holding A through the other thirty nine. */
+    if (r == DAEMOON_OK) {
+        ++g_batch.ok;
+    } else if (r == DAEMOON_ERR_NOT_FOUND || r == DAEMOON_ERR_UNSUPPORTED) {
+        ++g_batch.skipped;
+    } else {
+        ++g_batch.failed;
+    }
+}
+
+static void batch_sync_one(void *user, size_t index, daemoon_conflict_policy_t policy)
+{
+    daemoon_sync_opts_t opts;
+    daemoon_result_t r;
+
+    (void)user;
+    memset(&opts, 0, sizeof(opts));
+    opts.conflict = policy;
+    /* Asked once, on the way in, with the count in it. Uploading changes nothing on
+     * the console and the server keeps every version it had, so the question is
+     * about intent - and forty more of the same dialog is a person pressing A, not a
+     * person deciding. The restore confirmation is a different guarantee and is
+     * still asked per title. */
+    opts.upload_confirmed = 1;
+    /* And the restore question, for the same run and on the same terms. The screen
+     * that started this asked with the count in it and, when the answer was to take
+     * the server's, said in that sentence that saves on this console would be
+     * overwritten and that each is backed up to the card first.
+     *
+     * Rule 1 is untouched and is what makes this answerable: every restore below
+     * still writes a package to the SD card before it writes to an archive, and
+     * still aborts if that fails. What is replaced is a dialog, not a safeguard. */
+    opts.restore_confirmed = 1;
+
+    daemoon_3ds_trace("batch/sync", CUR->titles[index].id);
+    r = daemoon_sync_title_with(&g_env, &g_archive, &CUR->titles[index], &opts,
+                                &g_batch.sync);
+    daemoon_3ds_trace("batch/sync-done", daemoon_result_code(r));
+    if (r != DAEMOON_OK && r != DAEMOON_ERR_USER_CANCELLED) {
+        ++g_batch.failed;
+    }
+}
+
+static int batch_can_sync(void)
+{
+    return daemoon_3ds_config_can_sync(&g_config);
+}
+
+static int batch_confirm(const daemoon_str_ref_t *ask)
+{
+    return daemoon_3ds_ui_backend.confirm(&g_ui_ctx, ask);
+}
+
+static void batch_message(daemoon_str_id_t body, unsigned int accent)
+{
+    message(daemoon_str(DAEMOON_STR_APP_TITLE), daemoon_str(body), accent);
+}
+
+/* Nonzero when the run changed what is in a save archive on this console, which is
+ * the only case where the list on screen has gone stale. */
+static int action_batch(void)
+{
+    daemoon_3ds_batch_ctx_t ctx;
+    char body[256];
+
+    memset(&g_batch, 0, sizeof(g_batch));
+
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.count = CUR->count;
+    ctx.name = batch_name;
+    ctx.backup_one = batch_backup_one;
+    ctx.sync_one = batch_sync_one;
+    ctx.can_sync = batch_can_sync;
+    ctx.confirm = batch_confirm;
+    ctx.message = batch_message;
+
+    if (!daemoon_3ds_batch_run(&ctx)) {
+        /* Backed out before anything ran. Re-reading the library here was a minute
+         * of loading as the price of pressing B, which is the one thing a person
+         * does on this screen when they did not mean to open it. */
+        return 0;
+    }
+
+    /* One tally at the end, in the same shape a single sync reports. */
+    if (g_batch.sync.uploaded || g_batch.sync.downloaded || g_batch.sync.skipped ||
+        g_batch.sync.conflicts) {
+        char counts[4][12];
+        const char *args[4];
+        size_t i;
+        const unsigned n[4] = { g_batch.sync.uploaded, g_batch.sync.downloaded,
+                                g_batch.sync.skipped, g_batch.sync.conflicts };
+
+        for (i = 0; i < 4; ++i) {
+            (void)snprintf(counts[i], sizeof(counts[i]), "%u", n[i]);
+            args[i] = counts[i];
+        }
+        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_SYNC_RESULT, args, 4);
+    } else {
+        char counts[3][12];
+        const char *args[3];
+        size_t i;
+        const unsigned n[3] = { g_batch.ok, g_batch.skipped, g_batch.failed };
+
+        for (i = 0; i < 3; ++i) {
+            (void)snprintf(counts[i], sizeof(counts[i]), "%u", n[i]);
+            args[i] = counts[i];
+        }
+        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_BATCH_BACKUP_DONE, args, 3);
+    }
+    message(daemoon_str(DAEMOON_STR_APP_TITLE), body,
+            g_batch.failed > 0 ? GFX_WARN : GFX_OK);
+
+    /* Only a download wrote to a save archive. A batch backup reads every archive
+     * and writes packages to the card, and an upload sends bytes to a server;
+     * neither changes a single thing the grid or the details pane reads out. */
+    return g_batch.sync.downloaded > 0;
+}
+
 static void action_settings(void)
 {
     const daemoon_str_id_t *labels = k_settings_labels;
@@ -1232,17 +1451,7 @@ static void action_settings(void)
         if (down & KEY_A) {
             switch (selected) {
             case 0:
-                edited = edit_field(labels[0], "http://192.168.1.10:8080",
-                                    g_config.server_url, sizeof(g_config.server_url));
-                if (edited) {
-                    /* The same trailing slash rule the parser applies, so typing
-                     * one here and pushing one over FTP end up identical. */
-                    size_t len = strlen(g_config.server_url);
-
-                    while (len > 0 && g_config.server_url[len - 1] == '/') {
-                        g_config.server_url[--len] = '\0';
-                    }
-                }
+                edited = edit_server_url();
                 break;
             case 1:
                 edited = edit_field(labels[1], "daemoonctl pair", g_config.token,
@@ -1272,8 +1481,15 @@ static void action_settings(void)
             case 4:
                 edited = pair_by_scanning();
                 break;
-            default:
+            case 5:
                 edited = pair_with_typed_code();
+                break;
+            default:
+                /* On purpose, and not only for somebody who skipped it: the pages
+                 * are where the rule about not syncing while a game runs is
+                 * written down, and that is worth being able to go back to. */
+                run_welcome();
+                edited = 1;
                 break;
             }
             dirty = dirty || edited;
@@ -1509,57 +1725,17 @@ static void action_survey(void)
 /* The conformance suite writes, clears and commits a real save archive. It exists
  * to prove this backend behaves the way core is entitled to assume, and running
  * it on a title someone plays would be indefensible. */
-static void action_self_test(void)
-{
-    daemoon_backend_under_test_t ut;
-    daemoon_str_ref_t ask;
-    char path[DAEMOON_PATH_MAX * 2];
-    char body[256];
-    int before;
-
-    if (CUR->count == 0) {
-        return;
-    }
-
-    {
-        const char *args[1];
-
-        args[0] = CUR->titles[CUR->selected].name;
-        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_SELFTEST_WARNING, args, 1);
-    }
-    message(daemoon_str(DAEMOON_STR_APP_TITLE), body, GFX_DANGER);
-
-    memset(&ask, 0, sizeof(ask));
-    ask.id = DAEMOON_STR_CONFIRM_RESTORE;
-    ask.args[0] = CUR->titles[CUR->selected].name;
-    ask.nargs = 1;
-    if (!g_env.ui->confirm(g_env.ui_ctx, &ask)) {
-        return;
-    }
-
-    report(DAEMOON_STR_OP_BACKUP, daemoon_sync_backup_local(&g_env, &g_archive, &CUR->titles[CUR->selected],
-                                               path, sizeof(path)));
-
-    memset(&ut, 0, sizeof(ut));
-    ut.name = "3ds";
-    ut.backend = &daemoon_3ds_save_backend;
-    ut.ctx = &g_save_ctx;
-    ut.title = &CUR->titles[CUR->selected];
-    ut.other = NULL;
-    ut.scratch = g_scratch;
-    ut.scratch_len = sizeof(g_scratch);
-
-    before = daemoon_test_failures;
-    daemoon_backend_conformance(&ut);
-
-    (void)snprintf(body, sizeof(body), "%d checks, %d failures. %s",
-                   daemoon_test_checks, daemoon_test_failures - before,
-                   daemoon_test_failures == before
-                       ? "this backend behaves the way core assumes"
-                       : daemoon_test_last_failure);
-    message(daemoon_str(DAEMOON_STR_APP_TITLE), body,
-            daemoon_test_failures == before ? GFX_OK : GFX_DANGER);
-}
+/* The self test used to be a button on the grid, run against whichever title the
+ * cursor was on - and it clears that title's save archive to prove that clearing
+ * works. It sat two rows above Back up, on a screen where the other five buttons
+ * are things you do to a game you care about.
+ *
+ * The contract it checks has not gone anywhere: tools/test/backend_conformance.c
+ * is still linked in, `make core-test` still runs it against the stub, and
+ * run_autotest below still runs it on hardware - against this application's own
+ * save archive, which is the only archive it has any business destroying. What is
+ * gone is the one press between a real save and a wipe.
+ */
 
 /* Unattended, from a flag file, against this application's own save archive and
  * nothing else. See docs/3ds-workflow.md. */
@@ -1796,7 +1972,10 @@ int main(void)
          * install replacing it - and the difference is not visible from a device
          * list. The token itself is never written here; a console screen and a
          * trace file both end up in bug reports. */
-        char line[96];
+        /* Long enough for the longest of them. A device id is 22 characters and a
+         * truncated diagnostic is one that says something other than what
+         * happened. */
+        char line[160];
 
         (void)snprintf(line, sizeof(line), "server=%s token=%s device=%s lang=%s",
                        g_config.server_url[0] != '\0' ? "yes" : "no",
@@ -1879,6 +2058,22 @@ int main(void)
         g_save_ctx.cache = NULL;
     }
 
+    {
+        /* The unattended runs answer to a file rather than to a person, so neither
+         * may stop at a screen waiting for A. Asked once and kept, because the
+         * welcome needs the same answer as the two branches below and reading the
+         * card twice for it would be two chances to disagree. */
+        int unattended = g_env.fs->exists(g_env.fs_ctx, DAEMOON_3DS_WORK_DIR "/AUTOTEST") ||
+                         g_env.fs->exists(g_env.fs_ctx, DAEMOON_3DS_AUTOPAIR_PATH);
+
+        /* Before the library rather than after it. The first launch is the one with
+         * no name and icon cache and so the slowest, and an explanation that
+         * arrives after a minute of loading is one nobody reads. */
+        if (!unattended && daemoon_3ds_welcome_needed(&g_config)) {
+            run_welcome();
+        }
+    }
+
     if (show_library(0) != DAEMOON_OK) {
         message(daemoon_str(DAEMOON_STR_APP_TITLE),
                 daemoon_str(DAEMOON_STR_ERR_TITLE_LIST), GFX_DANGER);
@@ -1952,8 +2147,17 @@ int main(void)
         case 0: action_backup(); break;
         case 1: action_restore(); break;
         case 2: action_sync(); break;
-        case 3: action_survey(); break;
-        case 4: action_self_test(); (void)reload_titles(); break;
+        case 3:
+            /* Reloaded only when a save archive on this console actually changed.
+             * The names and icons come from the cache either way, but re-reading the
+             * list still opens every archive on the console, which is long enough to
+             * look like a hang and far too long to spend on the way out of a screen
+             * somebody opened by accident. */
+            if (action_batch()) {
+                (void)reload_titles();
+            }
+            break;
+        case 4: action_survey(); break;
         case 5: action_settings(); break;
         default: break;
         }

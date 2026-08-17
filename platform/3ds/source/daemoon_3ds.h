@@ -8,6 +8,7 @@
 
 #include <daemoon/api.h>
 #include <daemoon/backend.h>
+#include <daemoon/sync.h>
 
 /* Where the app keeps backups, staging and per title sync state. On the SD card,
  * because a save archive is not a place to put anything that has to survive the
@@ -122,12 +123,79 @@ typedef struct {
      * Japanese console should not be overruled by it. Storing the choice and the
      * absence of one separately is the only way to tell those apart. */
     char language[12];
+    /* Whether the first run screens have been through once.
+     *
+     * Written when they finish and when they are skipped, so skipping is a
+     * decision the console remembers rather than a screen that comes back every
+     * launch. Settings can bring them back on purpose.
+     *
+     * A separate flag rather than "is there a server yet": somebody who chose Not
+     * now has no server and has already read the screens, and asking again would
+     * be the application arguing with them. */
+    int welcomed;
 } daemoon_3ds_config_t;
 
 void             daemoon_3ds_config_defaults(daemoon_3ds_config_t *cfg);
 daemoon_result_t daemoon_3ds_config_load(const char *path, daemoon_3ds_config_t *cfg);
 daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_config_t *cfg);
 int              daemoon_3ds_config_can_sync(const daemoon_3ds_config_t *cfg);
+
+/* The first run. welcome_steps.c decides what it says; welcome.c draws it.
+ *
+ * Split so the part with no citro2d in it runs under `make core-test`: which pages
+ * exist, in what order, and whether the screens are due are all decisions, and a
+ * decision that only a console can check is one that gets checked by installing a
+ * CIA. */
+size_t           daemoon_3ds_welcome_pages(void);
+daemoon_str_id_t daemoon_3ds_welcome_page(size_t index);
+size_t           daemoon_3ds_welcome_choices(void);
+daemoon_str_id_t daemoon_3ds_welcome_choice_label(size_t index);
+daemoon_str_id_t daemoon_3ds_welcome_choice_hint(size_t index);
+int              daemoon_3ds_welcome_needed(const daemoon_3ds_config_t *cfg);
+
+/* The order the connect screen offers, and the value welcome_choose returns. */
+enum {
+    DAEMOON_3DS_WELCOME_QR = 0,
+    DAEMOON_3DS_WELCOME_MANUAL,
+    DAEMOON_3DS_WELCOME_LATER
+};
+
+/* What the welcome cannot do itself. Pairing needs the camera, the keyboard and
+ * the network, all of which main.c already owns, so it lends them rather than this
+ * file growing a second copy. Each returns nonzero when the console ended up
+ * paired. */
+typedef struct {
+    int (*pair_qr)(void);
+    int (*pair_manual)(void);
+} daemoon_3ds_welcome_actions_t;
+
+int daemoon_3ds_welcome_run(const daemoon_3ds_welcome_actions_t *acts);
+
+/* One operation over a whole library. batch_steps.c decides what is offered and
+ * what each answer means; batch.c draws it and drives the loop. */
+size_t                    daemoon_3ds_batch_ops(void);
+daemoon_str_id_t          daemoon_3ds_batch_op_label(size_t index);
+daemoon_str_id_t          daemoon_3ds_batch_op_hint(size_t index);
+size_t                    daemoon_3ds_batch_policies(void);
+daemoon_str_id_t          daemoon_3ds_batch_policy_label(size_t index);
+daemoon_str_id_t          daemoon_3ds_batch_policy_hint(size_t index);
+daemoon_conflict_policy_t daemoon_3ds_batch_policy(size_t index);
+
+/* What the batch screen borrows from main.c: the library it is running over, and
+ * the four things it cannot do itself. Indices are into whichever library is
+ * showing, so this file never learns that there are two of them. */
+typedef struct {
+    void  *user;
+    size_t count;
+    const char *(*name)(void *user, size_t index);
+    void        (*backup_one)(void *user, size_t index);
+    void        (*sync_one)(void *user, size_t index, daemoon_conflict_policy_t policy);
+    int         (*can_sync)(void);
+    int         (*confirm)(const daemoon_str_ref_t *ask);
+    void        (*message)(daemoon_str_id_t body, unsigned int accent);
+} daemoon_3ds_batch_ctx_t;
+
+int daemoon_3ds_batch_run(const daemoon_3ds_batch_ctx_t *ctx);
 
 /* soc:U needs a buffer for the lifetime of the session, so the network is opened
  * once and closed once rather than per request. */

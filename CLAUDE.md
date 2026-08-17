@@ -122,12 +122,12 @@ Note that the UI backend takes string IDs, not `const char *`. See the i18n sect
 These are not negotiable for any reason.
 
 1. **Always back up locally before restoring.** If the backup fails, abort the restore.
-2. **Never auto merge.** Conflicts are always resolved by the user, and both versions are retained.
+2. **Never auto merge.** Conflicts are always resolved by the user, and both versions are retained. A run covering a whole library may take the answer once up front (`daemoon_conflict_policy_t`) instead of per title, because forty identical dialogs is a reflex rather than a decision - but it still picks a side rather than merging, and both sides still survive: uploading leaves every server version in place, and downloading backs the console's save up to the card first.
 3. **Always commit after writing.** 3DS `FSUSER_ControlArchive(..., ARCHIVE_ACTION_COMMIT_SAVE_DATA, ...)`, Switch `fsdevCommitDevice()`. Without it, nothing is persisted.
 4. **Never decide freshness by timestamp.** Console RTC is user settable. Trust only the server issued `version`.
 5. **Never leave a partial write.** Write to a temp path, then swap once everything succeeds.
 6. **Verify sha256** immediately before restore. Abort on mismatch.
-7. Destructive actions always pass through `ui->confirm()`. Do not add a `--force` bypass.
+7. Destructive actions always pass through `ui->confirm()`. Do not add a `--force` bypass. A run over a whole library may ask **once**, in a sentence naming the count and saying what will be overwritten (`daemoon_sync_opts_t.restore_confirmed`) - that is asking where the decision is, not skipping it. Rule 1 has no equivalent and never gets one: the local backup before a restore is unconditional, and it is what makes rule 7 answerable in bulk at all.
 
 ---
 

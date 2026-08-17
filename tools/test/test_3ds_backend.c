@@ -26,6 +26,7 @@
 #include "../../platform/3ds/source/daemoon_3ds.h"
 
 #include <daemoon/archive.h>
+#include <daemoon/i18n.h>
 #include <daemoon/sync.h>
 #include <daemoon/util/strbuf.h>
 
@@ -2023,6 +2024,130 @@ TEST_CASE(the_layout_names_do_not_move)
     CHECK_STR(daemoon_3ds_cam_layout_name(DAEMOON_3DS_CAM_LAYOUT_DEFAULT), "rows/TD");
 }
 
+/* ------------------------------------------------------------------ welcome */
+
+TEST_CASE(the_welcome_is_due_once_and_not_deduced_from_the_server)
+{
+    daemoon_3ds_config_t cfg;
+
+    daemoon_3ds_config_defaults(&cfg);
+    CHECK(daemoon_3ds_welcome_needed(&cfg));
+
+    /* The tempting shortcut - "no server means a new console" - is what this
+     * refuses. Somebody who chose Not now has read the screens and still has no
+     * server, and would be shown them at every launch. */
+    cfg.welcomed = 1;
+    CHECK(!daemoon_3ds_welcome_needed(&cfg));
+    CHECK(cfg.server_url[0] == '\0');
+
+    /* And pairing does not make them due again either way round. */
+    (void)daemoon_strlcpy(cfg.server_url, sizeof(cfg.server_url), "http://host:8080");
+    (void)daemoon_strlcpy(cfg.token, sizeof(cfg.token), "t");
+    CHECK(!daemoon_3ds_welcome_needed(&cfg));
+    cfg.welcomed = 0;
+    CHECK(daemoon_3ds_welcome_needed(&cfg));
+}
+
+TEST_CASE(the_welcome_flag_survives_a_write_and_a_read)
+{
+    char root[256];
+    char path[320];
+    daemoon_3ds_config_t cfg;
+    daemoon_3ds_config_t back;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-welcome"), 0);
+    (void)snprintf(path, sizeof(path), "%s/config.txt", root);
+
+    daemoon_3ds_config_defaults(&cfg);
+    cfg.welcomed = 1;
+    (void)daemoon_strlcpy(cfg.server_url, sizeof(cfg.server_url), "http://host:8080");
+    CHECK_OK(daemoon_3ds_config_save(path, &cfg));
+
+    CHECK_OK(daemoon_3ds_config_load(path, &back));
+    CHECK(back.welcomed);
+
+    /* A file written before this flag existed reads as "not yet", which shows the
+     * screens once to a console that has been running for months. That is the safe
+     * direction: the alternative is somebody who upgrades never seeing the page
+     * about not syncing while a game runs. */
+    daemoon_3ds_config_defaults(&cfg);
+    (void)daemoon_strlcpy(cfg.server_url, sizeof(cfg.server_url), "http://host:8080");
+    CHECK_OK(daemoon_3ds_config_save(path, &cfg));
+    CHECK_OK(daemoon_3ds_config_load(path, &back));
+    CHECK(!back.welcomed);
+    CHECK(daemoon_3ds_welcome_needed(&back));
+}
+
+TEST_CASE(every_welcome_screen_has_text_and_an_index_cannot_run_off_the_end)
+{
+    size_t i;
+
+    CHECK(daemoon_3ds_welcome_pages() >= 3);
+    for (i = 0; i < daemoon_3ds_welcome_pages(); ++i) {
+        const char *text = daemoon_str(daemoon_3ds_welcome_page(i));
+
+        CHECK(text != NULL && text[0] != '\0');
+    }
+    /* Past the end is the first page rather than a read off the array. A screen
+     * drawn from a string id has no way to notice a bad one. */
+    CHECK(daemoon_3ds_welcome_page(daemoon_3ds_welcome_pages()) ==
+          daemoon_3ds_welcome_page(0));
+
+    /* The three ways out, and the order the enum promises: the console returns an
+     * index and main.c compares it against these names. */
+    CHECK_EQ_INT((int)daemoon_3ds_welcome_choices(), 3);
+    CHECK(daemoon_3ds_welcome_choice_label(DAEMOON_3DS_WELCOME_QR) ==
+          DAEMOON_STR_WELCOME_OPT_QR);
+    CHECK(daemoon_3ds_welcome_choice_label(DAEMOON_3DS_WELCOME_MANUAL) ==
+          DAEMOON_STR_WELCOME_OPT_CODE);
+    CHECK(daemoon_3ds_welcome_choice_label(DAEMOON_3DS_WELCOME_LATER) ==
+          DAEMOON_STR_WELCOME_OPT_LATER);
+    /* Leaving the screen means the last entry, so the last entry has to be the one
+     * that does nothing. A reorder that put pairing there would make START pair. */
+    CHECK_EQ_INT((int)DAEMOON_3DS_WELCOME_LATER, (int)daemoon_3ds_welcome_choices() - 1);
+
+    for (i = 0; i < daemoon_3ds_welcome_choices(); ++i) {
+        CHECK(daemoon_str(daemoon_3ds_welcome_choice_label(i))[0] != '\0');
+        CHECK(daemoon_str(daemoon_3ds_welcome_choice_hint(i))[0] != '\0');
+    }
+}
+
+/* -------------------------------------------------------------------- batch */
+
+TEST_CASE(the_batch_screen_starts_on_the_answer_that_asks)
+{
+    size_t i;
+
+    CHECK_EQ_INT((int)daemoon_3ds_batch_ops(), 2);
+    /* Backing up is first because it writes nothing to the console or the server,
+     * and the cursor starts at the top. */
+    CHECK(daemoon_3ds_batch_op_label(0) == DAEMOON_STR_BATCH_BACKUP);
+    CHECK(daemoon_3ds_batch_op_label(1) == DAEMOON_STR_BATCH_SYNC);
+
+    /* Row zero is Ask, so a mispress on the policy screen is the answer that puts
+     * a person in front of every conflict rather than one applied to a library. */
+    CHECK_EQ_INT((int)daemoon_3ds_batch_policies(), 3);
+    CHECK(daemoon_3ds_batch_policy(0) == DAEMOON_CONFLICT_POLICY_ASK);
+    CHECK(daemoon_3ds_batch_policy(1) == DAEMOON_CONFLICT_POLICY_KEEP_LOCAL);
+    CHECK(daemoon_3ds_batch_policy(2) == DAEMOON_CONFLICT_POLICY_KEEP_SERVER);
+
+    /* And an index off the end is Ask too, not the last entry: the answer to a bug
+     * on this screen must not be a policy nobody chose. */
+    CHECK(daemoon_3ds_batch_policy(daemoon_3ds_batch_policies()) ==
+          DAEMOON_CONFLICT_POLICY_ASK);
+    CHECK(daemoon_3ds_batch_op_label(daemoon_3ds_batch_ops()) ==
+          daemoon_3ds_batch_op_label(0));
+
+    for (i = 0; i < daemoon_3ds_batch_ops(); ++i) {
+        CHECK(daemoon_str(daemoon_3ds_batch_op_label(i))[0] != '\0');
+        CHECK(daemoon_str(daemoon_3ds_batch_op_hint(i))[0] != '\0');
+    }
+    for (i = 0; i < daemoon_3ds_batch_policies(); ++i) {
+        CHECK(daemoon_str(daemoon_3ds_batch_policy_label(i))[0] != '\0');
+        CHECK(daemoon_str(daemoon_3ds_batch_policy_hint(i))[0] != '\0');
+    }
+}
+
 void test_3ds_backend(void)
 {
     printf("3ds backend (stubbed libctru)\n");
@@ -2040,6 +2165,13 @@ void test_3ds_backend(void)
     RUN(a_name_missing_in_the_console_language_falls_back);
     RUN(the_list_prefers_a_name_the_console_can_draw);
     RUN(the_smdh_is_read_whole_from_the_start);
+
+    printf("first run\n");
+    RUN(the_welcome_is_due_once_and_not_deduced_from_the_server);
+    RUN(the_welcome_flag_survives_a_write_and_a_read);
+    RUN(every_welcome_screen_has_text_and_an_index_cannot_run_off_the_end);
+
+    RUN(the_batch_screen_starts_on_the_answer_that_asks);
 
     printf("backup picker\n");
     RUN(the_backup_list_reads_each_package_and_marks_the_current_one);

@@ -213,7 +213,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "연결됐습니다. 이제 동기화할 수 있습니다.", /* pair.done */
         "웹 페이지에 표시된 여섯 자리 코드를 입력하세요.", /* pair.enter_code */
         "카메라를 시작하지 못했습니다.", /* pair.no_camera */
-        "먼저 서버 주소를 설정하거나, QR 코드를 스캔하세요 — 스캔한 코드에는 주소가 함께 들어 있습니다.", /* pair.no_server */
+        "먼저 서버 주소를 설정하거나, QR 코드를 스캔하세요. 스캔한 코드에는 주소가 함께 들어 있습니다.", /* pair.no_server */
         "QR 코드 스캔", /* pair.scan */
         "L/R 카메라   X/Y 프리뷰 모드   B 취소", /* pair.switch */
         "이 본체 연결", /* pair.title */
@@ -457,7 +457,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "已配对。现在可以同步了。", /* pair.done */
         "输入网页上显示的六位代码。", /* pair.enter_code */
         "无法启动摄像头。", /* pair.no_camera */
-        "请先设置服务器地址，或改为扫描二维码——扫描的代码里带着地址。", /* pair.no_server */
+        "请先设置服务器地址，或改为扫描二维码，扫描的代码里带着地址。", /* pair.no_server */
         "扫描二维码", /* pair.scan */
         "L/R 摄像头   X/Y 预览模式   B 取消", /* pair.switch */
         "配对这台主机", /* pair.title */
@@ -579,7 +579,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "已配對。現在可以同步了。", /* pair.done */
         "輸入網頁上顯示的六位代碼。", /* pair.enter_code */
         "無法啟動鏡頭。", /* pair.no_camera */
-        "請先設定伺服器位址，或改為掃描 QR 碼——掃描的代碼裡帶著位址。", /* pair.no_server */
+        "請先設定伺服器位址，或改為掃描 QR 碼，掃描的代碼裡帶著位址。", /* pair.no_server */
         "掃描 QR 碼", /* pair.scan */
         "L/R 鏡頭   X/Y 預覽模式   B 取消", /* pair.switch */
         "配對這台主機", /* pair.title */

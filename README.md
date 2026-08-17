@@ -18,12 +18,12 @@ restored save. The procedure is `docs/phase1-hardware.md`.
 
 ## What works today
 
-- `core/` — manifests, save packages, the payload digest, conflict resolution, the
+- `core/`: manifests, save packages, the payload digest, conflict resolution, the
   API client, and the text layer. C11, no platform headers.
-- `platform/posix/` — a directory presented as a save archive, plus a plain HTTP
+- `platform/posix/`: a directory presented as a save archive, plus a plain HTTP
   backend, so the whole sync path runs on a build machine.
-- `server/` — Go, SQLite, one static binary and one database file.
-- `tools/cli/` — `daemoonctl`, a desktop client that links the same core a console
+- `server/`: Go, SQLite, one static binary and one database file.
+- `tools/cli/`: `daemoonctl`, a desktop client that links the same core a console
   build links.
 - 54,000 core checks and the Go suite, both green, with the address and undefined
   behaviour sanitizers on for the C side, plus fuzzing on both sides' parsers.

@@ -11,7 +11,7 @@ the same network over both http and https.
 
 ---
 
-## Phase 1 — backup and restore
+## Phase 1: backup and restore
 
 **Answered.** A dummy title was backed up, changed in the game, restored, and the
 game read the restored save.
@@ -37,7 +37,7 @@ depends on. It needs a second console, or a title somebody is willing to lose.
 One title in sixteen has a secure value. Two Pokemon titles sat next to each other
 and only one of them did, so the answer is per title rather than per publisher.
 
-## Phase 2 — nds-bootstrap and the network
+## Phase 2: nds-bootstrap and the network
 
 **Answered, both halves.** A `.sav` packed on the console, uploaded, and pulled
 back on a desktop is byte for byte the file on the SD card. Three saves, uploads
@@ -48,7 +48,7 @@ the device's platform with the save's and demanded they match, and the net backe
 read the HTTP status after the transfer rather than off the status line, so a
 successful upload's response went into the error buffer.
 
-## Phase 3 — savedata sync and conflicts
+## Phase 3: savedata sync and conflicts
 
 **Answered, both directions.** With the console's base behind the server and both
 sides changed:
@@ -65,7 +65,7 @@ Staging that test found the worst bug of the project: an empty save could be
 uploaded over a good server version. The guard was on the local backup path and not
 on the wire, which is the half where the damage leaves the device.
 
-## Phase 4 — pairing
+## Phase 4: pairing
 
 **Answered.** A console scans a code off a browser and pairs itself. Pairing again
 rotates the same device rather than adding another.

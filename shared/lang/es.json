@@ -1,25 +1,21 @@
 {
   "app.title": "DaeMoon",
   "lang.name": "Español",
-
   "btn.yes": "Sí",
   "btn.no": "No",
   "btn.ok": "Aceptar",
   "btn.cancel": "Cancelar",
-
   "sync.action_none": "Al día",
   "sync.action_upload": "Subir",
   "sync.action_download": "Descargar",
   "sync.action_conflict": "Conflicto",
   "sync.up_to_date": "{0} ya está al día.",
   "sync.done": "Sincronización terminada. {0} actualizados, {1} omitidos.",
-
   "progress.packing": "Empaquetando la partida",
   "progress.unpacking": "Extrayendo la partida",
   "progress.uploading": "Subiendo",
   "progress.downloading": "Descargando",
   "progress.verifying": "Verificando",
-
   "backup.creating": "Creando copia de seguridad de la partida actual",
   "backup.failed": "La copia de seguridad local ha fallado. No se ha cambiado nada.",
   "backup.list": "Copias de seguridad de {0}",
@@ -28,18 +24,15 @@
   "backup.deleted": "La copia de seguridad se ha eliminado. No se ha tocado la partida de la consola.",
   "backup.same_as_console": "igual que la partida que hay ahora en la consola",
   "backup.clock_note": "Las fechas vienen del reloj de la consola. Describen una copia; nunca deciden qué partida es más reciente.",
-
   "confirm.upload": "¿Subir la partida de {0} al servidor?",
   "confirm.restore": "¿Restaurar {0} en esta consola? Primero se crea una copia de seguridad local.",
   "confirm.backup": "¿Hacer una copia de seguridad de la partida de {0} en la tarjeta SD?",
   "confirm.delete_backup": "¿Eliminar esta copia de seguridad? No se toca la partida de la consola.",
-
   "conflict.title": "Partidas en conflicto",
   "conflict.explain": "{0} también se ha modificado en otro dispositivo. Se conservan ambas versiones. Elige cuál usar ahora.",
   "conflict.keep_local": "Usar la partida de esta consola ({0}, guardada el {1})",
   "conflict.keep_server": "Usar la partida del servidor ({0}, del {1})",
   "conflict.keep_both": "Conservar ambas y decidir más tarde",
-
   "settings.title": "Ajustes",
   "settings.server": "Dirección del servidor",
   "settings.token": "Token del dispositivo",
@@ -47,14 +40,11 @@
   "settings.saved": "Guardado. Esta consola usará estos ajustes a partir de ahora.",
   "settings.save_failed": "No se han podido escribir los ajustes en la tarjeta SD.",
   "settings.unset": "sin definir",
-
   "verify.failed": "La suma de verificación no coincide. La restauración se ha cancelado y no se ha cambiado nada.",
   "commit.failed": "No se ha podido confirmar la partida. No inicies el juego hasta resolverlo.",
-
   "warn.game_running": "Cierra el juego antes de sincronizar. Sincronizar con el juego abierto daña la partida.",
   "warn.applet_mode": "En modo applet con memoria limitada. Abre la aplicación desde un juego para tener todas las funciones.",
   "warn.secure_value": "{0} vincula su partida a esta consola. El juego puede borrar una partida de otra consola.",
-
   "err.invalid_request": "El servidor ha rechazado la petición.",
   "err.invalid_manifest": "No se puede leer el paquete de la partida.",
   "err.unsupported_platform": "El servidor no admite esta consola.",
@@ -83,7 +73,6 @@
   "err.buffer_too_small": "Búfer interno demasiado pequeño.",
   "err.empty_save": "Este título no tiene partida que copiar.",
   "err.tls_error": "No se ha podido verificar el certificado del servidor.",
-
   "menu.backup": "Copiar esta partida",
   "menu.restore": "Restaurar desde una copia",
   "menu.sync": "Sincronizar con el servidor",
@@ -121,7 +110,6 @@
   "settings.language": "Idioma",
   "settings.language_auto": "Según la consola ({0})",
   "settings.no_font": "Esta consola no tiene una fuente para {0}, el texto quedaría en blanco. No se ha cambiado el idioma.",
-
   "pair.title": "Vincular esta consola",
   "pair.enter_code": "Escribe el código de seis dígitos que muestra la página web.",
   "pair.no_server": "Configura primero la dirección del servidor, o escanea un código: el código escaneado lleva la dirección.",

@@ -1,25 +1,21 @@
 {
   "app.title": "DaeMoon",
   "lang.name": "简体中文",
-
   "btn.yes": "是",
   "btn.no": "否",
   "btn.ok": "确定",
   "btn.cancel": "取消",
-
   "sync.action_none": "已是最新",
   "sync.action_upload": "上传",
   "sync.action_download": "下载",
   "sync.action_conflict": "冲突",
   "sync.up_to_date": "{0} 已是最新。",
   "sync.done": "同步完成。已更新 {0} 个，跳过 {1} 个。",
-
   "progress.packing": "正在打包存档",
   "progress.unpacking": "正在解包存档",
   "progress.uploading": "正在上传",
   "progress.downloading": "正在下载",
   "progress.verifying": "正在校验",
-
   "backup.creating": "正在备份当前存档",
   "backup.failed": "本地备份失败，未做任何更改。",
   "backup.list": "{0} 的备份",
@@ -28,18 +24,15 @@
   "backup.deleted": "备份已删除。主机上的存档未被改动。",
   "backup.same_as_console": "与主机上现在的存档相同",
   "backup.clock_note": "日期来自主机时钟，仅用于描述备份，绝不决定哪个存档更新。",
-
   "confirm.upload": "要把 {0} 的存档上传到服务器吗？",
   "confirm.restore": "要把 {0} 恢复到本机吗？会先生成本地备份。",
   "confirm.backup": "把 {0} 的存档备份到 SD 卡？",
   "confirm.delete_backup": "删除这个备份？主机上的存档不会被改动。",
-
   "conflict.title": "存档冲突",
   "conflict.explain": "{0} 在另一台设备上也被修改过。两个版本都会保留。请选择现在使用哪一个。",
   "conflict.keep_local": "使用本机存档（{0}，保存于 {1}）",
   "conflict.keep_server": "使用服务器存档（{0}，来自 {1}）",
   "conflict.keep_both": "都保留，稍后再决定",
-
   "settings.title": "设置",
   "settings.server": "服务器地址",
   "settings.token": "设备令牌",
@@ -47,14 +40,11 @@
   "settings.saved": "已保存。此后将使用这些设置。",
   "settings.save_failed": "无法把设置写入 SD 卡。",
   "settings.unset": "未设置",
-
   "verify.failed": "校验值不匹配。已中止恢复，未做任何更改。",
   "commit.failed": "存档未能提交。问题解决前请不要启动游戏。",
-
   "warn.game_running": "同步前请先关闭游戏。游戏运行时同步会损坏存档。",
   "warn.applet_mode": "当前为内存受限的小程序模式。请在游戏之上启动本应用以使用全部功能。",
   "warn.secure_value": "{0} 会把存档绑定到本机。来自其他主机的存档可能被游戏删除。",
-
   "err.invalid_request": "服务器拒绝了该请求。",
   "err.invalid_manifest": "无法读取存档包。",
   "err.unsupported_platform": "服务器不支持该主机。",
@@ -83,7 +73,6 @@
   "err.buffer_too_small": "内部缓冲区过小。",
   "err.empty_save": "该标题没有可备份的存档。",
   "err.tls_error": "无法验证服务器证书。",
-
   "menu.backup": "备份此存档",
   "menu.restore": "从备份恢复",
   "menu.sync": "与服务器同步",
@@ -121,10 +110,9 @@
   "settings.language": "语言",
   "settings.language_auto": "跟随主机设置（{0}）",
   "settings.no_font": "这台主机没有{0}字体，文字会是空白。语言未更改。",
-
   "pair.title": "配对这台主机",
   "pair.enter_code": "输入网页上显示的六位代码。",
-  "pair.no_server": "请先设置服务器地址，或改为扫描二维码——扫描的代码里带着地址。",
+  "pair.no_server": "请先设置服务器地址，或改为扫描二维码，扫描的代码里带着地址。",
   "pair.done": "已配对。现在可以同步了。",
   "pair.scan": "扫描二维码",
   "pair.aim": "把摄像头对准网页上的代码。   B 取消",

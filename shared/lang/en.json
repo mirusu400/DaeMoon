@@ -1,25 +1,21 @@
 {
   "app.title": "DaeMoon",
   "lang.name": "English",
-
   "btn.yes": "Yes",
   "btn.no": "No",
   "btn.ok": "OK",
   "btn.cancel": "Cancel",
-
   "sync.action_none": "Up to date",
   "sync.action_upload": "Upload",
   "sync.action_download": "Download",
   "sync.action_conflict": "Conflict",
   "sync.up_to_date": "{0} is already up to date.",
   "sync.done": "Sync finished. {0} updated, {1} skipped.",
-
   "progress.packing": "Packing save data",
   "progress.unpacking": "Unpacking save data",
   "progress.uploading": "Uploading",
   "progress.downloading": "Downloading",
   "progress.verifying": "Verifying",
-
   "backup.creating": "Backing up the current save",
   "backup.failed": "Local backup failed. Nothing was changed.",
   "backup.list": "Backups of {0}",
@@ -28,18 +24,15 @@
   "backup.deleted": "The backup was deleted. The save on the console was not touched.",
   "backup.same_as_console": "same as the save on the console now",
   "backup.clock_note": "Dates come from the console clock. They describe a backup; they never decide which save is newer.",
-
   "confirm.upload": "Upload the save for {0} to the server?",
   "confirm.restore": "Restore {0} to this console? A local backup is made first.",
   "confirm.backup": "Back up the save for {0} to the SD card?",
   "confirm.delete_backup": "Delete this backup? The save on the console is not touched.",
-
   "conflict.title": "Conflicting saves",
   "conflict.explain": "{0} was also changed on another device. Both versions are kept. Choose which one to use now.",
   "conflict.keep_local": "Keep this console's save ({0}, saved on {1})",
   "conflict.keep_server": "Keep the server save ({0}, from {1})",
   "conflict.keep_both": "Keep both and decide later",
-
   "settings.title": "Settings",
   "settings.server": "Server address",
   "settings.token": "Device token",
@@ -47,14 +40,11 @@
   "settings.saved": "Saved. This console will use these from now on.",
   "settings.save_failed": "The settings could not be written to the SD card.",
   "settings.unset": "not set",
-
   "verify.failed": "Checksum does not match. The restore was aborted and nothing was changed.",
   "commit.failed": "The save could not be committed. Do not launch the game until this is resolved.",
-
   "warn.game_running": "Close the game before syncing. Syncing while a game is running corrupts the save.",
   "warn.applet_mode": "Running in applet mode with limited memory. Launch the app over a game to enable every feature.",
   "warn.secure_value": "{0} ties its save to this console. A save from another console may be deleted by the game.",
-
   "err.invalid_request": "The server rejected the request.",
   "err.invalid_manifest": "The save package is not readable.",
   "err.unsupported_platform": "This console is not supported by the server.",
@@ -83,7 +73,6 @@
   "err.buffer_too_small": "Internal buffer too small.",
   "err.empty_save": "This title has no save data to back up.",
   "err.tls_error": "The server's certificate could not be verified.",
-
   "menu.backup": "Back up this save",
   "menu.restore": "Restore from a backup",
   "menu.sync": "Sync with the server",
@@ -121,7 +110,6 @@
   "settings.language": "Language",
   "settings.language_auto": "From the console ({0})",
   "settings.no_font": "This console has no font for {0}, so the text would be blank. The language was not changed.",
-
   "pair.title": "Pair this console",
   "pair.enter_code": "Type the six digit code shown on the web page.",
   "pair.no_server": "Set the server address first, or scan a code instead - a scanned code carries the address with it.",

@@ -1,11 +1,14 @@
 {{template "head" .}}
 <div class="brand"><span class="sq">大</span> DaeMoon</div>
 <div class="card pad">
-  <h1 style="font-size:1.2rem;margin-bottom:1rem">Sign in</h1>
+  <h1 style="font-size:1.2rem;margin-bottom:1rem">{{.T "web.login.title"}}</h1>
   <form class="stack" method="post" action="/login">
-    <label>Name<input type="text" name="username" autocomplete="username" autofocus></label>
-    <label>Password<input type="password" name="password" autocomplete="current-password"></label>
-    <button class="btn-key">Sign in</button>
+    <label>{{.T "web.login.name"}}<input type="text" name="username" autocomplete="username" autofocus></label>
+    <label>{{.T "web.login.password"}}<input type="password" name="password" autocomplete="current-password"></label>
+    <button class="btn-key">{{.T "web.login.title"}}</button>
   </form>
+  {{if .SignUpOpen}}
+  <p style="margin:1rem 0 0;font-size:.9rem"><a href="/register">{{.T "web.register.link"}}</a></p>
+  {{end}}
 </div>
 {{template "foot" .}}

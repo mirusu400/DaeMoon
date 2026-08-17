@@ -2,25 +2,25 @@
 {{with .Data}}
 <div class="pagehead">
   <div>
-    <h1>Saves</h1>
-    <div class="sub mono">{{len .Titles}} synced · {{.LiveDevices}} of {{len .Devices}} consoles live</div>
+    <h1>{{$.T "web.nav.saves"}}</h1>
+    <div class="sub mono">{{$.Tf "web.saves.subtitle" (len .Titles) .LiveDevices (len .Devices)}}</div>
   </div>
-  <div class="row-actions"><a class="btn btn-key" href="/pair">Add a console</a></div>
+  <div class="row-actions"><a class="btn btn-key" href="/pair">{{$.T "web.nav.add_console"}}</a></div>
 </div>
 
 <div class="stats">
-  <div class="card stat"><div class="k">Titles</div><div class="v">{{len .Titles}}</div></div>
-  <div class="card stat"><div class="k">Versions</div><div class="v">{{.Versions}}</div></div>
-  <div class="card stat"><div class="k">Stored</div><div class="v">{{bytes .Stored}}</div></div>
-  <div class="card stat"><div class="k">Consoles</div><div class="v">{{.LiveDevices}}</div></div>
+  <div class="card stat"><div class="k">{{$.T "web.saves.titles"}}</div><div class="v">{{len .Titles}}</div></div>
+  <div class="card stat"><div class="k">{{$.T "web.saves.versions"}}</div><div class="v">{{.Versions}}</div></div>
+  <div class="card stat"><div class="k">{{$.T "web.saves.stored"}}</div><div class="v">{{bytes .Stored}}</div></div>
+  <div class="card stat"><div class="k">{{$.T "web.nav.consoles"}}</div><div class="v">{{.LiveDevices}}</div></div>
 </div>
 
 {{if .Titles}}
 <div class="card">
   <table>
     <thead><tr>
-      <th>Title</th><th>Platform</th><th>Kind</th>
-      <th class="num">Version</th><th>Updated</th>
+      <th>{{$.T "web.col.title"}}</th><th>{{$.T "web.col.platform"}}</th><th>{{$.T "web.col.kind"}}</th>
+      <th class="num">{{$.T "web.col.version"}}</th><th>{{$.T "web.col.updated"}}</th>
     </tr></thead>
     <tbody>
     {{range .Titles}}
@@ -44,8 +44,8 @@
 </div>
 {{else}}
 <div class="card pad">
-  <p class="empty" style="padding:.5rem 0">Nothing has been synced yet.
-  <a href="/pair">Add a console</a> and sync a save from it.</p>
+  <p class="empty" style="padding:.5rem 0">{{$.T "web.saves.empty"}}
+  <a href="/pair">{{$.T "web.nav.add_console"}}</a></p>
 </div>
 {{end}}
 {{end}}

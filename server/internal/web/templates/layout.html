@@ -1,8 +1,8 @@
 {{define "head"}}<!doctype html>
-<html lang="en"{{if .Theme}} data-theme="{{.Theme}}"{{end}}><head>
+<html lang="{{.Lang}}"{{if .Theme}} data-theme="{{.Theme}}"{{end}}><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}} — DaeMoon</title>
+<title>{{.T .Title}} · DaeMoon</title>
 <link rel="stylesheet" href="/static/style.css">
 </head><body>
 {{if .User.ID}}
@@ -10,30 +10,42 @@
   <aside class="sidebar">
     <div class="brand"><span class="sq">大</span> DaeMoon</div>
 
-    <p class="sechead">Library</p>
+    <p class="sechead">{{.T "web.nav.library"}}</p>
     <ul class="nav">
-      <li><a href="/" {{if eq .Page "saves"}}class="on"{{end}}>Saves <span class="mono">{{.Nav.Titles}}</span></a></li>
-      <li><a href="/devices" {{if eq .Page "devices"}}class="on"{{end}}>Consoles <span class="mono">{{.Nav.LiveDevices}}</span></a></li>
+      <li><a href="/" {{if eq .Page "saves"}}class="on"{{end}}>{{.T "web.nav.saves"}} <span class="mono">{{.Nav.Titles}}</span></a></li>
+      <li><a href="/devices" {{if eq .Page "devices"}}class="on"{{end}}>{{.T "web.nav.consoles"}} <span class="mono">{{.Nav.LiveDevices}}</span></a></li>
       {{if .User.IsAdmin}}
-      <li><a href="/users" {{if eq .Page "users"}}class="on"{{end}}>People</a></li>
+      <li><a href="/users" {{if eq .Page "users"}}class="on"{{end}}>{{.T "web.nav.people"}}</a></li>
       {{end}}
     </ul>
 
-    <a class="btn btn-ghost btn-sm" href="/pair" style="display:block;text-align:center;margin-bottom:1.6rem">+ Add a console</a>
+    <a class="btn btn-ghost btn-sm" href="/pair" style="display:block;text-align:center;margin-bottom:1.6rem">+ {{.T "web.nav.add_console"}}</a>
 
     <div class="side-foot">
-      <p class="sechead">Appearance</p>
+      <p class="sechead">{{.T "web.nav.appearance"}}</p>
       <form class="themes" method="post" action="/theme">
         <input type="hidden" name="from" value="{{.Path}}">
+        {{$p := .}}
         {{range .Themes}}
         <button name="theme" value="{{.ID}}" class="theme-btn{{if .Current}} on{{end}}"
-                title="{{.Label}}">{{.Label}}</button>
+                title="{{$p.T .Label}}">{{$p.T .Label}}</button>
         {{end}}
       </form>
 
-      <p class="sechead" style="margin-top:1.4rem">Signed in</p>
-      <div class="mono t-mut" style="margin-bottom:.6rem">{{.User.Username}}{{if .User.IsAdmin}} · admin{{end}}</div>
-      <form method="post" action="/logout"><button class="btn btn-ghost btn-sm">Sign out</button></form>
+      <p class="sechead" style="margin-top:1.4rem">{{.T "web.nav.language"}}</p>
+      <form method="post" action="/lang">
+        <input type="hidden" name="from" value="{{.Path}}">
+        <select name="lang" onchange="this.form.submit()">
+          {{range .Langs}}
+          <option value="{{.ID}}"{{if .Current}} selected{{end}}>{{.Label}}</option>
+          {{end}}
+        </select>
+        <noscript><button class="btn btn-ghost btn-sm" style="margin-top:.4rem">{{.T "web.nav.language"}}</button></noscript>
+      </form>
+
+      <p class="sechead" style="margin-top:1.4rem">{{.T "web.nav.signed_in"}}</p>
+      <div class="mono t-mut" style="margin-bottom:.6rem">{{.User.Username}}{{if .User.IsAdmin}} · {{.T "web.people.admin"}}{{end}}</div>
+      <form method="post" action="/logout"><button class="btn btn-ghost btn-sm">{{.T "web.nav.sign_out"}}</button></form>
     </div>
   </aside>
 
@@ -41,11 +53,23 @@
 {{else}}
 <div class="gate"><div class="box">
 {{end}}
-{{if .Error}}<div class="error">{{.Error}}</div>{{end}}
+{{if .Error}}<div class="error">{{.T .Error}}</div>{{end}}
 {{end}}
 
 {{define "foot"}}
 {{if .User.ID}}  </main></div>
-{{else}}</div></div>
+{{else}}
+  {{/* No sidebar here, so the language switch lives under the form. A login page
+       nobody can read is a login page nobody gets past. */}}
+  <form method="post" action="/lang" class="gate-lang">
+    <input type="hidden" name="from" value="{{.Path}}">
+    <select name="lang" onchange="this.form.submit()">
+      {{range .Langs}}
+      <option value="{{.ID}}"{{if .Current}} selected{{end}}>{{.Label}}</option>
+      {{end}}
+    </select>
+    <noscript><button class="btn btn-ghost btn-sm">{{.T "web.nav.language"}}</button></noscript>
+  </form>
+</div></div>
 {{end}}
 </body></html>{{end}}

@@ -1,20 +1,19 @@
 {{template "head" .}}
-<div class="pagehead"><div><h1>Add a console</h1>
-<div class="sub mono">the code carries this server's address with it</div></div></div>
+<div class="pagehead"><div><h1>{{.T "web.nav.add_console"}}</h1>
+<div class="sub mono">{{.T "web.pair.subtitle"}}</div></div></div>
 
 {{if .Data}}{{with .Data}}
 <div class="pair-split">
   <div class="card pad">
-    <p class="sechead">Scan this</p>
-    <div class="qr"><img src="/pair/{{.Code}}/qr.svg" alt="pairing code" width="240" height="240"></div>
-    <p class="t-mut mono" style="margin:.7rem 0 0;font-size:.75rem">Settings → Scan a QR code</p>
+    <p class="sechead">{{$.T "web.pair.scan"}}</p>
+    <div class="qr"><img src="/pair/{{.Code}}/qr.svg" alt="{{$.T "web.pair.scan"}}" width="240" height="240"></div>
+    <p class="t-mut mono" style="margin:.7rem 0 0;font-size:.75rem">{{$.T "web.pair.where"}}</p>
   </div>
   <div class="card pad" style="flex:1;min-width:16rem">
-    <p class="sechead">Or type this</p>
+    <p class="sechead">{{$.T "web.pair.type"}}</p>
     <p class="code">{{.Code}}</p>
-    <p class="t-mut" style="font-size:.88rem;margin:0 0 1rem">Expires shortly, and works once.
-    A console that is already paired keeps its place in the list.</p>
-    <p id="status" class="mono t-mut">Waiting for a console…</p>
+    <p class="t-mut" style="font-size:.88rem;margin:0 0 1rem">{{$.T "web.pair.once"}}</p>
+    <p id="status" class="mono t-mut">{{$.T "web.pair.waiting"}}</p>
   </div>
 </div>
 <script>
@@ -23,13 +22,14 @@
 // handed over, so its absence is the signal.
 (function () {
   var code = {{.Code}};
+  var done = {{$.T "web.pair.done"}};
   var el = document.getElementById("status");
   var timer = setInterval(function () {
     fetch("/pair/" + code + "/status").then(function (r) { return r.json(); })
       .then(function (s) {
         if (!s.claimed) return;
         clearInterval(timer);
-        el.textContent = "Paired. The console has its token.";
+        el.textContent = done;
         el.className = "mono t-ok";
         setTimeout(function () { location.href = "/devices"; }, 1200);
       }).catch(function () { /* a home network blinking is not worth a message */ });
@@ -38,17 +38,15 @@
 </script>
 {{end}}{{else}}
 <div class="card pad" style="max-width:26rem">
-  <p class="t-mut" style="margin:0 0 1rem;font-size:.9rem">A console gets a token of its
-  own. Pairing one that is already here rotates its token rather than adding a second
-  row, and either can be cut off without touching the other.</p>
+  <p class="t-mut" style="margin:0 0 1rem;font-size:.9rem">{{.T "web.pair.explain"}}</p>
   <form class="stack" method="post" action="/pair">
-    <label>Platform
+    <label>{{.T "web.col.platform"}}
       <select name="platform">
         <option value="3ds">3DS</option>
         <option value="nx">Switch</option>
       </select>
     </label>
-    <button class="btn-key">Show a code</button>
+    <button class="btn-key">{{.T "web.pair.show_code"}}</button>
   </form>
 </div>
 {{end}}

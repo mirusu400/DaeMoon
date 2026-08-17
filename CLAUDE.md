@@ -173,13 +173,15 @@ Multi language support is a launch requirement. Retrofitting it is expensive, so
 
 ### Server
 
-**The server does not localize.** It returns machine readable error codes, and the client renders the text.
+**The API does not localize.** It returns machine readable error codes, and the client renders the text.
 
 ```json
 { "error": { "code": "version_conflict", "detail": { "server_version": 42 } } }
 ```
 
 All codes are defined in `shared/errors.json`, which is the single source of truth for both the Go handlers and the C client. Adding a code means adding it to every file in `shared/lang/`, and CI fails if a language file is missing a key.
+
+The **web panel** is a client, not the API, so it does render text - out of the same `shared/lang/*.json`. Keys prefixed `web.` are compiled into the server binary and left out of the C table; everything else goes to the consoles. See `docs/i18n.md`.
 
 ---
 
@@ -226,6 +228,7 @@ blobs(id, sha256 UNIQUE, size, refcount, created_at)
 versions(title_row_id, version, parent_version, blob_id, device_id, received_at)
 blob_chunks(blob_id, seq, data)
 shares(code, version_row_id, expires_at, created_at)
+settings(key, value, updated_at)
 ```
 
 ### API

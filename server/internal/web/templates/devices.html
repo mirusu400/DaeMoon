@@ -1,16 +1,16 @@
 {{template "head" .}}
 <div class="pagehead">
   <div>
-    <h1>Consoles</h1>
-    <div class="sub mono">a token lives in each console, and can be cut off on its own</div>
+    <h1>{{.T "web.nav.consoles"}}</h1>
+    <div class="sub mono">{{.T "web.consoles.subtitle"}}</div>
   </div>
-  <div class="row-actions"><a class="btn btn-key" href="/pair">Add a console</a></div>
+  <div class="row-actions"><a class="btn btn-key" href="/pair">{{.T "web.nav.add_console"}}</a></div>
 </div>
 
 {{if .Data}}
 <div class="card">
   <table>
-    <thead><tr><th>Name</th><th>Platform</th><th>Added</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>{{.T "web.col.name"}}</th><th>{{.T "web.col.platform"}}</th><th>{{.T "web.col.added"}}</th><th>{{.T "web.col.status"}}</th><th></th></tr></thead>
     <tbody>
     {{range .Data}}
     <tr>
@@ -18,26 +18,26 @@
       <td><span class="tg tg-{{.Platform}}">{{.Platform}}</span></td>
       <td class="mono t-mut">{{.CreatedAt}}</td>
       <td>
-        {{if .Revoked}}<span class="tg tg-mut">revoked</span>
-        {{else}}<span class="tg tg-ok">live</span>{{end}}
+        {{if .Revoked}}<span class="tg tg-mut">{{$.T "web.consoles.revoked"}}</span>
+        {{else}}<span class="tg tg-ok">{{$.T "web.consoles.live"}}</span>{{end}}
       </td>
-      <td class="row-actions" style="justify-content:flex-end">
-        {{if not .Revoked}}
-        <form method="post" action="/devices/{{.ID}}/revoke">
-          <button class="btn-danger btn-sm">Revoke</button>
-        </form>
-        {{else}}<span class="mono t-mut">{{.RevokedAt}}</span>{{end}}
+      <td class="acts">
+        <div class="row-actions">
+          {{if not .Revoked}}
+          <form method="post" action="/devices/{{.ID}}/revoke">
+            <button class="btn-danger btn-sm">{{$.T "web.action.revoke"}}</button>
+          </form>
+          {{else}}<span class="mono t-mut">{{.RevokedAt}}</span>{{end}}
+        </div>
       </td>
     </tr>
     {{end}}
     </tbody>
   </table>
 </div>
-<p class="t-mut" style="font-size:.85rem;margin-top:1rem">Pairing a console again rotates
-its token in place, so one console stays one row. Revoking cuts that console off and
-nothing else.</p>
+<p class="t-mut" style="font-size:.85rem;margin-top:1rem">{{.T "web.consoles.note"}}</p>
 {{else}}
-<div class="card pad"><p class="empty" style="padding:.5rem 0">No consoles yet.
-<a href="/pair">Add one</a>.</p></div>
+<div class="card pad"><p class="empty" style="padding:.5rem 0">{{.T "web.consoles.empty"}}
+<a href="/pair">{{.T "web.nav.add_console"}}</a></p></div>
 {{end}}
 {{template "foot" .}}

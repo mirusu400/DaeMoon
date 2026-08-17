@@ -50,6 +50,25 @@ func (p *panel) get(path string) (int, string) {
 	return resp.StatusCode, string(body)
 }
 
+// getIn is get with an Accept-Language, which is what a browser that has never been
+// told anything sends.
+func (p *panel) getIn(path, accept string) (int, string) {
+	p.t.Helper()
+
+	req, err := http.NewRequest(http.MethodGet, p.base+path, nil)
+	if err != nil {
+		p.t.Fatalf("GET %s: %v", path, err)
+	}
+	req.Header.Set("Accept-Language", accept)
+	resp, err := p.http.Do(req)
+	if err != nil {
+		p.t.Fatalf("GET %s: %v", path, err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(body)
+}
+
 func (p *panel) post(path string, form url.Values) (int, string) {
 	p.t.Helper()
 
@@ -71,7 +90,7 @@ func TestPairingAConsoleFromTheWebPanel(t *testing.T) {
 	// A fresh instance sends everything to setup, and setup is the only page that
 	// can make an administrator.
 	if status, body := p.get("/"); status != http.StatusOK ||
-		!strings.Contains(body, "Set up DaeMoon") {
+		!strings.Contains(body, "Set up this instance") {
 		t.Fatalf("a fresh instance did not offer setup: %d\n%s", status, body)
 	}
 
@@ -418,6 +437,215 @@ func TestAppearanceIsRememberedPerBrowser(t *testing.T) {
 	}
 	if _, body := p.get("/"); !strings.Contains(body, `data-theme="dark"`) {
 		t.Fatalf("dark was not kept:\n%s", body)
+	}
+}
+
+func TestThePanelSpeaksKorean(t *testing.T) {
+	e := start(t)
+	p := newPanel(t, e)
+
+	// Before there is an account, and therefore before there is anywhere to store a
+	// preference. A console owner opening this for the first time gets their own
+	// language from the browser, and the setup page is the first thing they read.
+	if _, body := p.getIn("/setup", "ko-KR,ko;q=0.9,en;q=0.8"); !strings.Contains(body, "이 인스턴스 설정") ||
+		!strings.Contains(body, `<html lang="ko"`) {
+		t.Fatalf("the browser's language was not honoured:\n%s", body)
+	}
+	// And a browser that asks for something this panel has no file for still gets a
+	// page it can read.
+	if _, body := p.getIn("/setup", "is-IS"); !strings.Contains(body, "Set up this instance") {
+		t.Fatalf("an unknown language did not fall back to English:\n%s", body)
+	}
+
+	if status, _ := p.post("/setup", url.Values{
+		"username": {"mirusu"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("setup: %d", status)
+	}
+
+	// An explicit choice outranks the header and survives the next request.
+	if status, _ := p.post("/lang", url.Values{"lang": {"ko"}, "from": {"/devices"}}); status != http.StatusOK {
+		t.Fatalf("set ko: %d", status)
+	}
+	_, body := p.getIn("/", "en-US")
+	for _, want := range []string{`<html lang="ko"`, "세이브", "본체", "사용자", "로그아웃"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("Korean panel is missing %q:\n%s", want, body)
+		}
+	}
+	// The count line is a template with three numbers in it, and Korean puts them
+	// in a different order than English does.
+	if !strings.Contains(body, "본체 0개 중 0개 사용 중") {
+		t.Fatalf("the substituted subtitle is not there:\n%s", body)
+	}
+	if strings.Contains(body, "{0}") || strings.Contains(body, "web.nav.") {
+		t.Fatalf("a placeholder or a key reached the page:\n%s", body)
+	}
+
+	// Every page, not only the one the switch was on.
+	for _, path := range []string{"/devices", "/pair", "/users"} {
+		if _, body := p.get(path); strings.Contains(body, "web.") ||
+			!strings.Contains(body, `<html lang="ko"`) {
+			t.Fatalf("%s was not Korean:\n%s", path, body)
+		}
+	}
+
+	// A refusal somebody can reach by using the panel is translated too, and it is
+	// reached by a member rather than by the administrator asking for it.
+	if status, _ := p.post("/users", url.Values{
+		"username": {"member"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("add a member: %d", status)
+	}
+	member := newPanel(t, e)
+	if status, _ := member.post("/login", url.Values{
+		"username": {"member"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("member could not sign in: %d", status)
+	}
+	if status, _ := member.post("/lang", url.Values{"lang": {"ko"}, "from": {"/"}}); status != http.StatusOK {
+		t.Fatalf("member set ko: %d", status)
+	}
+	status, body := member.get("/users")
+	if status != http.StatusForbidden || !strings.Contains(body, "관리자만") {
+		t.Fatalf("the refusal was not in Korean: %d %q", status, body)
+	}
+	// The same refusal, from the same handler, reads in English for a browser that
+	// asked for English. One handler, two languages, chosen per request.
+	english := newPanel(t, e)
+	if status, _ := english.post("/login", url.Values{
+		"username": {"member"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("second member sign in: %d", status)
+	}
+	if status, body := english.getIn("/users", "en-US"); status != http.StatusForbidden ||
+		!strings.Contains(body, "Administrators only") {
+		t.Fatalf("the refusal was not in English: %d %q", status, body)
+	}
+
+	// Handing the choice back means the browser decides again.
+	if status, _ := p.post("/lang", url.Values{"lang": {"auto"}, "from": {"/"}}); status != http.StatusOK {
+		t.Fatalf("clear lang: %d", status)
+	}
+	if _, body := p.getIn("/", "ja"); !strings.Contains(body, `<html lang="ja"`) {
+		t.Fatalf("clearing the choice did not restore the header:\n%s", body)
+	}
+
+	// And a value from a form field is not trusted to be a language.
+	if status, _ := p.post("/lang", url.Values{"lang": {"../../etc"}, "from": {"//example.invalid/"}}); status != http.StatusOK {
+		t.Fatalf("nonsense language: %d", status)
+	}
+	if _, body := p.getIn("/", "en"); !strings.Contains(body, `<html lang="en"`) {
+		t.Fatalf("nonsense was stored:\n%s", body)
+	}
+}
+
+// Signing up is closed until an administrator opens it, and this is the whole
+// gate: the page, the switch, and what an account made through it can see.
+//
+// The default matters more than the feature. This is a save sync server; an open
+// sign up page on an address a router forwards is somewhere for anybody to put
+// data, and the person who installs it is not always the person who decided what
+// that router does.
+func TestSigningUpIsClosedUntilItIsOpened(t *testing.T) {
+	e := start(t)
+	admin := newPanel(t, e)
+
+	// Before there is anybody, /register is setup's job: setup is the page that
+	// grants administrator, and it must stay the only one.
+	if _, body := admin.get("/register"); !strings.Contains(body, "Set up this instance") {
+		t.Fatalf("a fresh instance did not send /register to setup:\n%s", body)
+	}
+	if status, _ := admin.post("/setup", url.Values{
+		"username": {"admin"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("setup: %d", status)
+	}
+
+	// Closed by default, and the login page does not offer a link to a page that
+	// would refuse.
+	stranger := newPanel(t, e)
+	if _, body := stranger.get("/login"); strings.Contains(body, `href="/register"`) {
+		t.Fatalf("a closed instance advertised sign up:\n%s", body)
+	}
+	if _, body := stranger.get("/register"); !strings.Contains(body, "not accepting new accounts") ||
+		strings.Contains(body, `action="/register"`) {
+		t.Fatalf("the closed page was not closed:\n%s", body)
+	}
+	// And the form being absent is not the check. Posting anyway is.
+	if _, body := stranger.post("/register", url.Values{
+		"username": {"sneak"}, "password": {"hunter2hunter2"},
+	}); !strings.Contains(body, "not accepting new accounts") {
+		t.Fatalf("a POST got through a closed sign up:\n%s", body)
+	}
+	if status, _ := stranger.get("/"); status != http.StatusOK {
+		t.Fatalf("stranger request: %d", status)
+	}
+	if _, body := admin.get("/users"); strings.Contains(body, "sneak") {
+		t.Fatalf("the refused account was created anyway:\n%s", body)
+	}
+
+	// A member cannot open it either. The switch is the administrator's.
+	if status, _ := admin.post("/users", url.Values{
+		"username": {"member"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("add a member: %d", status)
+	}
+	member := newPanel(t, e)
+	if status, _ := member.post("/login", url.Values{
+		"username": {"member"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK {
+		t.Fatalf("member sign in: %d", status)
+	}
+	if status, _ := member.post("/users/registration", url.Values{"open": {"1"}}); status != http.StatusForbidden {
+		t.Fatalf("a member opened sign up: %d", status)
+	}
+
+	// The administrator opens it.
+	if status, body := admin.post("/users/registration", url.Values{"open": {"1"}}); status != http.StatusOK ||
+		!strings.Contains(body, "may create an account") {
+		t.Fatalf("open sign up: %d\n%s", status, body)
+	}
+	if _, body := stranger.get("/login"); !strings.Contains(body, `href="/register"`) {
+		t.Fatalf("an open instance did not offer sign up:\n%s", body)
+	}
+	if status, body := stranger.post("/register", url.Values{
+		"username": {"friend"}, "password": {"hunter2hunter2"},
+	}); status != http.StatusOK || !strings.Contains(body, "Saves") {
+		t.Fatalf("sign up: %d\n%s", status, body)
+	}
+
+	// Signed in as itself, not as an administrator, and holding nothing.
+	if _, body := stranger.get("/"); !strings.Contains(body, "friend") ||
+		strings.Contains(body, `href="/users"`) {
+		t.Fatalf("a new account was not a plain member:\n%s", body)
+	}
+	if status, _ := stranger.get("/users"); status != http.StatusForbidden {
+		t.Fatalf("a new account reached People: %d", status)
+	}
+	if _, body := stranger.get("/devices"); !strings.Contains(body, "No consoles yet") {
+		t.Fatalf("a new account saw somebody else's consoles:\n%s", body)
+	}
+
+	// The same name twice is refused rather than taking over the first.
+	other := newPanel(t, e)
+	if _, body := other.post("/register", url.Values{
+		"username": {"friend"}, "password": {"hunter2hunter2"},
+	}); !strings.Contains(body, "name is taken") {
+		t.Fatalf("a duplicate name was accepted:\n%s", body)
+	}
+
+	// And closing it again shuts the door without touching the account behind it.
+	if status, _ := admin.post("/users/registration", url.Values{"open": {"0"}}); status != http.StatusOK {
+		t.Fatalf("close sign up: %d", status)
+	}
+	if _, body := other.post("/register", url.Values{
+		"username": {"late"}, "password": {"hunter2hunter2"},
+	}); !strings.Contains(body, "not accepting new accounts") {
+		t.Fatalf("sign up stayed open after being closed:\n%s", body)
+	}
+	if status, body := stranger.get("/"); status != http.StatusOK || !strings.Contains(body, "friend") {
+		t.Fatalf("closing sign up disturbed an existing account: %d\n%s", status, body)
 	}
 }
 

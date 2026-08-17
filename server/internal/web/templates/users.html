@@ -1,25 +1,27 @@
 {{template "head" .}}
-<div class="pagehead"><div><h1>People</h1>
-<div class="sub mono">each one sees only their own consoles and saves</div></div></div>
+<div class="pagehead"><div><h1>{{.T "web.nav.people"}}</h1>
+<div class="sub mono">{{.T "web.people.subtitle"}}</div></div></div>
 
 <div class="card">
   <table>
-    <thead><tr><th>Name</th><th>Role</th><th>Added</th><th></th></tr></thead>
+    <thead><tr><th>{{.T "web.col.name"}}</th><th>{{.T "web.col.role"}}</th><th>{{.T "web.col.added"}}</th><th></th></tr></thead>
     <tbody>
-    {{range .Data}}
+    {{range .Data.Users}}
     <tr>
       <td class="title-cell">
         {{if .Username}}{{.Username}}{{else}}<span class="mono t-mut">{{.ID}}</span>{{end}}
-        {{if not .HasPassword}}<span class="tg tg-mut">no password</span>{{end}}
+        {{if not .HasPassword}}<span class="tg tg-mut">{{$.T "web.people.no_password"}}</span>{{end}}
       </td>
-      <td>{{if .IsAdmin}}<span class="tg tg-3ds">administrator</span>
-          {{else}}<span class="t-mut">member</span>{{end}}</td>
+      <td>{{if .IsAdmin}}<span class="tg tg-3ds">{{$.T "web.people.admin"}}</span>
+          {{else}}<span class="t-mut">{{$.T "web.people.member"}}</span>{{end}}</td>
       <td class="mono t-mut">{{.CreatedAt}}</td>
-      <td class="row-actions" style="justify-content:flex-end">
-        <form method="post" action="/users/{{.ID}}/delete"
-              onsubmit="return confirm('Remove this person and every save they have synced?')">
-          <button class="btn-danger btn-sm">Remove</button>
-        </form>
+      <td class="acts">
+        <div class="row-actions">
+          <form method="post" action="/users/{{.ID}}/delete"
+                onsubmit="return confirm('{{$.T "web.people.confirm_remove"}}')">
+            <button class="btn-danger btn-sm">{{$.T "web.action.remove"}}</button>
+          </form>
+        </div>
       </td>
     </tr>
     {{end}}
@@ -27,16 +29,31 @@
   </table>
 </div>
 
-<p class="sechead" style="margin-top:2rem">Add someone</p>
+<p class="sechead" style="margin-top:2rem">{{.T "web.people.add"}}</p>
 <div class="card pad" style="max-width:26rem">
   <form class="stack" method="post" action="/users">
-    <label>Name<input type="text" name="username"></label>
-    <label>Password<input type="password" name="password"></label>
-    <label class="check"><input type="checkbox" name="admin"> Administrator</label>
-    <button class="btn-key">Add</button>
+    <label>{{.T "web.login.name"}}<input type="text" name="username"></label>
+    <label>{{.T "web.login.password"}}<input type="password" name="password"></label>
+    <label class="check"><input type="checkbox" name="admin"> {{.T "web.people.admin"}}</label>
+    <button class="btn-key">{{.T "web.action.add"}}</button>
   </form>
 </div>
-<p class="t-mut" style="font-size:.85rem;margin-top:1rem">The last administrator cannot
-be removed. An instance with saves on it and nobody who can administer it is not a
-state worth being one click away from.</p>
+<p class="t-mut" style="font-size:.85rem;margin-top:1rem">{{.T "web.people.last_admin"}}</p>
+
+<p class="sechead" style="margin-top:2rem">{{.T "web.people.signup"}}</p>
+<div class="card pad{{if .Data.OpenSignUp}} warn{{end}}" style="max-width:26rem">
+  <p style="margin:0 0 1rem;font-size:.9rem">
+    {{if .Data.OpenSignUp}}{{.T "web.people.signup_open"}}{{else}}{{.T "web.people.signup_closed"}}{{end}}
+  </p>
+  <form method="post" action="/users/registration">
+    {{if .Data.OpenSignUp}}
+    <input type="hidden" name="open" value="0">
+    <button class="btn-ghost btn-sm">{{.T "web.people.signup_close_it"}}</button>
+    {{else}}
+    <input type="hidden" name="open" value="1">
+    <button class="btn-warn btn-sm">{{.T "web.people.signup_open_it"}}</button>
+    {{end}}
+  </form>
+</div>
+<p class="t-mut" style="font-size:.85rem;margin-top:1rem">{{.T "web.people.signup_note"}}</p>
 {{template "foot" .}}

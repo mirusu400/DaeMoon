@@ -31,14 +31,42 @@ migrations/         numbered, append only, embedded in the binary
 - **Wrap and propagate.** `fmt.Errorf("...: %w", err)`. `_ = err` is forbidden.
 - **Every request has a timeout and a body limit.** `config.Config` carries both and
   `cmd/daemoond` applies them.
-- **The server does not localize.** It returns a code from `shared/errors.json` and
-  the client renders the text. There is not one user facing sentence in this tree,
-  and there should not be.
+- **The API does not localize.** It returns a code from `shared/errors.json` and the
+  client renders the text. There is not one user facing sentence anywhere under
+  `internal/api`, and there should not be.
+
+  `internal/web` is the exception, and it is not really one: the panel is a client,
+  the only one written in Go, and rendering text is what a client does. It has no
+  sentences of its own either - it reads the same `shared/lang/*.json` the consoles
+  read, through `internal/i18n`. A handler sets a **key** in `page.Title` or
+  `page.Error` and the template resolves it with `{{$.T "web.something"}}`. A
+  literal in a template is a bug, and two tests in that package say so.
 - **`shared/openapi.yaml` is authoritative.** `make spec-check` compares it against
   `api.Describe()` and fails when they disagree. Changing a handler means changing
   the spec in the same commit.
 - **Migrations are append only.** Never edit one that has run anywhere: somebody's
   self hosted instance has already applied it.
+
+## Accounts and signing up
+
+Three ways an account comes into being, and they are not interchangeable:
+
+- **`/setup`** makes the first one and grants it administrator. It stops working the
+  moment an account exists, and every other path redirects to it while there is
+  none.
+- **People → Add someone** is an administrator making an account for somebody.
+- **`/register`** is a person making their own, and it is **closed unless an
+  administrator opens it** (`settings.open_registration`, absent meaning no).
+
+The default is the point. This is a save sync server: an open sign up page on an
+address a router forwards is somewhere for anybody to put data, and whoever installs
+this is not always whoever decided what that router does. The switch is on the People
+page, it says which state it is in, and the flag is read again inside the POST
+handler because a form being drawn is not permission.
+
+An account made this way is never an administrator. Separation is already there and
+is not new code: `ListDevices` and `ListTitles` take a user id, so a new account
+starts with nothing and can see nothing else.
 
 ## Uploads
 

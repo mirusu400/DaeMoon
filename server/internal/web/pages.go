@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -61,7 +62,7 @@ func (s *Server) getDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.render(w, r, "dashboard.html", page{
-		Title: "Saves",
+		Title: "web.nav.saves",
 		Page:  "saves",
 		Data:  data,
 	})
@@ -75,7 +76,7 @@ func (s *Server) getDevices(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err, "could not list devices")
 		return
 	}
-	s.render(w, r, "devices.html", page{Title: "Consoles", Page: "devices", Data: devices})
+	s.render(w, r, "devices.html", page{Title: "web.nav.consoles", Page: "devices", Data: devices})
 }
 
 func (s *Server) postRevokeDevice(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +99,7 @@ type pairData struct {
 }
 
 func (s *Server) getPair(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, "pair.html", page{Title: "Add a console", Page: "pair"})
+	s.render(w, r, "pair.html", page{Title: "web.nav.add_console", Page: "pair"})
 }
 
 // postPair mints a pairing code and marks it approved in the same step.
@@ -127,7 +128,7 @@ func (s *Server) postPair(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.render(w, r, "pair.html", page{
-		Title: "Add a console",
+		Title: "web.nav.add_console",
 		Page:  "pair",
 		Data: pairData{
 			Code:     code,
@@ -291,20 +292,52 @@ func (s *Server) getTitleBlob(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getUsers(w http.ResponseWriter, r *http.Request) {
 	if !userOf(r).IsAdmin {
-		http.Error(w, "administrators only", http.StatusForbidden)
+		s.denied(w, r, http.StatusForbidden, "web.people.admin_only")
 		return
 	}
+	s.renderUsers(w, r, "")
+}
+
+/* What the People page shows: everybody, and the one switch that decides whether
+ * anybody else can arrive without being added here by hand. */
+type usersView struct {
+	Users      []store.User
+	OpenSignUp bool
+}
+
+func (s *Server) renderUsers(w http.ResponseWriter, r *http.Request, errKey string) {
 	users, err := s.store.ListUsers(r.Context())
 	if err != nil {
 		s.fail(w, r, err, "could not list users")
 		return
 	}
-	s.render(w, r, "users.html", page{Title: "People", Page: "users", Data: users})
+	s.render(w, r, "users.html", page{Title: "web.nav.people", Page: "users",
+		Error: errKey,
+		Data:  usersView{Users: users, OpenSignUp: s.store.OpenRegistration(r.Context())}})
+}
+
+// postRegistration opens or closes the sign up page.
+//
+// A form with an explicit value rather than a toggle that flips whatever it finds:
+// two tabs open on this page must not be able to turn sign up back on by pressing
+// the button that said "close" when it was drawn.
+func (s *Server) postRegistration(w http.ResponseWriter, r *http.Request) {
+	if !userOf(r).IsAdmin {
+		s.denied(w, r, http.StatusForbidden, "web.people.admin_only")
+		return
+	}
+	open := r.FormValue("open") == "1"
+	if err := s.store.SetOpenRegistration(r.Context(), open); err != nil {
+		s.fail(w, r, err, "could not change the sign up setting")
+		return
+	}
+	slog.InfoContext(r.Context(), "open registration", "open", open, "by", userOf(r).Username)
+	http.Redirect(w, r, "/users", http.StatusSeeOther)
 }
 
 func (s *Server) postUsers(w http.ResponseWriter, r *http.Request) {
 	if !userOf(r).IsAdmin {
-		http.Error(w, "administrators only", http.StatusForbidden)
+		s.denied(w, r, http.StatusForbidden, "web.people.admin_only")
 		return
 	}
 
@@ -312,15 +345,7 @@ func (s *Server) postUsers(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	isAdmin := r.FormValue("admin") == "on"
 
-	show := func(msg string) {
-		users, err := s.store.ListUsers(r.Context())
-		if err != nil {
-			s.fail(w, r, err, "could not list users")
-			return
-		}
-		s.render(w, r, "users.html", page{Title: "People", Page: "users", Data: users,
-			Error: msg})
-	}
+	show := func(msg string) { s.renderUsers(w, r, msg) }
 
 	if msg := checkCredentials(username, password); msg != "" {
 		show(msg)
@@ -328,12 +353,12 @@ func (s *Server) postUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		show("The password could not be stored.")
+		show("web.err.password_store")
 		return
 	}
 	if _, err := s.store.CreateUser(r.Context(), uuid.NewString(), username, hash,
 		isAdmin); err != nil {
-		show("That name is taken.")
+		show("web.err.name_taken")
 		return
 	}
 	http.Redirect(w, r, "/users", http.StatusSeeOther)
@@ -342,7 +367,7 @@ func (s *Server) postUsers(w http.ResponseWriter, r *http.Request) {
 func (s *Server) postDeleteUser(w http.ResponseWriter, r *http.Request) {
 	me := userOf(r)
 	if !me.IsAdmin {
-		http.Error(w, "administrators only", http.StatusForbidden)
+		s.denied(w, r, http.StatusForbidden, "web.people.admin_only")
 		return
 	}
 
@@ -363,7 +388,7 @@ func (s *Server) postDeleteUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if n <= 1 {
-			http.Error(w, "that is the last administrator", http.StatusConflict)
+			s.denied(w, r, http.StatusConflict, "web.people.last_admin")
 			return
 		}
 	}

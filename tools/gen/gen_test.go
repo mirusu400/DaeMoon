@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -138,5 +139,41 @@ func TestNoPrintfSpecifiersInTranslations(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// TestNoEmDashesAnywhere: a colon, a comma or a full stop says the same thing and
+// is on every keyboard. loadLangs refuses one, so this is the assertion that the
+// refusal is real rather than a comment about intent.
+func TestNoEmDashesAnywhere(t *testing.T) {
+	root := repoRoot(t)
+
+	langs, keys, err := loadLangs(filepath.Join(root, "shared", "lang"))
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	for _, code := range langOrder {
+		for _, k := range keys {
+			if strings.ContainsAny(langs[code][k], "—–") {
+				t.Errorf("%s.json key %q contains a dash loadLangs should have refused", code, k)
+			}
+		}
+	}
+
+	// And it does refuse, so a file that grows one cannot be generated from.
+	dir := t.TempDir()
+	for _, code := range langOrder {
+		v := "text"
+		if code == "de" {
+			v = "text — more"
+		}
+		body := fmt.Sprintf("{\n  %q: %q,\n  %q: %q\n}\n", "lang.name", code, "a.key", v)
+		if err := os.WriteFile(filepath.Join(dir, code+".json"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, _, err = loadLangs(dir)
+	if err == nil || !strings.Contains(err.Error(), "em or en dash") {
+		t.Fatalf("loadLangs accepted a dash: %v", err)
 	}
 }

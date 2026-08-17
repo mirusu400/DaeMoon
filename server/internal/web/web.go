@@ -11,9 +11,14 @@
 // static binary plus one database file" stops being true the moment the answer to
 // "how do I run the web side" involves npm.
 //
-// Nothing here is localized, and that is on purpose: the rules say the server
-// returns codes and clients render text. This *is* a client - the only one written
-// in Go - so it holds English sentences and the consoles hold the translations.
+// The rule that the server returns codes and clients render text still holds for
+// the API. This is not the API: it is a client, the only one written in Go, and a
+// client is the thing that renders. Its sentences come from shared/lang/ through
+// internal/i18n, the same files the consoles read, so there is one place to add a
+// string and CI still checks every language for it.
+//
+// Which means no user facing sentence should appear in this package or in its
+// templates. A `page` carries a key and the template resolves it.
 package web
 
 import (
@@ -36,6 +41,7 @@ import (
 
 	"github.com/mirusu400/DaeMoon/server/internal/auth"
 	"github.com/mirusu400/DaeMoon/server/internal/config"
+	"github.com/mirusu400/DaeMoon/server/internal/i18n"
 	"github.com/mirusu400/DaeMoon/server/internal/store"
 )
 
@@ -74,9 +80,14 @@ func (s *Server) Routes() chi.Router {
 	r.Post("/setup", s.postSetup)
 	r.Get("/login", s.getLogin)
 	r.Post("/login", s.postLogin)
+	r.Get("/register", s.getRegister)
+	r.Post("/register", s.postRegister)
 	r.Post("/logout", s.postLogout)
-	// Outside the session group: a signed out login page can be themed too.
+	// Outside the session group: a signed out login page can be themed and, more to
+	// the point, read. Somebody who cannot read the login screen cannot get past it
+	// to change the language.
 	r.Post("/theme", s.postTheme)
+	r.Post("/lang", s.postLang)
 
 	r.Group(func(r chi.Router) {
 		r.Use(s.requireSession)
@@ -91,6 +102,7 @@ func (s *Server) Routes() chi.Router {
 		r.Get("/titles/{platform}/{tid}/blob/{version}", s.getTitleBlob)
 		r.Get("/users", s.getUsers)
 		r.Post("/users", s.postUsers)
+		r.Post("/users/registration", s.postRegistration)
 		r.Post("/users/{id}/delete", s.postDeleteUser)
 	})
 
@@ -186,24 +198,48 @@ type nav struct {
 	Titles      int
 }
 
-/* One appearance choice, as the sidebar draws it. */
+/* One appearance choice, as the sidebar draws it. Label is a key like everything
+ * else the panel puts on a screen. */
 type themeChoice struct {
 	ID      string
 	Label   string
 	Current bool
 }
 
+/* One language, named in itself rather than in the language being left. */
+type langChoice struct {
+	ID      i18n.Lang
+	Label   string
+	Current bool
+}
+
 type page struct {
+	// Title and Error are keys from shared/lang/, not sentences. A key with no
+	// translation renders as itself, which is what lets a page be titled after a
+	// title id.
 	Title  string
 	Page   string // which sidebar entry is the current one
 	Path   string // where to come back to after changing something about the page
 	Theme  string // "" for auto, which lets the stylesheet follow the system
 	Themes []themeChoice
+	Lang   i18n.Lang
+	Langs  []langChoice
 	User   store.User
 	Error  string
-	Nav    nav
-	Data   any
+	// SignUpOpen decides whether the login page offers a way to make an account.
+	// A link to a page that would refuse is worse than no link.
+	SignUpOpen bool
+	Nav        nav
+	Data       any
 }
+
+// T resolves a key in the page's language. Templates call it as {{$.T "key"}},
+// which is why it is a method and not a template function: a function would need
+// the language passed at every call site.
+func (p page) T(key string) string { return i18n.T(p.Lang, key) }
+
+// Tf is T with {0}, {1} ... substituted.
+func (p page) Tf(key string, args ...any) string { return i18n.Tf(p.Lang, key, args...) }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p page) {
 	p.User = userOf(r)
@@ -211,6 +247,9 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 	p.Path = r.URL.Path
 	p.Theme = themeOf(r)
 	p.Themes = themeChoices(p.Theme)
+	p.Lang = i18n.Of(r)
+	p.Langs = langChoices(p.Lang)
+	p.SignUpOpen = s.store.OpenRegistration(r.Context())
 
 	// A signed out page has no sidebar and nothing to count.
 	if p.User.ID != "" {
@@ -275,9 +314,9 @@ func themeOf(r *http.Request) string {
 
 func themeChoices(current string) []themeChoice {
 	return []themeChoice{
-		{ID: "auto", Label: "Auto", Current: current == ""},
-		{ID: "dark", Label: "Dark", Current: current == "dark"},
-		{ID: "light", Label: "Light", Current: current == "light"},
+		{ID: "auto", Label: "web.theme.auto", Current: current == ""},
+		{ID: "dark", Label: "web.theme.dark", Current: current == "dark"},
+		{ID: "light", Label: "web.theme.light", Current: current == "light"},
 	}
 }
 
@@ -296,14 +335,56 @@ func (s *Server) postTheme(w http.ResponseWriter, r *http.Request) {
 		cookie.MaxAge = -1
 	}
 	http.SetCookie(w, cookie)
+	redirectBack(w, r)
+}
 
-	// Back where they were. Only a path from this site: a redirect target from a
-	// form field is somewhere to send somebody if it is not checked.
+// redirectBack returns to the page the form was on.
+//
+// Only a path from this site. A redirect target taken from a form field is
+// somewhere to send somebody if it is not checked, and `//host` is a URL even
+// though it starts with a slash.
+func redirectBack(w http.ResponseWriter, r *http.Request) {
 	back := r.FormValue("from")
 	if !strings.HasPrefix(back, "/") || strings.HasPrefix(back, "//") {
 		back = "/"
 	}
 	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
+// ------------------------------------------------------------------ language
+
+/* The same shape as the theme, for the same reasons: a cookie, so the page is
+ * rendered in the right language rather than translated after it arrives, and per
+ * browser rather than per account, so the login screen can be read by somebody who
+ * does not have an account open yet.
+ *
+ * Without a cookie the browser's Accept-Language decides, which is the case that
+ * matters most: a Korean console owner opening this for the first time should not
+ * have to find a language menu written in English.
+ */
+func langChoices(current i18n.Lang) []langChoice {
+	out := make([]langChoice, 0, len(i18n.Order))
+	for _, l := range i18n.Order {
+		out = append(out, langChoice{ID: l, Label: i18n.Names[l], Current: l == current})
+	}
+	return out
+}
+
+func (s *Server) postLang(w http.ResponseWriter, r *http.Request) {
+	cookie := &http.Cookie{
+		Name: i18n.Cookie, Path: "/", HttpOnly: false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   365 * 24 * 60 * 60,
+	}
+	if l := i18n.Lang(r.FormValue("lang")); i18n.Known(l) {
+		cookie.Value = string(l)
+	} else {
+		// Anything else means "stop deciding for me", and the absence of the cookie
+		// is what hands the choice back to Accept-Language.
+		cookie.MaxAge = -1
+	}
+	http.SetCookie(w, cookie)
+	redirectBack(w, r)
 }
 
 // ------------------------------------------------------------------ setup
@@ -320,7 +401,7 @@ func (s *Server) getSetup(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	s.render(w, r, "setup.html", page{Title: "Set up DaeMoon"})
+	s.render(w, r, "setup.html", page{Title: "web.setup.title"})
 }
 
 func (s *Server) postSetup(w http.ResponseWriter, r *http.Request) {
@@ -333,20 +414,20 @@ func (s *Server) postSetup(w http.ResponseWriter, r *http.Request) {
 	username := strings.TrimSpace(r.FormValue("username"))
 	password := r.FormValue("password")
 	if msg := checkCredentials(username, password); msg != "" {
-		s.render(w, r, "setup.html", page{Title: "Set up DaeMoon", Error: msg})
+		s.render(w, r, "setup.html", page{Title: "web.setup.title", Error: msg})
 		return
 	}
 
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		s.render(w, r, "setup.html", page{Title: "Set up DaeMoon",
-			Error: "The password could not be stored."})
+		s.render(w, r, "setup.html", page{Title: "web.setup.title",
+			Error: "web.err.password_store"})
 		return
 	}
 	user, err := s.store.CreateUser(r.Context(), uuid.NewString(), username, hash, true)
 	if err != nil {
-		s.render(w, r, "setup.html", page{Title: "Set up DaeMoon",
-			Error: "That name is taken."})
+		s.render(w, r, "setup.html", page{Title: "web.setup.title",
+			Error: "web.err.name_taken"})
 		return
 	}
 	s.startSession(w, r, user, "/")
@@ -355,16 +436,16 @@ func (s *Server) postSetup(w http.ResponseWriter, r *http.Request) {
 func checkCredentials(username, password string) string {
 	switch {
 	case username == "":
-		return "A name is required."
+		return "web.err.name_required"
 	case len(username) > 64:
-		return "That name is too long."
+		return "web.err.name_too_long"
 	case strings.ContainsAny(username, " \t\n/"):
-		return "A name cannot contain spaces or slashes."
+		return "web.err.name_chars"
 	case len(password) < 8:
 		// Short enough to type on a phone, long enough not to be a word. A self
 		// hosted service on a home network is not the place for a policy nobody
 		// can satisfy without a password manager.
-		return "The password must be at least 8 characters."
+		return "web.err.password_short"
 	}
 	return ""
 }
@@ -391,7 +472,7 @@ func (s *Server) getLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/setup", http.StatusSeeOther)
 		return
 	}
-	s.render(w, r, "login.html", page{Title: "Sign in"})
+	s.render(w, r, "login.html", page{Title: "web.login.title"})
 }
 
 func (s *Server) postLogin(w http.ResponseWriter, r *http.Request) {
@@ -409,8 +490,8 @@ func (s *Server) postLogin(w http.ResponseWriter, r *http.Request) {
 	// user" differently from "wrong password" is a list of who has an account, and
 	// answering faster is the same leak told by a stopwatch.
 	fail := func() {
-		s.render(w, r, "login.html", page{Title: "Sign in",
-			Error: "That name and password do not match."})
+		s.render(w, r, "login.html", page{Title: "web.login.title",
+			Error: "web.login.failed"})
 	}
 
 	user, err := s.store.UserByName(r.Context(), username)
@@ -431,6 +512,73 @@ func (s *Server) postLogin(w http.ResponseWriter, r *http.Request) {
 		fail()
 		return
 	}
+	s.startSession(w, r, user, "/")
+}
+
+// ------------------------------------------------------------------ sign up
+
+/* Somebody who is not signed in, making their own account.
+ *
+ * Closed unless an administrator has opened it. That default is not caution for its
+ * own sake: this is a save sync server, an open sign up page on an address that is
+ * reachable from outside a home network is somewhere for anybody to put data, and
+ * the person who installs this is not always the person who decides what the router
+ * forwards. The People page has the switch and says what it means.
+ *
+ * A person who signs up is not an administrator, and the accounts are already
+ * separated: ListDevices and ListTitles take a user id, so a new account starts with
+ * nothing and can see nothing else.
+ */
+func (s *Server) getRegister(w http.ResponseWriter, r *http.Request) {
+	// A fresh instance has a first account to make, and that is setup's job: it is
+	// the page that grants administrator.
+	if n, err := s.store.CountUsers(r.Context()); err == nil && n == 0 {
+		http.Redirect(w, r, "/setup", http.StatusSeeOther)
+		return
+	}
+	if !s.store.OpenRegistration(r.Context()) {
+		// Rendered rather than hidden. Somebody sent here by a friend deserves to be
+		// told what to ask for, and the page reveals nothing that /login does not.
+		s.render(w, r, "register.html", page{Title: "web.register.title",
+			Error: "web.register.closed"})
+		return
+	}
+	s.render(w, r, "register.html", page{Title: "web.register.title"})
+}
+
+func (s *Server) postRegister(w http.ResponseWriter, r *http.Request) {
+	// Checked again on the way in. The form being drawn is not permission: the
+	// setting can change between a page loading and its button being pressed.
+	if n, err := s.store.CountUsers(r.Context()); err == nil && n == 0 {
+		http.Redirect(w, r, "/setup", http.StatusSeeOther)
+		return
+	}
+	if !s.store.OpenRegistration(r.Context()) {
+		s.render(w, r, "register.html", page{Title: "web.register.title",
+			Error: "web.register.closed"})
+		return
+	}
+
+	username := strings.TrimSpace(r.FormValue("username"))
+	password := r.FormValue("password")
+	fail := func(key string) {
+		s.render(w, r, "register.html", page{Title: "web.register.title", Error: key})
+	}
+	if msg := checkCredentials(username, password); msg != "" {
+		fail(msg)
+		return
+	}
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		fail("web.err.password_store")
+		return
+	}
+	user, err := s.store.CreateUser(r.Context(), uuid.NewString(), username, hash, false)
+	if err != nil {
+		fail("web.err.name_taken")
+		return
+	}
+	slog.InfoContext(r.Context(), "account created", "who", username, "how", "sign up")
 	s.startSession(w, r, user, "/")
 }
 
@@ -457,6 +605,17 @@ func (s *Server) postLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 // ------------------------------------------------------------------ errors
+
+// denied refuses a request with a sentence somebody can read.
+//
+// These are the refusals a person reaches by using the panel - not being an
+// administrator, deleting the last one - so they are translated. The `what` strings
+// handed to fail below are not: those are internal failures, they are logged
+// alongside the error that caused them, and a translated "database unavailable" is
+// harder to search for without telling the reader anything more.
+func (s *Server) denied(w http.ResponseWriter, r *http.Request, status int, key string) {
+	http.Error(w, i18n.T(i18n.Of(r), key), status)
+}
 
 func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error, what string) {
 	if errors.Is(err, store.ErrNotFound) {

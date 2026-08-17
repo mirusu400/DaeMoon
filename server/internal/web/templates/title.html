@@ -5,32 +5,32 @@
     <h1>{{if .TitleName}}{{.TitleName}}{{else}}{{.TitleID}}{{end}}</h1>
     <div class="sub mono">{{.TitleID}} · {{.Platform}}</div>
   </div>
-  <div class="row-actions"><a class="btn btn-ghost" href="/">Back to saves</a></div>
+  <div class="row-actions"><a class="btn btn-ghost" href="/">{{$.T "web.action.back_to_saves"}}</a></div>
 </div>
 
-<p class="t-mut" style="font-size:.9rem;margin:0 0 1.2rem">Every version is kept.
-Nothing here is ever replaced, which is what makes a conflict recoverable — the
-version somebody did not choose is still on this page.</p>
+<p class="t-mut" style="font-size:.9rem;margin:0 0 1.2rem">{{$.T "web.title.note"}}</p>
 
 {{if .Versions}}
 <div class="card">
   <table>
     <thead><tr>
-      <th class="num">Version</th><th class="num">Parent</th><th class="num">Size</th>
-      <th>From</th><th>Received</th><th>Digest</th><th></th>
+      <th class="num">{{$.T "web.col.version"}}</th><th class="num">{{$.T "web.col.parent"}}</th><th class="num">{{$.T "web.col.size"}}</th>
+      <th>{{$.T "web.col.from"}}</th><th>{{$.T "web.col.received"}}</th><th>{{$.T "web.col.digest"}}</th><th></th>
     </tr></thead>
     <tbody>
     {{range .Versions}}
     <tr>
       <td class="num" style="font-weight:700">{{.Version}}</td>
-      <td class="num t-mut">{{if .ParentVersion}}{{.ParentVersion}}{{else}}—{{end}}</td>
+      <td class="num t-mut">{{if .ParentVersion}}{{.ParentVersion}}{{else}}-{{end}}</td>
       <td class="num">{{bytes .Size}}</td>
       <td>{{.DeviceLabel}}</td>
       <td class="mono t-mut">{{.ReceivedAt}}</td>
       <td class="mono t-mut">{{slice .SHA256 0 12}}</td>
-      <td class="row-actions" style="justify-content:flex-end">
-        <a class="btn btn-ghost btn-sm"
-           href="/titles/{{$.Data.Platform}}/{{$.Data.TitleID}}/blob/{{.Version}}">Download</a>
+      <td class="acts">
+        <div class="row-actions">
+          <a class="btn btn-ghost btn-sm"
+             href="/titles/{{$.Data.Platform}}/{{$.Data.TitleID}}/blob/{{.Version}}">{{$.T "web.action.download"}}</a>
+        </div>
       </td>
     </tr>
     {{end}}
@@ -38,7 +38,7 @@ version somebody did not choose is still on this page.</p>
   </table>
 </div>
 {{else}}
-<div class="card pad"><p class="empty" style="padding:.5rem 0">No versions.</p></div>
+<div class="card pad"><p class="empty" style="padding:.5rem 0">{{$.T "web.title.no_versions"}}</p></div>
 {{end}}
 {{end}}
 {{template "foot" .}}

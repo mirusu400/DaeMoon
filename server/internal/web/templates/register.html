@@ -1,13 +1,16 @@
 {{template "head" .}}
 <div class="brand"><span class="sq">大</span> DaeMoon</div>
 <div class="card pad">
-  <h1 style="font-size:1.2rem;margin-bottom:.5rem">{{.T "web.setup.title"}}</h1>
-  <p class="t-mut" style="margin:0 0 1rem;font-size:.9rem">{{.T "web.setup.explain"}}</p>
-  <form class="stack" method="post" action="/setup">
+  <h1 style="font-size:1.2rem;margin-bottom:.5rem">{{.T "web.register.title"}}</h1>
+  {{if .SignUpOpen}}
+  <p class="t-mut" style="margin:0 0 1rem;font-size:.9rem">{{.T "web.register.explain"}}</p>
+  <form class="stack" method="post" action="/register">
     <label>{{.T "web.login.name"}}<input type="text" name="username" autocomplete="username" autofocus></label>
     <label>{{.T "web.login.password"}}<input type="password" name="password" autocomplete="new-password"></label>
     <span class="t-mut mono">{{.T "web.setup.min_password"}}</span>
-    <button class="btn-key">{{.T "web.setup.create"}}</button>
+    <button class="btn-key">{{.T "web.register.title"}}</button>
   </form>
+  {{end}}
+  <p style="margin:1rem 0 0;font-size:.9rem"><a href="/login">{{.T "web.register.have_account"}}</a></p>
 </div>
 {{template "foot" .}}

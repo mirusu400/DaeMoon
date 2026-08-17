@@ -311,3 +311,53 @@ func (s *Store) ListVersions(ctx context.Context, userID, platform, titleID stri
 	}
 	return out, rows.Err()
 }
+
+// ------------------------------------------------------------------ settings
+
+// SettingOpenRegistration is the one setting there is: whether somebody who is not
+// signed in may create an account.
+//
+// Its absence is "no". An instance nobody has configured has to be closed, because
+// the person who set it up is not necessarily the person who decided which network
+// it can be reached from.
+const SettingOpenRegistration = "open_registration"
+
+func (s *Store) Setting(ctx context.Context, key string) (string, error) {
+	var v string
+	err := s.db.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = ?`, key).Scan(&v)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("read setting %q: %w", key, err)
+	}
+	return v, nil
+}
+
+func (s *Store) SetSetting(ctx context.Context, key, value string) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
+		 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+		key, value, s.timestamp())
+	if err != nil {
+		return fmt.Errorf("write setting %q: %w", key, err)
+	}
+	return nil
+}
+
+// OpenRegistration reports whether the sign up page is open.
+//
+// An error is reported as closed rather than propagated to the two callers that
+// ask: a database that cannot answer must not answer "anybody may register".
+func (s *Store) OpenRegistration(ctx context.Context) bool {
+	v, err := s.Setting(ctx, SettingOpenRegistration)
+	return err == nil && v == "1"
+}
+
+func (s *Store) SetOpenRegistration(ctx context.Context, open bool) error {
+	v := "0"
+	if open {
+		v = "1"
+	}
+	return s.SetSetting(ctx, SettingOpenRegistration, v)
+}

@@ -246,8 +246,20 @@ button, .btn {
 .btn-danger:hover { filter: brightness(1.12); }
 .btn-sm { padding: .3rem .8rem; font-size: .78rem; }
 
-.row-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.row-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
 .row-actions form { display: inline; }
+
+/* The actions cell, and why it is a cell wrapping a flex box rather than a flex
+   box that is a cell.
+ *
+ * `display: flex` on a <td> takes it out of table layout: it stops being a
+ * table-cell, so it no longer stretches to the row's height and `vertical-align`
+ * is ignored. A row with a button in one cell and text in the others then draws
+ * the button cell at the button's height and everything else at the text's, which
+ * is what the misalignment on /devices was. The cell stays a cell; the flex box
+ * goes inside it. */
+td.acts { text-align: right; }
+td.acts .row-actions { justify-content: flex-end; }
 
 /* ------------------------------------------------------------------- tags */
 
@@ -336,6 +348,11 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
 .gate { min-height: 100%; display: grid; place-items: center; padding: 2rem 1.2rem; }
 .gate .box { width: min(24rem, 100%); }
 .gate .brand { justify-content: center; }
+
+/* The language switch on a page with no sidebar. Quiet, but present: somebody who
+   cannot read this page has to be able to find it without reading anything. */
+.gate-lang { margin-top: 1.2rem; text-align: center; }
+.gate-lang select { width: auto; color: var(--mut); }
 
 ::selection { background: var(--ds); color: var(--bg); }
 :focus-visible { outline: 2px solid var(--ds); outline-offset: 2px; }

@@ -111,6 +111,11 @@
       "type": "string",
       "maxLength": 128,
       "description": "What the console calls the game, in whatever script it uses. Optional and informational: everything is keyed by title_id, and a package written before consoles sent one has none."
+    },
+    "secure_value": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The console stored value the save was bound to when it was packed, for the 3DS titles that have one. Optional, and its absence is meaningful: zero is a legitimate value, so a package without the field leaves the console's own value alone on restore, while a package with it writes that value back. Absent on every other platform and from packages written before the field existed."
     }
   }
 }

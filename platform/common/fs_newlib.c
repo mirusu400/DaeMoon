@@ -1,19 +1,21 @@
 /* SD card storage: backups, staging and the per title sync state.
  *
- * Deliberately separate from the save backend. A backup has to be writable when
- * the save archive cannot even be opened, which is precisely the situation where
- * it matters most.
+ * Deliberately separate from the save backend. A backup has to be writable when the
+ * save archive cannot even be opened, which is precisely the situation where it
+ * matters most.
  *
- * devkitARM mounts the SD card as a newlib device, so this is ordinary stdio and
- * dirent. It is still its own file rather than a reuse of platform/posix, because
- * that one is built for a desktop and quietly depends on things (lstat, symlinks)
- * that mean nothing here.
+ * Shared by both consoles. devkitARM and devkitA64 both mount the SD card as a
+ * newlib device, so this is ordinary stdio and dirent and there is nothing in it a
+ * 3DS knows that a Switch does not - which makes two copies of it exactly the kind
+ * of drift the root CLAUDE.md is written to prevent. It used to be
+ * platform/3ds/source/fs_backend.c, and the Switch build is why it moved.
+ *
+ * Still its own file rather than a reuse of platform/posix: that one is built for a
+ * desktop and quietly depends on things (lstat, symlinks) that mean nothing here.
  */
-#include "daemoon_3ds.h"
+#include "daemoon_newlib.h"
 
 #include <daemoon/util/strbuf.h>
-
-#include <3ds.h>
 
 #include <dirent.h>
 #include <errno.h>
@@ -215,27 +217,25 @@ static int fs_exists(void *ctx, const char *path)
     return stat(path, &st) == 0;
 }
 
+/* The one thing here that is not stdio.
+ *
+ * Free space on the card comes from a service call on the 3DS and a different one on
+ * the Switch, so it is the single hook this file leaves to the platform rather than
+ * the reason the whole file gets copied twice. Zero means "not known", which is
+ * survivable: the caller only uses it to refuse a restore that obviously cannot fit.
+ */
 static daemoon_result_t fs_free_space(void *ctx, const char *path, unsigned long long *out)
 {
-    FS_ArchiveResource resource;
-
     (void)ctx;
     (void)path;
     if (out == NULL) {
         return DAEMOON_OK;
     }
-    *out = 0;
-    if (R_FAILED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_SD))) {
-        /* Not knowing is survivable: the caller only uses this to refuse a restore
-         * that obviously cannot fit. */
-        return DAEMOON_OK;
-    }
-    *out = (unsigned long long)resource.freeClusters *
-           (unsigned long long)resource.clusterSize;
+    *out = daemoon_newlib_free_bytes();
     return DAEMOON_OK;
 }
 
-const daemoon_fs_backend_t daemoon_3ds_fs_backend = {
+const daemoon_fs_backend_t daemoon_fs_newlib_backend = {
     fs_open,
     fs_remove,
     fs_rename,

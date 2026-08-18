@@ -324,6 +324,24 @@ static daemoon_result_t pack_title_to(const daemoon_env_t *env, daemoon_archive_
     (void)daemoon_strlcpy(m.title_name, sizeof(m.title_name), title->name);
     DAEMOON_TRY(fill_created_at(env, m.created_at, sizeof(m.created_at)));
 
+    /* The value the save is bound to, recorded with it.
+     *
+     * It lives outside the archive, so a package without it is a package that cannot
+     * be fully restored: the game checks the save against whatever the console holds
+     * at restore time, and that may have moved on since. Best effort - a backend that
+     * cannot read it is not a backup refused, it is a backup that falls back to
+     * preserving the console's current value the way it always did. */
+    if (env->save->read_secure_value != NULL) {
+        int exists = 0;
+        unsigned long long value = 0;
+
+        if (env->save->read_secure_value(env->save_ctx, title, &exists, &value) == DAEMOON_OK &&
+            exists) {
+            m.has_secure_value = 1;
+            m.secure_value = value;
+        }
+    }
+
     daemoon_strbuf_init(&sb, tmp, sizeof(tmp));
     daemoon_strbuf_add(&sb, out_path);
     daemoon_strbuf_add(&sb, ".part");
@@ -592,6 +610,36 @@ static daemoon_result_t restore_package(const daemoon_env_t *env, daemoon_archiv
             r = cr;
         }
     }
+
+    /* 4. Put back the value this save was bound to.
+     *
+     * After the commit, because a value pointing at a save that was not written is
+     * worse than one pointing at the save that was. A package without one leaves the
+     * console's alone, which is what every package written before this did and what
+     * the caller used to arrange by hand.
+     *
+     * A failure here is reported and does not fail the restore: the save is on the
+     * console and committed, and telling somebody it failed would send them to
+     * restore it again. */
+    if (r == DAEMOON_OK) {
+        daemoon_result_t sr = DAEMOON_OK;
+
+        if (m.has_secure_value && env->save->write_secure_value != NULL) {
+            sr = env->save->write_secure_value(env->save_ctx, title, m.secure_value);
+        } else if (!m.has_secure_value && env->save->clear_secure_value != NULL) {
+            /* The package recorded none, so the console must not keep one: whatever it
+             * holds belongs to the save that was just replaced, and a value that does
+             * not match the save is how a game decides the save is not the one it
+             * wrote. Removing it is the only outcome that leaves the two consistent.
+             *
+             * Every package written before this field existed takes this path, which is
+             * what makes those backups restorable at all. */
+            sr = env->save->clear_secure_value(env->save_ctx, title);
+        }
+        if (sr != DAEMOON_OK) {
+            notify(env, DAEMOON_STR_WARN_SECURE_VALUE, title->name);
+        }
+    }
     return r;
 }
 
@@ -787,6 +835,9 @@ static daemoon_result_t resolve_conflict(const daemoon_env_t *env, daemoon_archi
         break;
     case DAEMOON_CONFLICT_POLICY_KEEP_SERVER:
         choice = DAEMOON_CONFLICT_KEEP_SERVER;
+        break;
+    case DAEMOON_CONFLICT_POLICY_DEFER:
+        choice = DAEMOON_CONFLICT_DEFER;
         break;
     case DAEMOON_CONFLICT_POLICY_ASK:
     default:

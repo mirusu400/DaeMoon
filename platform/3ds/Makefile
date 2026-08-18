@@ -35,10 +35,10 @@ BUILD_STAMP ?= unknown
 
 # Core is compiled straight into the app rather than linked as a library: one
 # compiler, one set of flags, and no stale archive to explain.
-SOURCES  := source source/ui \
+SOURCES  := source source/ui ../common \
             ../../core/src ../../core/src/util \
             ../../vendor/miniz ../../vendor/quirc
-INCLUDES := source ../../core/include ../../vendor ../../vendor/quirc
+INCLUDES := source ../common ../../core/include ../../vendor ../../vendor/quirc
 
 ARCH := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 

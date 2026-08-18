@@ -15,10 +15,10 @@ APP_TITLE   := DaeMoon
 APP_AUTHOR  := DaeMoon
 APP_VERSION := 0.1.0
 
-SOURCES  := source source/ui \
+SOURCES  := source source/ui ../common \
             ../../core/src ../../core/src/util \
             ../../vendor/miniz
-INCLUDES := source ../../core/include ../../vendor
+INCLUDES := source ../common ../../core/include ../../vendor ../../tools/test
 
 ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
@@ -29,17 +29,28 @@ ASFLAGS  := -g $(ARCH)
 LDFLAGS   = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,--gc-sections \
             -Wl,-Map,$(notdir $*.map)
 
-LIBS    := -lnx
+# curl and mbedtls, statically, for the same reason the 3DS build links them: a self
+# hosted server is exactly the case where the operator cannot be asked to downgrade
+# their TLS to suit a console. The order matters - curl needs mbedtls, which needs z.
+LIBS    := -lcurl -lmbedtls -lmbedx509 -lmbedcrypto -lz -lnx
 LIBDIRS := $(PORTLIBS) $(LIBNX)
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 
 export OUTPUT  := $(CURDIR)/$(TARGET)
 export TOPDIR  := $(CURDIR)
-export VPATH   := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
+export VPATH   := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
+                  $(CURDIR)/../../tools/test
 export DEPSDIR := $(CURDIR)/$(BUILD)
 
 CFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+# The backend contract, checked on hardware rather than only on a desktop. The same
+# file the 3DS build links and the same one `make core-test` runs against a stub: it
+# is written against daemoon_save_backend_t and knows nothing about how a save is
+# reached, which is the whole reason it can be pointed at this backend unchanged.
+#
+# One file, not the directory: the rest of tools/test has a main() and wants fixtures.
+CFILES   += backend_conformance.c test_failure.c
 CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 

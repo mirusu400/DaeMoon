@@ -10,6 +10,8 @@
 #include <daemoon/backend.h>
 #include <daemoon/sync.h>
 
+#include "daemoon_newlib.h"
+
 /* Where the app keeps backups, staging and per title sync state. On the SD card,
  * because a save archive is not a place to put anything that has to survive the
  * save being cleared. */
@@ -76,20 +78,14 @@ extern const daemoon_save_backend_t daemoon_3ds_nds_backend;
 daemoon_result_t daemoon_3ds_nds_icon_read(const char *rom_dir, const char *base,
                                            void *out);
 
-/* The network, over 3ds-curl and 3ds-mbedtls rather than httpc:C. That service
- * ships old cipher suites and a stale root CA store, and a self hosted server is
- * exactly the case where nobody can be asked to downgrade their TLS to suit a
- * console. */
-typedef struct {
-    /* A CA bundle on the SD card. Verification is not turned off when it is
-     * missing: a save is not something to hand to whoever answers the
-     * connection. */
-    const char *ca_bundle;
-    /* The last curl code, for a diagnostic that says more than "network error". */
-    int last_curl_code;
-} daemoon_3ds_net_ctx_t;
+/* The network is shared with the Switch build: the curl request loop is identical on
+ * both, and the fix that cost Phase 2 a hardware round lives in it. See
+ * platform/common/net_curl.c. Only the socket bring-up is per platform, in
+ * sockets.c.
+ *
+ * daemoon_net_curl_ctx_t is the context, and daemoon_net_curl_backend is the
+ * backend. */
 
-extern const daemoon_net_backend_t daemoon_3ds_net_backend;
 
 /* The settings a console cannot work out for itself, from a file on the SD card.
  * Written by hand the first time, and by the pairing flow from Phase 4 on. */
@@ -133,6 +129,12 @@ typedef struct {
      * now has no server and has already read the screens, and asking again would
      * be the application arguing with them. */
     int welcomed;
+    /* Sync on the way to HOME when the console is switched on.
+     *
+     * Off by default. It is worth having only if Luma is set to autoboot this title,
+     * and a setting that does something on every launch of an application somebody
+     * opened deliberately should be something they asked for. */
+    int autosync;
 } daemoon_3ds_config_t;
 
 void             daemoon_3ds_config_defaults(daemoon_3ds_config_t *cfg);
@@ -184,24 +186,94 @@ daemoon_conflict_policy_t daemoon_3ds_batch_policy(size_t index);
 /* What the batch screen borrows from main.c: the library it is running over, and
  * the four things it cannot do itself. Indices are into whichever library is
  * showing, so this file never learns that there are two of them. */
+/* Indexed by library and then by title, the same shape the startup sync uses.
+ *
+ * It used to be "whichever library is on screen", which made a run over a whole
+ * library mean half of one: a console carries the installed titles and the DS saves,
+ * and somebody who asks to sync everything did not mean the half they happened to be
+ * looking at. The startup sync always did both, so the two disagreed about what
+ * "everything" is. */
 typedef struct {
     void  *user;
-    size_t count;
-    const char *(*name)(void *user, size_t index);
-    void        (*backup_one)(void *user, size_t index);
-    void        (*sync_one)(void *user, size_t index, daemoon_conflict_policy_t policy);
+    size_t (*count)(void *user, int library);
+    const char *(*name)(void *user, int library, size_t index);
+    void        (*backup_one)(void *user, int library, size_t index);
+    void        (*sync_one)(void *user, int library, size_t index,
+                            daemoon_conflict_policy_t policy);
     int         (*can_sync)(void);
     int         (*confirm)(const daemoon_str_ref_t *ask);
     void        (*message)(daemoon_str_id_t body, unsigned int accent);
 } daemoon_3ds_batch_ctx_t;
 
+/* How many libraries a run covers, and which index is which.
+ *
+ * These are the values handed to the callbacks above and to the startup sync, and they
+ * are the same values main.c indexes its two library structures with. Reordering them
+ * would sync the DS saves through the savedata backend, which fails in a way that
+ * reads as a permission problem rather than as a mix up. */
+#define DAEMOON_3DS_BATCH_LIBRARIES 2
+#define LIB_3DS 0
+#define LIB_NDS 1
+
 int daemoon_3ds_batch_run(const daemoon_3ds_batch_ctx_t *ctx);
+
+/* Phase 5: the sync that happens on the way to HOME.
+ *
+ * Luma can autoboot a title when the console is switched on. That is the one moment
+ * a sync is unambiguously safe - no game holds an archive open, because no game has
+ * been started - and it is also the moment nobody is watching, so what an unattended
+ * run may do is narrower than what a person may ask for.
+ *
+ * autosync_steps.c holds the two decisions and has no citro2d in it: which options
+ * the run uses, and what it writes down. autosync.c drives it. */
+#define DAEMOON_3DS_AUTOSYNC_REPORT DAEMOON_3DS_WORK_DIR "/autosync.txt"
+
+/* The options an unattended run uses. DEFER on conflict, because nobody is there to
+ * choose and both other answers pick a side. */
+daemoon_sync_opts_t daemoon_3ds_autosync_opts(void);
+
+/* All four have to hold. Pure, so the reasons stay separable. */
+int daemoon_3ds_autosync_due(int enabled, int can_sync, int cancel_held, int unattended);
+
+typedef struct {
+    unsigned             titles;
+    daemoon_sync_stats_t sync;
+    unsigned             failed;
+    int                  network; /* whether the server ever answered */
+} daemoon_3ds_autosync_report_t;
+
+/* Written on every run, including the ones that did nothing: this screen is not
+ * read by anybody, so the file is the only account of what happened. */
+daemoon_result_t daemoon_3ds_autosync_write_report(const daemoon_env_t *env, const char *path,
+                                                   const char *when,
+                                                   const daemoon_3ds_autosync_report_t *rep);
+
+/* The run itself. Returns nonzero when it went ahead, which is what tells main.c to
+ * head for HOME rather than draw a library. */
+typedef struct {
+    void  *user;
+    /* The report is written through the filesystem backend, so this file needs the
+     * env the same way every other writer in this project does. */
+    const daemoon_env_t *env;
+    /* An ISO 8601 stamp for the report. Informational only, like every other date in
+     * this project: the console clock is user settable and nothing is ordered by it. */
+    void   (*when)(void *user, char *buf, size_t len);
+    size_t (*count)(void *user, int library);
+    const char *(*name)(void *user, int library, size_t index);
+    daemoon_result_t (*sync_one)(void *user, int library, size_t index,
+                                 const daemoon_sync_opts_t *opts,
+                                 daemoon_sync_stats_t *stats);
+    /* Whether the server can be reached at all. Called before anything is synced,
+     * because Wi-Fi is not up the instant a console is. */
+    int (*wait_for_network)(void *user);
+} daemoon_3ds_autosync_ctx_t;
+
+int daemoon_3ds_autosync_run(const daemoon_3ds_autosync_ctx_t *ctx);
 
 /* soc:U needs a buffer for the lifetime of the session, so the network is opened
  * once and closed once rather than per request. */
-daemoon_result_t daemoon_3ds_net_init(void);
-void             daemoon_3ds_net_exit(void);
-extern const daemoon_fs_backend_t   daemoon_3ds_fs_backend;
+
+
 extern const daemoon_ui_backend_t   daemoon_3ds_ui_backend;
 
 /* 16 uppercase hex digits, the spelling used everywhere else in the project. */
@@ -223,6 +295,10 @@ daemoon_result_t daemoon_3ds_read_secure_value(const daemoon_title_t *t,
                                                daemoon_3ds_secure_value_t *out);
 daemoon_result_t daemoon_3ds_write_secure_value(const daemoon_title_t *t,
                                                 const daemoon_3ds_secure_value_t *value);
+/* Deletes the console's value for this title. The answer for a save that arrived
+ * without one: nothing recorded means nothing to mismatch, and the game writes a fresh
+ * value the next time it saves. */
+daemoon_result_t daemoon_3ds_clear_secure_value(const daemoon_title_t *t);
 
 /* A whole SMDH: header, one name per language, then the two icons.
  *

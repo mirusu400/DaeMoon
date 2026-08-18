@@ -82,7 +82,15 @@ typedef enum {
 typedef enum {
     DAEMOON_CONFLICT_POLICY_ASK = 0,
     DAEMOON_CONFLICT_POLICY_KEEP_LOCAL,
-    DAEMOON_CONFLICT_POLICY_KEEP_SERVER
+    DAEMOON_CONFLICT_POLICY_KEEP_SERVER,
+    /* Leave it alone. Both versions stay where they are and the title is counted as
+     * a conflict for somebody to come back to.
+     *
+     * This is the only answer an unattended run may give. A sync that happens while
+     * the console is booting has nobody to ask, and the two answers above both pick
+     * a side - which is a decision, and a decision nobody made is not one this
+     * project gets to make on a save. */
+    DAEMOON_CONFLICT_POLICY_DEFER
 } daemoon_conflict_policy_t;
 
 typedef struct {

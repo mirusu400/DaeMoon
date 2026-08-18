@@ -183,6 +183,15 @@ Result FSUSER_GetSaveDataSecureValue(bool *exists, u64 *value, FS_SecureValueSlo
 Result FSUSER_SetSaveDataSecureValue(u64 value, FS_SecureValueSlot slot, u32 titleUniqueId,
                                      u8 titleVariation);
 
+typedef enum {
+    /* Deletes a save's secure value. The service takes the slot, unique id and
+     * variation packed into one word and reports whether one existed. */
+    SECURESAVE_ACTION_DELETE = 0
+} FS_SecureSaveAction;
+
+Result FSUSER_ControlSecureSave(FS_SecureSaveAction action, void *input, u32 inputSize,
+                                void *output, u32 outputSize);
+
 Result FSFILE_Read(Handle handle, u32 *bytesRead, u64 offset, void *buffer, u32 size);
 Result FSFILE_Write(Handle handle, u32 *bytesWritten, u64 offset, const void *buffer,
                     u32 size, u32 flags);

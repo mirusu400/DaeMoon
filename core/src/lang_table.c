@@ -10,6 +10,14 @@
 const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     /* en */ {
         "DaeMoon", /* app.title */
+        "Stopped before anything ran.", /* autosync.cancelled */
+        "{0} need a choice, so they were left exactly as they were. Open DaeMoon to make it.", /* autosync.left */
+        "Waiting for the network", /* autosync.network */
+        "The network did not come up. Nothing was changed, and the next start will try again.", /* autosync.no_network */
+        "Nothing to sync.", /* autosync.nothing */
+        "Returning to HOME in {0}", /* autosync.returning */
+        "No game is running yet, which is the one moment a sync is safe. Hold B to stop and use the menu instead.", /* autosync.starting */
+        "Sync at startup", /* autosync.title */
         "Dates come from the console clock. They describe a backup; they never decide which save is newer.", /* backup.clock_note */
         "Backing up the current save", /* backup.creating */
         "The backup was deleted. The save on the console was not touched.", /* backup.deleted */
@@ -20,11 +28,11 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "same as the save on the console now", /* backup.same_as_console */
         "Back every save up to the SD card", /* batch.backup */
         "Backed up {0}, skipped {1}, failed {2}.", /* batch.backup_done */
-        "Reads every save in this library and writes a package for each. Nothing on the console or the server is changed.", /* batch.backup_hint */
-        "Back up all {0} saves in this library to the SD card?", /* batch.confirm_backup */
+        "Reads every save on this console - the installed titles and the DS saves - and writes a package for each. Nothing on the console or the server is changed.", /* batch.backup_hint */
+        "Back up all {0} saves on this console to the SD card?", /* batch.confirm_backup */
         "Sync all {0} titles? Where both sides changed: {1}", /* batch.confirm_sync */
         "Sync all {0} titles, taking the server's version wherever the two differ? Saves on this console will be overwritten. Each one is backed up to the SD card first.", /* batch.confirm_sync_server */
-        "There is nothing in this library to work on.", /* batch.empty */
+        "There is nothing on this console to work on.", /* batch.empty */
         "A start   up/down move   B back", /* batch.hint */
         "B stop after this title", /* batch.hint_running */
         "When both sides changed", /* batch.policy */
@@ -37,7 +45,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} of {1}", /* batch.running */
         "Stopped. Everything finished before this point is done and nothing was left half written.", /* batch.stopped */
         "Sync every title with the server", /* batch.sync */
-        "Uploads what only this console changed and downloads what only the server changed. What happens when both changed is the next question.", /* batch.sync_hint */
+        "Covers both libraries, the installed titles and the DS saves. Uploads what only this console changed and downloads what only the server changed. What happens when both changed is the next question.", /* batch.sync_hint */
         "All titles", /* batch.title */
         "Cancel", /* btn.cancel */
         "No", /* btn.no */
@@ -104,6 +112,9 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Settings", /* menu.settings */
         "Survey every title to the SD card", /* menu.survey */
         "Sync with the server", /* menu.sync */
+        "Account", /* nx.account */
+        "A back up   Y sync   X reload   up/down move   + exit", /* nx.hint */
+        "No account was chosen, so there is no save to look at. A save on this console belongs to one account.", /* nx.no_account */
         "Backup", /* op.backup */
         "Restore", /* op.restore */
         "Secure value", /* op.secure_value */
@@ -128,13 +139,18 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "This build has no save archive of its own. Build it with SAVEDATA_SIZE=128K.", /* selftest.no_archive */
         "DaeMoon itself", /* selftest.self */
         "This DESTROYS the save of {0}. Use a dummy title. A backup is made first, but do not rely on it.", /* selftest.warning */
+        "Sync when the console starts", /* settings.autosync */
         "This console's name", /* settings.label */
         "Language", /* settings.language */
         "From the console ({0})", /* settings.language_auto */
         "This console has no font for {0}, so the text would be blank. The language was not changed.", /* settings.no_font */
+        "Off", /* settings.off */
+        "On", /* settings.on */
         "The settings could not be written to the SD card.", /* settings.save_failed */
         "Saved. This console will use these from now on.", /* settings.saved */
         "Server address", /* settings.server */
+        "Collect debug information", /* settings.survey */
+        "Opens every save archive and writes what it found to survey.txt. Reads only, and ignores the name cache, so this is the button to press when a name or an icon looks wrong.", /* settings.survey_hint */
         "Settings", /* settings.title */
         "Device token", /* settings.token */
         "not set", /* settings.unset */
@@ -171,6 +187,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* ko */ {
         "DaeMoon", /* app.title */
+        "아무것도 실행하기 전에 멈췄습니다.", /* autosync.cancelled */
+        "{0}개는 선택이 필요해서 그대로 두었습니다. DaeMoon을 열어 선택하세요.", /* autosync.left */
+        "네트워크를 기다리는 중", /* autosync.network */
+        "네트워크가 올라오지 않았습니다. 바뀐 것은 없고, 다음에 켤 때 다시 시도합니다.", /* autosync.no_network */
+        "동기화할 것이 없습니다.", /* autosync.nothing */
+        "{0}초 후 HOME으로 돌아갑니다", /* autosync.returning */
+        "아직 실행 중인 게임이 없습니다. 동기화가 안전한 유일한 순간입니다. B를 누르고 있으면 멈추고 메뉴로 갑니다.", /* autosync.starting */
+        "시작할 때 동기화", /* autosync.title */
         "날짜는 본체 시계에서 옵니다. 백업을 설명할 뿐, 어느 세이브가 최신인지 결정하지 않습니다.", /* backup.clock_note */
         "현재 세이브를 백업하는 중", /* backup.creating */
         "백업을 삭제했습니다. 본체의 세이브는 건드리지 않았습니다.", /* backup.deleted */
@@ -181,11 +205,11 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "지금 본체에 있는 세이브와 같음", /* backup.same_as_console */
         "모든 세이브를 SD 카드에 백업", /* batch.backup */
         "백업 {0}개, 건너뜀 {1}개, 실패 {2}개.", /* batch.backup_done */
-        "이 목록의 모든 세이브를 읽어 각각 패키지로 씁니다. 본체와 서버의 어떤 것도 바뀌지 않습니다.", /* batch.backup_hint */
-        "이 목록의 세이브 {0}개를 모두 SD 카드에 백업할까요?", /* batch.confirm_backup */
+        "이 본체의 모든 세이브를 읽어 각각 패키지로 씁니다. 설치된 타이틀과 DS 세이브 양쪽 다. 본체와 서버의 어떤 것도 바뀌지 않습니다.", /* batch.backup_hint */
+        "이 본체의 세이브 {0}개를 모두 SD 카드에 백업할까요?", /* batch.confirm_backup */
         "타이틀 {0}개를 모두 동기화할까요? 양쪽 다 바뀐 경우: {1}", /* batch.confirm_sync */
         "타이틀 {0}개를 모두 동기화하고, 다른 것은 서버 버전을 받을까요? 이 본체의 세이브를 덮어씁니다. 덮기 전에 하나씩 SD 카드에 백업합니다.", /* batch.confirm_sync_server */
-        "이 목록에는 작업할 것이 없습니다.", /* batch.empty */
+        "이 본체에는 작업할 것이 없습니다.", /* batch.empty */
         "A 시작   위/아래 이동   B 뒤로", /* batch.hint */
         "B 이 타이틀까지 하고 중단", /* batch.hint_running */
         "양쪽 다 바뀌었을 때", /* batch.policy */
@@ -198,7 +222,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{1}개 중 {0}개", /* batch.running */
         "중단했습니다. 그 전까지 끝난 것은 그대로 완료됐고, 반쯤 쓰인 것은 없습니다.", /* batch.stopped */
         "모든 타이틀을 서버와 동기화", /* batch.sync */
-        "이 본체만 바뀐 것은 올리고, 서버만 바뀐 것은 받습니다. 양쪽 다 바뀐 경우를 어떻게 할지는 다음에 묻습니다.", /* batch.sync_hint */
+        "두 목록을 모두 돕니다. 설치된 타이틀과 DS 세이브 양쪽. 이 본체만 바뀐 것은 올리고, 서버만 바뀐 것은 받습니다. 양쪽 다 바뀐 경우는 다음에 묻습니다.", /* batch.sync_hint */
         "일괄 작업", /* batch.title */
         "취소", /* btn.cancel */
         "아니오", /* btn.no */
@@ -265,6 +289,9 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "설정", /* menu.settings */
         "모든 타이틀 조사해 SD 카드에 기록", /* menu.survey */
         "서버와 동기화", /* menu.sync */
+        "계정", /* nx.account */
+        "A 백업   Y 동기화   X 새로 읽기   위/아래 이동   + 종료", /* nx.hint */
+        "계정을 고르지 않아 볼 세이브가 없습니다. 이 본체의 세이브는 계정 하나에 속합니다.", /* nx.no_account */
         "백업", /* op.backup */
         "복원", /* op.restore */
         "보안 값", /* op.secure_value */
@@ -289,13 +316,18 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "이 빌드에는 자체 세이브 아카이브가 없습니다. SAVEDATA_SIZE=128K로 빌드하세요.", /* selftest.no_archive */
         "DaeMoon 자신", /* selftest.self */
         "{0}의 세이브를 파괴합니다. 더미 타이틀에만 사용하세요. 백업을 먼저 만들지만 그것에 의존하지 마세요.", /* selftest.warning */
+        "본체를 켤 때 동기화", /* settings.autosync */
         "이 본체의 이름", /* settings.label */
         "언어", /* settings.language */
         "본체 설정 따름 ({0})", /* settings.language_auto */
         "이 본체에는 {0} 글꼴이 없어 글자가 비어 보입니다. 언어를 바꾸지 않았습니다.", /* settings.no_font */
+        "꺼짐", /* settings.off */
+        "켜짐", /* settings.on */
         "설정을 SD 카드에 쓰지 못했습니다.", /* settings.save_failed */
         "저장했습니다. 이제부터 이 설정을 사용합니다.", /* settings.saved */
         "서버 주소", /* settings.server */
+        "디버그 정보 수집", /* settings.survey */
+        "모든 세이브 아카이브를 열어 결과를 survey.txt에 기록합니다. 읽기만 하고 이름 캐시를 무시하므로, 이름이나 아이콘이 이상할 때 누르는 버튼입니다.", /* settings.survey_hint */
         "설정", /* settings.title */
         "기기 토큰", /* settings.token */
         "설정 안 됨", /* settings.unset */
@@ -332,6 +364,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* ja */ {
         "DaeMoon", /* app.title */
+        "何も実行する前に中止しました。", /* autosync.cancelled */
+        "{0} 件は選択が必要なため、そのまま残しました。DaeMoon を開いて選んでください。", /* autosync.left */
+        "ネットワークを待っています", /* autosync.network */
+        "ネットワークが立ち上がりませんでした。何も変更しておらず、次回の起動で再試行します。", /* autosync.no_network */
+        "同期するものがありません。", /* autosync.nothing */
+        "{0} 秒後に HOME に戻ります", /* autosync.returning */
+        "まだゲームが動いていません。同期が安全な唯一のタイミングです。B を押し続けると中止してメニューに移ります。", /* autosync.starting */
+        "起動時の同期", /* autosync.title */
         "日付は本体の時計によるものです。バックアップの説明にすぎず、どちらが新しいかを決めることはありません。", /* backup.clock_note */
         "現在のセーブをバックアップ中", /* backup.creating */
         "バックアップを削除しました。本体のセーブデータは変更していません。", /* backup.deleted */
@@ -342,11 +382,11 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "今、本体にあるセーブデータと同じ", /* backup.same_as_console */
         "すべてのセーブを SD カードにバックアップ", /* batch.backup */
         "バックアップ {0} 件、スキップ {1} 件、失敗 {2} 件。", /* batch.backup_done */
-        "この一覧のすべてのセーブを読み、それぞれをパッケージとして書き出します。本体もサーバーも変更しません。", /* batch.backup_hint */
-        "この一覧のセーブ {0} 件をすべて SD カードにバックアップしますか。", /* batch.confirm_backup */
+        "この本体のすべてのセーブ、インストール済みタイトルと DS セーブの両方を読み、それぞれをパッケージとして書き出します。本体もサーバーも変更しません。", /* batch.backup_hint */
+        "この本体のセーブ {0} 件をすべて SD カードにバックアップしますか。", /* batch.confirm_backup */
         "タイトル {0} 件をすべて同期しますか。両方が変わっていた場合は {1}", /* batch.confirm_sync */
         "タイトル {0} 件をすべて同期し、食い違うものはサーバーのバージョンを受け取りますか。この本体のセーブは上書きされます。上書き前にひとつずつ SD カードへバックアップします。", /* batch.confirm_sync_server */
-        "この一覧に処理できるものがありません。", /* batch.empty */
+        "この本体に処理できるものがありません。", /* batch.empty */
         "A 開始   上下 移動   B 戻る", /* batch.hint */
         "B このタイトルで中断", /* batch.hint_running */
         "両方が変わっていたとき", /* batch.policy */
@@ -359,7 +399,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{1} 件中 {0} 件", /* batch.running */
         "中断しました。それまでに終わったものはそのまま完了しており、書きかけのものはありません。", /* batch.stopped */
         "すべてのタイトルをサーバーと同期", /* batch.sync */
-        "この本体だけが変わったものは送り、サーバーだけが変わったものは受け取ります。両方が変わった場合をどうするかは次に尋ねます。", /* batch.sync_hint */
+        "両方の一覧、インストール済みタイトルと DS セーブを対象にします。この本体だけが変わったものは送り、サーバーだけが変わったものは受け取ります。両方が変わった場合は次に尋ねます。", /* batch.sync_hint */
         "一括処理", /* batch.title */
         "キャンセル", /* btn.cancel */
         "いいえ", /* btn.no */
@@ -426,6 +466,9 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "設定", /* menu.settings */
         "すべてのタイトルを調べて SD カードに記録", /* menu.survey */
         "サーバーと同期", /* menu.sync */
+        "アカウント", /* nx.account */
+        "A バックアップ   Y 同期   X 再読み込み   上下 移動   + 終了", /* nx.hint */
+        "アカウントが選ばれていないため、見るセーブがありません。この本体のセーブはアカウントごとのものです。", /* nx.no_account */
         "バックアップ", /* op.backup */
         "復元", /* op.restore */
         "セキュア値", /* op.secure_value */
@@ -450,13 +493,18 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "このビルドには自分のセーブ領域がありません。SAVEDATA_SIZE=128K でビルドしてください。", /* selftest.no_archive */
         "DaeMoon 自身", /* selftest.self */
         "{0} のセーブデータを破壊します。ダミータイトルで使ってください。先にバックアップを作りますが、それを当てにしないでください。", /* selftest.warning */
+        "本体の起動時に同期", /* settings.autosync */
         "この本体の名前", /* settings.label */
         "言語", /* settings.language */
         "本体の設定に従う（{0}）", /* settings.language_auto */
         "この本体には {0} のフォントがないため、文字が表示されません。言語は変更しませんでした。", /* settings.no_font */
+        "オフ", /* settings.off */
+        "オン", /* settings.on */
         "設定を SD カードに書き込めませんでした。", /* settings.save_failed */
         "保存しました。これ以降はこの設定を使います。", /* settings.saved */
         "サーバーのアドレス", /* settings.server */
+        "デバッグ情報を集める", /* settings.survey */
+        "すべてのセーブアーカイブを開き、結果を survey.txt に書き出します。読み取りのみで、名前のキャッシュを無視するので、名前やアイコンがおかしいときに押すボタンです。", /* settings.survey_hint */
         "設定", /* settings.title */
         "本体のトークン", /* settings.token */
         "未設定", /* settings.unset */
@@ -493,6 +541,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* zh-Hans */ {
         "DaeMoon", /* app.title */
+        "在任何操作开始前已停止。", /* autosync.cancelled */
+        "有 {0} 个需要你来选，所以原样留着。打开 DaeMoon 来选择。", /* autosync.left */
+        "正在等待网络", /* autosync.network */
+        "网络没有连上。什么都没有改动，下次开机会再试。", /* autosync.no_network */
+        "没有需要同步的内容。", /* autosync.nothing */
+        "{0} 秒后返回 HOME", /* autosync.returning */
+        "还没有游戏在运行，这是同步唯一安全的时刻。按住 B 可停止并进入菜单。", /* autosync.starting */
+        "启动时同步", /* autosync.title */
         "日期来自主机时钟，仅用于描述备份，绝不决定哪个存档更新。", /* backup.clock_note */
         "正在备份当前存档", /* backup.creating */
         "备份已删除。主机上的存档未被改动。", /* backup.deleted */
@@ -503,11 +559,11 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "与主机上现在的存档相同", /* backup.same_as_console */
         "把所有存档备份到 SD 卡", /* batch.backup */
         "已备份 {0} 个，跳过 {1} 个，失败 {2} 个。", /* batch.backup_done */
-        "读取本列表里的每个存档，各写出一个包。主机和服务器上的东西都不会改动。", /* batch.backup_hint */
-        "把本列表里的 {0} 个存档全部备份到 SD 卡吗？", /* batch.confirm_backup */
+        "读取本机的每个存档，包括已安装的游戏和 DS 存档，各写出一个包。主机和服务器上的东西都不会改动。", /* batch.backup_hint */
+        "把本机的 {0} 个存档全部备份到 SD 卡吗？", /* batch.confirm_backup */
         "同步全部 {0} 个游戏吗？两边都变过时：{1}", /* batch.confirm_sync */
         "同步全部 {0} 个游戏，凡是不一致的都取服务器的版本吗？本机的存档会被覆盖。每一个都会先备份到 SD 卡。", /* batch.confirm_sync_server */
-        "这个列表里没有可处理的内容。", /* batch.empty */
+        "这台主机上没有可处理的内容。", /* batch.empty */
         "A 开始   上下 移动   B 返回", /* batch.hint */
         "B 做完这个游戏后停止", /* batch.hint_running */
         "两边都变过时", /* batch.policy */
@@ -520,7 +576,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{1} 个中的第 {0} 个", /* batch.running */
         "已停止。此前完成的都已完成，没有留下写到一半的东西。", /* batch.stopped */
         "把所有游戏与服务器同步", /* batch.sync */
-        "只有本机变过的上传，只有服务器变过的下载。两边都变过时怎么办，下一步再问。", /* batch.sync_hint */
+        "覆盖两个列表：已安装的游戏和 DS 存档。只有本机变过的上传，只有服务器变过的下载。两边都变过时怎么办，下一步再问。", /* batch.sync_hint */
         "批量操作", /* batch.title */
         "取消", /* btn.cancel */
         "否", /* btn.no */
@@ -587,6 +643,9 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "设置", /* menu.settings */
         "调查所有游戏并写入 SD 卡", /* menu.survey */
         "与服务器同步", /* menu.sync */
+        "账户", /* nx.account */
+        "A 备份   Y 同步   X 重新读取   上下 移动   + 退出", /* nx.hint */
+        "没有选择账户，所以没有可查看的存档。本机的存档属于某一个账户。", /* nx.no_account */
         "备份", /* op.backup */
         "恢复", /* op.restore */
         "安全值", /* op.secure_value */
@@ -611,13 +670,18 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "此版本没有自己的存档区。请用 SAVEDATA_SIZE=128K 构建。", /* selftest.no_archive */
         "DaeMoon 自身", /* selftest.self */
         "这会销毁 {0} 的存档。请只用于测试用游戏。会先做备份，但不要依赖它。", /* selftest.warning */
+        "开机时同步", /* settings.autosync */
         "这台主机的名称", /* settings.label */
         "语言", /* settings.language */
         "跟随主机设置（{0}）", /* settings.language_auto */
         "这台主机没有{0}字体，文字会是空白。语言未更改。", /* settings.no_font */
+        "关", /* settings.off */
+        "开", /* settings.on */
         "无法把设置写入 SD 卡。", /* settings.save_failed */
         "已保存。此后将使用这些设置。", /* settings.saved */
         "服务器地址", /* settings.server */
+        "收集调试信息", /* settings.survey */
+        "打开每一个存档并把结果写入 survey.txt。只读，并且忽略名称缓存，所以名称或图标不对时按这个。", /* settings.survey_hint */
         "设置", /* settings.title */
         "设备令牌", /* settings.token */
         "未设置", /* settings.unset */
@@ -654,6 +718,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* zh-Hant */ {
         "DaeMoon", /* app.title */
+        "在任何操作開始前已停止。", /* autosync.cancelled */
+        "有 {0} 個需要你來選，所以原樣留著。打開 DaeMoon 來選擇。", /* autosync.left */
+        "正在等待網路", /* autosync.network */
+        "網路沒有連上。什麼都沒有改動，下次開機會再試。", /* autosync.no_network */
+        "沒有需要同步的內容。", /* autosync.nothing */
+        "{0} 秒後返回 HOME", /* autosync.returning */
+        "還沒有遊戲在執行，這是同步唯一安全的時刻。按住 B 可停止並進入選單。", /* autosync.starting */
+        "啟動時同步", /* autosync.title */
         "日期來自主機時鐘，僅用於描述備份，絕不決定哪個存檔較新。", /* backup.clock_note */
         "正在備份目前的存檔", /* backup.creating */
         "備份已刪除。主機上的存檔未被更動。", /* backup.deleted */
@@ -664,11 +736,11 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "與主機上目前的存檔相同", /* backup.same_as_console */
         "把所有存檔備份到 SD 卡", /* batch.backup */
         "已備份 {0} 個，跳過 {1} 個，失敗 {2} 個。", /* batch.backup_done */
-        "讀取本清單裡的每個存檔，各寫出一個包。主機和伺服器上的東西都不會改動。", /* batch.backup_hint */
-        "把本清單裡的 {0} 個存檔全部備份到 SD 卡嗎？", /* batch.confirm_backup */
+        "讀取本機的每個存檔，包括已安裝的遊戲和 DS 存檔，各寫出一個包。主機和伺服器上的東西都不會改動。", /* batch.backup_hint */
+        "把本機的 {0} 個存檔全部備份到 SD 卡嗎？", /* batch.confirm_backup */
         "同步全部 {0} 個遊戲嗎？兩邊都變過時：{1}", /* batch.confirm_sync */
         "同步全部 {0} 個遊戲，凡是不一致的都取伺服器的版本嗎？本機的存檔會被覆蓋。每一個都會先備份到 SD 卡。", /* batch.confirm_sync_server */
-        "這個清單裡沒有可處理的內容。", /* batch.empty */
+        "這台主機上沒有可處理的內容。", /* batch.empty */
         "A 開始   上下 移動   B 返回", /* batch.hint */
         "B 做完這個遊戲後停止", /* batch.hint_running */
         "兩邊都變過時", /* batch.policy */
@@ -681,7 +753,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{1} 個中的第 {0} 個", /* batch.running */
         "已停止。此前完成的都已完成，沒有留下寫到一半的東西。", /* batch.stopped */
         "把所有遊戲與伺服器同步", /* batch.sync */
-        "只有本機變過的上傳，只有伺服器變過的下載。兩邊都變過時怎麼辦，下一步再問。", /* batch.sync_hint */
+        "涵蓋兩個清單：已安裝的遊戲和 DS 存檔。只有本機變過的上傳，只有伺服器變過的下載。兩邊都變過時怎麼辦，下一步再問。", /* batch.sync_hint */
         "批次操作", /* batch.title */
         "取消", /* btn.cancel */
         "否", /* btn.no */
@@ -748,6 +820,9 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "設定", /* menu.settings */
         "調查所有遊戲並寫入 SD 卡", /* menu.survey */
         "與伺服器同步", /* menu.sync */
+        "帳戶", /* nx.account */
+        "A 備份   Y 同步   X 重新讀取   上下 移動   + 結束", /* nx.hint */
+        "沒有選擇帳戶，所以沒有可查看的存檔。本機的存檔屬於某一個帳戶。", /* nx.no_account */
         "備份", /* op.backup */
         "還原", /* op.restore */
         "安全值", /* op.secure_value */
@@ -772,13 +847,18 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "此版本沒有自己的存檔區。請用 SAVEDATA_SIZE=128K 建置。", /* selftest.no_archive */
         "DaeMoon 自身", /* selftest.self */
         "這會銷毀 {0} 的存檔。請只用於測試用遊戲。會先做備份，但不要依賴它。", /* selftest.warning */
+        "開機時同步", /* settings.autosync */
         "這台主機的名稱", /* settings.label */
         "語言", /* settings.language */
         "跟隨主機設定（{0}）", /* settings.language_auto */
         "這台主機沒有{0}字型，文字會是空白。語言未變更。", /* settings.no_font */
+        "關", /* settings.off */
+        "開", /* settings.on */
         "無法將設定寫入 SD 卡。", /* settings.save_failed */
         "已儲存。此後將使用這些設定。", /* settings.saved */
         "伺服器位址", /* settings.server */
+        "收集除錯資訊", /* settings.survey */
+        "開啟每一個存檔並把結果寫入 survey.txt。唯讀，並且忽略名稱快取，所以名稱或圖示不對時按這個。", /* settings.survey_hint */
         "設定", /* settings.title */
         "裝置權杖", /* settings.token */
         "未設定", /* settings.unset */
@@ -815,6 +895,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* es */ {
         "DaeMoon", /* app.title */
+        "Detenido antes de ejecutar nada.", /* autosync.cancelled */
+        "{0} necesitan una elección, así que se han dejado tal cual. Abre DaeMoon para hacerla.", /* autosync.left */
+        "Esperando la red", /* autosync.network */
+        "La red no ha llegado a levantar. No se ha cambiado nada, y el próximo arranque volverá a intentarlo.", /* autosync.no_network */
+        "Nada que sincronizar.", /* autosync.nothing */
+        "Volviendo a HOME en {0}", /* autosync.returning */
+        "Todavía no hay ningún juego en marcha, que es el único momento en que sincronizar es seguro. Mantén B para parar y usar el menú.", /* autosync.starting */
+        "Sincronización al arrancar", /* autosync.title */
         "Las fechas vienen del reloj de la consola. Describen una copia; nunca deciden qué partida es más reciente.", /* backup.clock_note */
         "Creando copia de seguridad de la partida actual", /* backup.creating */
         "La copia de seguridad se ha eliminado. No se ha tocado la partida de la consola.", /* backup.deleted */
@@ -825,11 +913,11 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "igual que la partida que hay ahora en la consola", /* backup.same_as_console */
         "Copiar todas las partidas a la tarjeta SD", /* batch.backup */
         "{0} copiadas, {1} omitidas, {2} fallidas.", /* batch.backup_done */
-        "Lee todas las partidas de esta biblioteca y escribe un paquete por cada una. No cambia nada en la consola ni en el servidor.", /* batch.backup_hint */
-        "¿Copiar las {0} partidas de esta biblioteca a la tarjeta SD?", /* batch.confirm_backup */
+        "Lee todas las partidas de esta consola, los juegos instalados y las partidas de DS, y escribe un paquete por cada una. No cambia nada en la consola ni en el servidor.", /* batch.backup_hint */
+        "¿Copiar las {0} partidas de esta consola a la tarjeta SD?", /* batch.confirm_backup */
         "¿Sincronizar los {0} juegos? Donde cambiaron ambos lados: {1}", /* batch.confirm_sync */
         "¿Sincronizar los {0} juegos tomando la versión del servidor donde difieran? Se sobrescribirán partidas de esta consola. Cada una se copia antes a la tarjeta SD.", /* batch.confirm_sync_server */
-        "No hay nada en esta biblioteca sobre lo que trabajar.", /* batch.empty */
+        "No hay nada en esta consola sobre lo que trabajar.", /* batch.empty */
         "A empezar   arriba/abajo mover   B atrás", /* batch.hint */
         "B parar tras este juego", /* batch.hint_running */
         "Cuando cambiaron ambos lados", /* batch.policy */
@@ -842,7 +930,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} de {1}", /* batch.running */
         "Detenido. Todo lo terminado antes de este punto está hecho y nada quedó a medio escribir.", /* batch.stopped */
         "Sincronizar todos los juegos con el servidor", /* batch.sync */
-        "Sube lo que solo cambió en esta consola y baja lo que solo cambió en el servidor. Qué pasa cuando cambiaron los dos es la siguiente pregunta.", /* batch.sync_hint */
+        "Cubre ambas bibliotecas, los juegos instalados y las partidas de DS. Sube lo que solo cambió en esta consola y baja lo que solo cambió en el servidor. Qué pasa cuando cambiaron los dos es la siguiente pregunta.", /* batch.sync_hint */
         "Todos los juegos", /* batch.title */
         "Cancelar", /* btn.cancel */
         "No", /* btn.no */
@@ -909,6 +997,9 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Ajustes", /* menu.settings */
         "Analizar todos los juegos y escribirlo en la tarjeta SD", /* menu.survey */
         "Sincronizar con el servidor", /* menu.sync */
+        "Cuenta", /* nx.account */
+        "A copiar   Y sincronizar   X recargar   arriba/abajo mover   + salir", /* nx.hint */
+        "No se ha elegido ninguna cuenta, así que no hay partidas que mirar. Una partida en esta consola pertenece a una sola cuenta.", /* nx.no_account */
         "Copia de seguridad", /* op.backup */
         "Restauración", /* op.restore */
         "Valor seguro", /* op.secure_value */
@@ -933,13 +1024,18 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Esta compilación no tiene su propio archivo de partida. Compílala con SAVEDATA_SIZE=128K.", /* selftest.no_archive */
         "El propio DaeMoon", /* selftest.self */
         "Esto DESTRUYE la partida de {0}. Usa un juego de prueba. Se hace una copia antes, pero no confíes en ella.", /* selftest.warning */
+        "Sincronizar al encender la consola", /* settings.autosync */
         "Nombre de esta consola", /* settings.label */
         "Idioma", /* settings.language */
         "Según la consola ({0})", /* settings.language_auto */
         "Esta consola no tiene una fuente para {0}, el texto quedaría en blanco. No se ha cambiado el idioma.", /* settings.no_font */
+        "Desactivado", /* settings.off */
+        "Activado", /* settings.on */
         "No se han podido escribir los ajustes en la tarjeta SD.", /* settings.save_failed */
         "Guardado. Esta consola usará estos ajustes a partir de ahora.", /* settings.saved */
         "Dirección del servidor", /* settings.server */
+        "Recoger información de depuración", /* settings.survey */
+        "Abre todos los archivos de partida y escribe lo que encuentra en survey.txt. Solo lectura, e ignora la caché de nombres, así que es el botón que pulsar cuando un nombre o un icono se ve mal.", /* settings.survey_hint */
         "Ajustes", /* settings.title */
         "Token del dispositivo", /* settings.token */
         "sin definir", /* settings.unset */
@@ -976,6 +1072,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* fr */ {
         "DaeMoon", /* app.title */
+        "Arrêté avant que quoi que ce soit ne tourne.", /* autosync.cancelled */
+        "{0} demandent un choix, elles ont donc été laissées telles quelles. Ouvre DaeMoon pour le faire.", /* autosync.left */
+        "En attente du réseau", /* autosync.network */
+        "Le réseau ne s'est pas levé. Rien n'a été modifié, et le prochain démarrage réessaiera.", /* autosync.no_network */
+        "Rien à synchroniser.", /* autosync.nothing */
+        "Retour au HOME dans {0}", /* autosync.returning */
+        "Aucun jeu ne tourne encore, le seul moment où synchroniser est sûr. Maintiens B pour arrêter et utiliser le menu.", /* autosync.starting */
+        "Synchronisation au démarrage", /* autosync.title */
         "Les dates viennent de l'horloge de la console. Elles décrivent une sauvegarde ; elles ne décident jamais laquelle est la plus récente.", /* backup.clock_note */
         "Sauvegarde locale de la partie en cours", /* backup.creating */
         "La sauvegarde a été supprimée. La partie sur la console n'a pas été touchée.", /* backup.deleted */
@@ -986,11 +1090,11 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "identique à la partie actuellement sur la console", /* backup.same_as_console */
         "Sauvegarder toutes les parties sur la carte SD", /* batch.backup */
         "{0} sauvegardées, {1} ignorées, {2} en échec.", /* batch.backup_done */
-        "Lit toutes les sauvegardes de cette bibliothèque et écrit un paquet pour chacune. Rien n'est modifié sur la console ni sur le serveur.", /* batch.backup_hint */
-        "Sauvegarder les {0} parties de cette bibliothèque sur la carte SD ?", /* batch.confirm_backup */
+        "Lit toutes les sauvegardes de cette console, les jeux installés comme les sauvegardes DS, et écrit un paquet pour chacune. Rien n'est modifié sur la console ni sur le serveur.", /* batch.backup_hint */
+        "Sauvegarder les {0} parties de cette console sur la carte SD ?", /* batch.confirm_backup */
         "Synchroniser les {0} jeux ? Là où les deux côtés ont changé : {1}", /* batch.confirm_sync */
         "Synchroniser les {0} jeux en prenant la version du serveur là où elles diffèrent ? Des sauvegardes de cette console seront écrasées. Chacune est d'abord copiée sur la carte SD.", /* batch.confirm_sync_server */
-        "Il n'y a rien à traiter dans cette bibliothèque.", /* batch.empty */
+        "Il n'y a rien à traiter sur cette console.", /* batch.empty */
         "A démarrer   haut/bas déplacer   B retour", /* batch.hint */
         "B arrêter après ce jeu", /* batch.hint_running */
         "Quand les deux côtés ont changé", /* batch.policy */
@@ -1003,7 +1107,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} sur {1}", /* batch.running */
         "Arrêté. Tout ce qui était terminé avant ce point l'est, et rien n'est resté à moitié écrit.", /* batch.stopped */
         "Synchroniser tous les jeux avec le serveur", /* batch.sync */
-        "Envoie ce que seule cette console a changé et récupère ce que seul le serveur a changé. Ce qui se passe quand les deux ont changé est la question suivante.", /* batch.sync_hint */
+        "Couvre les deux bibliothèques, les jeux installés et les sauvegardes DS. Envoie ce que seule cette console a changé et récupère ce que seul le serveur a changé. Ce qui se passe quand les deux ont changé est la question suivante.", /* batch.sync_hint */
         "Tous les jeux", /* batch.title */
         "Annuler", /* btn.cancel */
         "Non", /* btn.no */
@@ -1070,6 +1174,9 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Réglages", /* menu.settings */
         "Analyser tous les jeux et écrire sur la carte SD", /* menu.survey */
         "Synchroniser avec le serveur", /* menu.sync */
+        "Compte", /* nx.account */
+        "A sauvegarder   Y synchroniser   X recharger   haut/bas déplacer   + quitter", /* nx.hint */
+        "Aucun compte n'a été choisi, il n'y a donc aucune sauvegarde à voir. Une sauvegarde sur cette console appartient à un seul compte.", /* nx.no_account */
         "Sauvegarde", /* op.backup */
         "Restauration", /* op.restore */
         "Valeur sécurisée", /* op.secure_value */
@@ -1094,13 +1201,18 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Cette version n'a pas d'archive de sauvegarde propre. Compile avec SAVEDATA_SIZE=128K.", /* selftest.no_archive */
         "DaeMoon lui-même", /* selftest.self */
         "Ceci DÉTRUIT la partie de {0}. Utilise un jeu de test. Une sauvegarde est faite d'abord, mais ne compte pas dessus.", /* selftest.warning */
+        "Synchroniser au démarrage de la console", /* settings.autosync */
         "Nom de cette console", /* settings.label */
         "Langue", /* settings.language */
         "Selon la console ({0})", /* settings.language_auto */
         "Cette console n'a pas de police pour {0}, le texte serait vide. La langue n'a pas été changée.", /* settings.no_font */
+        "Désactivé", /* settings.off */
+        "Activé", /* settings.on */
         "Impossible d'écrire les réglages sur la carte SD.", /* settings.save_failed */
         "Enregistré. Cette console utilisera ces réglages désormais.", /* settings.saved */
         "Adresse du serveur", /* settings.server */
+        "Recueillir des informations de débogage", /* settings.survey */
+        "Ouvre chaque archive de sauvegarde et écrit ce qu'elle trouve dans survey.txt. En lecture seule, et ignore le cache des noms - c'est donc le bouton à presser quand un nom ou une icône semble faux.", /* settings.survey_hint */
         "Réglages", /* settings.title */
         "Jeton de l'appareil", /* settings.token */
         "non défini", /* settings.unset */
@@ -1137,6 +1249,14 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
     },
     /* de */ {
         "DaeMoon", /* app.title */
+        "Vor jeder Ausführung angehalten.", /* autosync.cancelled */
+        "{0} brauchen eine Entscheidung und wurden unverändert gelassen. Öffne DaeMoon, um sie zu treffen.", /* autosync.left */
+        "Warte auf das Netzwerk", /* autosync.network */
+        "Das Netzwerk kam nicht hoch. Es wurde nichts geändert, und der nächste Start versucht es erneut.", /* autosync.no_network */
+        "Nichts abzugleichen.", /* autosync.nothing */
+        "Zurück zum HOME in {0}", /* autosync.returning */
+        "Es läuft noch kein Spiel, und genau dann ist ein Abgleich sicher. Halte B, um abzubrechen und das Menü zu benutzen.", /* autosync.starting */
+        "Abgleich beim Start", /* autosync.title */
         "Die Datumsangaben stammen von der Uhr der Konsole. Sie beschreiben eine Sicherung; sie entscheiden nie, welcher Spielstand neuer ist.", /* backup.clock_note */
         "Sicherung des aktuellen Spielstands wird erstellt", /* backup.creating */
         "Die Sicherung wurde gelöscht. Der Spielstand auf der Konsole blieb unberührt.", /* backup.deleted */
@@ -1147,11 +1267,11 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "identisch mit dem Spielstand, der jetzt auf der Konsole liegt", /* backup.same_as_console */
         "Alle Spielstände auf die SD-Karte sichern", /* batch.backup */
         "{0} gesichert, {1} übersprungen, {2} fehlgeschlagen.", /* batch.backup_done */
-        "Liest jeden Spielstand dieser Bibliothek und schreibt je ein Paket. Auf Konsole und Server ändert sich nichts.", /* batch.backup_hint */
-        "Alle {0} Spielstände dieser Bibliothek auf die SD-Karte sichern?", /* batch.confirm_backup */
+        "Liest jeden Spielstand dieser Konsole - die installierten Titel und die DS-Spielstände - und schreibt je ein Paket. Auf Konsole und Server ändert sich nichts.", /* batch.backup_hint */
+        "Alle {0} Spielstände dieser Konsole auf die SD-Karte sichern?", /* batch.confirm_backup */
         "Alle {0} Titel abgleichen? Wo beide Seiten geändert wurden: {1}", /* batch.confirm_sync */
         "Alle {0} Titel abgleichen und überall dort die Version des Servers nehmen, wo sie sich unterscheiden? Spielstände auf dieser Konsole werden überschrieben. Jeder wird vorher auf die SD-Karte gesichert.", /* batch.confirm_sync_server */
-        "In dieser Bibliothek gibt es nichts zu tun.", /* batch.empty */
+        "Auf dieser Konsole gibt es nichts zu tun.", /* batch.empty */
         "A starten   hoch/runter bewegen   B zurück", /* batch.hint */
         "B nach diesem Titel anhalten", /* batch.hint_running */
         "Wenn beide Seiten geändert wurden", /* batch.policy */
@@ -1164,7 +1284,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} von {1}", /* batch.running */
         "Angehalten. Alles vor diesem Punkt Abgeschlossene ist fertig, und nichts blieb halb geschrieben.", /* batch.stopped */
         "Alle Titel mit dem Server abgleichen", /* batch.sync */
-        "Lädt hoch, was nur diese Konsole geändert hat, und herunter, was nur der Server geändert hat. Was passiert, wenn beide geändert haben, ist die nächste Frage.", /* batch.sync_hint */
+        "Deckt beide Bibliotheken ab, die installierten Titel und die DS-Spielstände. Lädt hoch, was nur diese Konsole geändert hat, und herunter, was nur der Server geändert hat. Was passiert, wenn beide geändert haben, ist die nächste Frage.", /* batch.sync_hint */
         "Alle Titel", /* batch.title */
         "Abbrechen", /* btn.cancel */
         "Nein", /* btn.no */
@@ -1231,6 +1351,9 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Einstellungen", /* menu.settings */
         "Alle Titel erfassen und auf die SD-Karte schreiben", /* menu.survey */
         "Mit dem Server abgleichen", /* menu.sync */
+        "Konto", /* nx.account */
+        "A sichern   Y abgleichen   X neu laden   hoch/runter bewegen   + beenden", /* nx.hint */
+        "Es wurde kein Konto gewählt, also gibt es keinen Spielstand zu sehen. Ein Spielstand auf dieser Konsole gehört zu genau einem Konto.", /* nx.no_account */
         "Sicherung", /* op.backup */
         "Wiederherstellung", /* op.restore */
         "Sicherheitswert", /* op.secure_value */
@@ -1255,13 +1378,18 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Dieser Build hat kein eigenes Speicherarchiv. Mit SAVEDATA_SIZE=128K bauen.", /* selftest.no_archive */
         "DaeMoon selbst", /* selftest.self */
         "Das ZERSTÖRT den Spielstand von {0}. Nur mit einem Testtitel verwenden. Vorher wird gesichert, aber verlass dich nicht darauf.", /* selftest.warning */
+        "Beim Start der Konsole abgleichen", /* settings.autosync */
         "Name dieser Konsole", /* settings.label */
         "Sprache", /* settings.language */
         "Wie die Konsole ({0})", /* settings.language_auto */
         "Diese Konsole hat keine Schrift für {0}, der Text bliebe leer. Die Sprache wurde nicht geändert.", /* settings.no_font */
+        "Aus", /* settings.off */
+        "Ein", /* settings.on */
         "Die Einstellungen konnten nicht auf die SD-Karte geschrieben werden.", /* settings.save_failed */
         "Gespeichert. Diese Konsole verwendet sie ab jetzt.", /* settings.saved */
         "Serveradresse", /* settings.server */
+        "Diagnoseinformationen sammeln", /* settings.survey */
+        "Öffnet jedes Speicherarchiv und schreibt das Ergebnis nach survey.txt. Nur lesend, und ignoriert den Namens-Cache - also der Knopf für den Fall, dass ein Name oder ein Symbol falsch aussieht.", /* settings.survey_hint */
         "Einstellungen", /* settings.title */
         "Gerätetoken", /* settings.token */
         "nicht gesetzt", /* settings.unset */

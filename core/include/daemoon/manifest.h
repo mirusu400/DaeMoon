@@ -58,6 +58,12 @@ typedef struct {
      * nobody can read. The console already knows the name; not sending it was the
      * only reason it was missing. */
     char                title_name[DAEMOON_NAME_MAX];
+    /* The console stored value this save was bound to when it was packed, for the
+     * titles that have one. Absent from packages written before this existed, and
+     * from every platform but the 3DS, which is why the flag is separate: zero is a
+     * legitimate value and "no value" is not the same thing. */
+    int                 has_secure_value;
+    unsigned long long  secure_value;
     char                created_at[DAEMOON_TIMESTAMP_MAX]; /* ISO 8601, informational only */
 } daemoon_manifest_t;
 

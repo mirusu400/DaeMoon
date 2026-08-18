@@ -43,3 +43,10 @@ void daemoon_3ds_trace_uint(const char *step, unsigned long long value)
     (void)snprintf(text, sizeof(text), "%lu", (unsigned long)value);
     daemoon_3ds_trace(step, text);
 }
+
+/* The shared code has things worth recording and no business knowing where a 3DS
+ * keeps them. platform/common calls this name; this file decides the file. */
+void daemoon_newlib_trace(const char *step, const char *detail)
+{
+    daemoon_3ds_trace(step, detail);
+}

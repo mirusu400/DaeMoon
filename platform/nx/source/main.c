@@ -1,28 +1,57 @@
 /* Switch entry point. Phase 6.
  *
- * Same shape as the 3DS entry point: assemble a daemoon_env_t out of libnx and hand
- * it to core. Two things have to happen here before anything else, and both are
- * checked at startup rather than discovered halfway through a sync:
+ * Same shape as the 3DS entry point: assemble a daemoon_env_t out of libnx and hand it
+ * to core. Two things have to happen here before anything else, and both are checked
+ * at startup rather than discovered halfway through a sync:
  *
  *   - an account has to be selected, because a save belongs to one AccountUid
  *   - applet mode has to be detected, because its memory limit will not fit a sync
+ *
+ * The interface is a text console, on purpose. What Phase 6 has to establish is that a
+ * save can be mounted, read, written and committed on this platform; a textured grid
+ * would prove exactly as much as a list does and is months of work the 3DS build has
+ * already spent once.
  */
-#include <switch.h>
+#include "daemoon_nx.h"
+
+#include "backend_conformance.h"
+#include "test.h"
 
 #include <daemoon/archive.h>
 #include <daemoon/i18n.h>
 #include <daemoon/sync.h>
 
-#include <stdio.h>
+#include <switch.h>
 
-static unsigned char g_scratch[64 * 1024];
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+
+static unsigned char        g_scratch[256 * 1024];
 static daemoon_archive_ctx_t g_archive;
+static daemoon_nx_save_ctx_t g_save_ctx;
+static daemoon_net_curl_ctx_t g_net_ctx;
+static daemoon_nx_ui_ctx_t   g_ui_ctx;
+static daemoon_nx_config_t   g_config;
+static daemoon_env_t         g_env;
+
+static daemoon_title_t *g_titles;
+static size_t           g_count;
+static size_t           g_selected;
 
 static void select_language(void)
 {
     u64 code = 0;
     SetLanguage lang = SetLanguage_ENUS;
     daemoon_lang_t chosen = DAEMOON_LANG_EN;
+
+    /* A stored choice wins over the console's, the same way it does on the 3DS: a
+     * person who picked one is not overruled by the system setting. */
+    if (g_config.language[0] != '\0' &&
+        daemoon_i18n_language_from_code(g_config.language, &chosen) == DAEMOON_OK) {
+        daemoon_i18n_set_language(chosen);
+        return;
+    }
 
     if (R_FAILED(setInitialize())) {
         return;
@@ -46,42 +75,374 @@ static void select_language(void)
     daemoon_i18n_set_language(chosen);
 }
 
+/* Informational only, like every other date in this project. The clock is user
+ * settable on both consoles and nothing is ordered by it. */
+static daemoon_result_t clock_iso8601(void *ctx, char *buf, size_t cap)
+{
+    time_t now;
+    struct tm tm;
+
+    (void)ctx;
+    now = time(NULL);
+    if (now == (time_t)-1 || gmtime_r(&now, &tm) == NULL) {
+        return DAEMOON_ERR_UNSUPPORTED;
+    }
+    if (strftime(buf, cap, "%Y-%m-%dT%H:%M:%SZ", &tm) == 0) {
+        return DAEMOON_ERR_BUFFER_TOO_SMALL;
+    }
+    return DAEMOON_OK;
+}
+
+static void wait_for_a(void)
+{
+    PadState pad;
+
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+    padInitializeDefault(&pad);
+    printf("\n%s\n", daemoon_str(DAEMOON_STR_HINT_CONTINUE));
+    consoleUpdate(NULL);
+
+    while (appletMainLoop()) {
+        padUpdate(&pad);
+        if (padGetButtonsDown(&pad) & (HidNpadButton_A | HidNpadButton_B)) {
+            return;
+        }
+        consoleUpdate(NULL);
+    }
+}
+
+static void report(daemoon_str_id_t op, daemoon_result_t r)
+{
+    char body[320];
+    const char *args[2];
+
+    if (r == DAEMOON_OK) {
+        args[0] = daemoon_str(op);
+        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_REPORT_OK, args, 1);
+    } else {
+        args[0] = daemoon_str(op);
+        args[1] = daemoon_str(daemoon_result_str_id(r));
+        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_REPORT_FAILED, args, 2);
+        {
+            size_t len = strlen(body);
+
+            /* The wire code in brackets, as an identifier rather than prose. It is
+             * what a photograph in a bug report has to carry. */
+            (void)snprintf(body + len, sizeof(body) - len, "  [%s]",
+                           daemoon_result_code(r));
+        }
+    }
+    printf("\n%s\n", body);
+    wait_for_a();
+}
+
+static void load_titles(void)
+{
+    if (g_titles != NULL) {
+        g_env.save->free_titles(g_env.save_ctx, g_titles, g_count);
+        g_titles = NULL;
+        g_count = 0;
+    }
+    printf("%s\n", daemoon_str(DAEMOON_STR_LOADING_TITLES));
+    consoleUpdate(NULL);
+
+    if (g_env.save->list_titles(g_env.save_ctx, &g_titles, &g_count) != DAEMOON_OK) {
+        printf("%s\n", daemoon_str(DAEMOON_STR_ERR_TITLE_LIST));
+        g_count = 0;
+    }
+    if (g_selected >= g_count) {
+        g_selected = g_count > 0 ? g_count - 1 : 0;
+    }
+}
+
+static void draw(void)
+{
+    size_t i;
+    size_t first = 0;
+    const size_t rows = 20;
+
+    if (g_selected >= rows) {
+        first = g_selected - rows + 1;
+    }
+
+    consoleClear();
+    printf("%s   %s: %s\n", daemoon_str(DAEMOON_STR_APP_TITLE),
+           daemoon_str(DAEMOON_STR_NX_ACCOUNT), g_save_ctx.account.nickname);
+    printf("%s: %s\n\n", daemoon_str(DAEMOON_STR_SETTINGS_SERVER),
+           g_config.server_url[0] != '\0' ? g_config.server_url
+                                          : daemoon_str(DAEMOON_STR_SETTINGS_UNSET));
+
+    if (g_count == 0) {
+        printf("%s\n", daemoon_str(DAEMOON_STR_GRID_EMPTY));
+    }
+    for (i = first; i < g_count && i < first + rows; ++i) {
+        printf(" %s %-16s  %s\n", i == g_selected ? ">" : " ", g_titles[i].id,
+               g_titles[i].name);
+    }
+
+    printf("\n%s\n", daemoon_str(DAEMOON_STR_NX_HINT));
+    consoleUpdate(NULL);
+}
+
+static void action_backup(void)
+{
+    char path[DAEMOON_PATH_MAX * 2];
+    daemoon_str_ref_t ask;
+
+    if (g_count == 0) {
+        return;
+    }
+    memset(&ask, 0, sizeof(ask));
+    ask.id = DAEMOON_STR_CONFIRM_BACKUP;
+    ask.args[0] = g_titles[g_selected].name;
+    ask.nargs = 1;
+    if (!g_env.ui->confirm(g_env.ui_ctx, &ask)) {
+        return;
+    }
+    consoleClear();
+    daemoon_nx_trace("backup/begin", g_titles[g_selected].id);
+    report(DAEMOON_STR_OP_BACKUP,
+           daemoon_sync_backup_local(&g_env, &g_archive, &g_titles[g_selected], path,
+                                     sizeof(path)));
+}
+
+static void action_sync(void)
+{
+    daemoon_sync_stats_t stats;
+    char body[256];
+    daemoon_result_t r;
+
+    if (g_count == 0) {
+        return;
+    }
+    if (!daemoon_nx_config_can_sync(&g_config)) {
+        printf("\n%s\n", daemoon_str(DAEMOON_STR_ERR_NO_SERVER));
+        wait_for_a();
+        return;
+    }
+
+    consoleClear();
+    memset(&stats, 0, sizeof(stats));
+    daemoon_nx_trace("sync/begin", g_titles[g_selected].id);
+    r = daemoon_sync_title(&g_env, &g_archive, &g_titles[g_selected], &stats);
+    daemoon_nx_trace("sync/done", daemoon_result_code(r));
+    if (r != DAEMOON_OK) {
+        report(DAEMOON_STR_OP_SYNC, r);
+        return;
+    }
+    {
+        char counts[4][12];
+        const char *args[4];
+        size_t i;
+        const unsigned n[4] = { stats.uploaded, stats.downloaded, stats.skipped,
+                                stats.conflicts };
+
+        for (i = 0; i < 4; ++i) {
+            (void)snprintf(counts[i], sizeof(counts[i]), "%u", n[i]);
+            args[i] = counts[i];
+        }
+        (void)daemoon_strf(body, sizeof(body), DAEMOON_STR_SYNC_RESULT, args, 4);
+    }
+    printf("\n%s\n", body);
+    wait_for_a();
+}
+
+/* The contract, on hardware, against the title the cursor is on.
+ *
+ * It clears that save to prove that clearing works, so it asks first and it says so
+ * in the question. The 3DS build learned to keep this off the main list - one press
+ * between a real save and a wipe is one press too few - so here it is behind X and Y
+ * together rather than a row of its own, and the result goes to a file as well as the
+ * screen because a console's output is a photograph otherwise.
+ *
+ * Every case names the caller in core that would break, so a failure says what is
+ * wrong rather than only that something is.
+ */
+static void action_conformance(void)
+{
+    daemoon_backend_under_test_t ut;
+    daemoon_str_ref_t ask;
+    char body[256];
+    int before;
+
+    if (g_count == 0) {
+        return;
+    }
+    memset(&ask, 0, sizeof(ask));
+    ask.id = DAEMOON_STR_SELFTEST_WARNING;
+    ask.args[0] = g_titles[g_selected].name;
+    ask.nargs = 1;
+    if (!g_env.ui->confirm(g_env.ui_ctx, &ask)) {
+        return;
+    }
+    /* Asked twice, because the first question is the one somebody reads and the
+     * second is the one they mean. Clearing a save is not undoable by this
+     * application, and the title under the cursor is whatever they left it on. */
+    memset(&ask, 0, sizeof(ask));
+    ask.id = DAEMOON_STR_CONFIRM_RESTORE;
+    ask.args[0] = g_titles[g_selected].name;
+    ask.nargs = 1;
+    if (!g_env.ui->confirm(g_env.ui_ctx, &ask)) {
+        return;
+    }
+
+    consoleClear();
+    printf("%s\n\n", daemoon_str(DAEMOON_STR_SELFTEST_WARNING));
+    consoleUpdate(NULL);
+
+    memset(&ut, 0, sizeof(ut));
+    ut.name = "nx";
+    ut.backend = &daemoon_nx_save_backend;
+    ut.ctx = &g_save_ctx;
+    ut.title = &g_titles[g_selected];
+    /* No second title: a save on this platform is created by the game that owns it,
+     * so the isolation cases need two dummy titles that both have saves already. That
+     * is a hardware setup question rather than something to fake here. */
+    ut.other = NULL;
+    ut.scratch = g_scratch;
+    ut.scratch_len = sizeof(g_scratch);
+
+    before = daemoon_test_failures;
+    daemoon_backend_conformance(&ut);
+
+    (void)snprintf(body, sizeof(body), "%d checks, %d failures. %s",
+                   daemoon_test_checks, daemoon_test_failures - before,
+                   daemoon_test_failures == before
+                       ? "this backend behaves the way core assumes"
+                       : daemoon_test_last_failure);
+    daemoon_nx_trace("conformance", body);
+    {
+        /* On the card as well as on screen. Nobody transcribes a failure message off a
+         * television correctly, and this one names the caller in core that would
+         * break. */
+        daemoon_stream_t *out = NULL;
+
+        if (g_env.fs->open(g_env.fs_ctx, DAEMOON_NX_WORK_DIR "/conformance.txt",
+                           DAEMOON_OPEN_WRITE, &out) == DAEMOON_OK) {
+            (void)daemoon_stream_write(out, body, strlen(body));
+            (void)daemoon_stream_write(out, "\n", 1);
+            (void)daemoon_stream_close(out);
+        }
+    }
+    printf("\n%s\n", body);
+    wait_for_a();
+}
+
 int main(int argc, char **argv)
 {
     AppletType applet;
+    PadState pad;
 
     (void)argc;
     (void)argv;
 
     consoleInit(NULL);
-    select_language();
-
-    g_archive.count = 0;
-    (void)g_scratch;
-
-    printf("%s\n\n", daemoon_str(DAEMOON_STR_APP_TITLE));
-
-    applet = appletGetAppletType();
-    if (applet != AppletType_Application && applet != AppletType_SystemApplication) {
-        /* Limited memory. Say so now rather than failing partway through a sync. */
-        printf("%s\n\n", daemoon_str(DAEMOON_STR_WARN_APPLET_MODE));
-    }
-
-    printf("Phase 6: the save, net and UI backends are not implemented yet.\n");
-    printf("Press + to exit.\n");
-
-    PadState pad;
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     padInitializeDefault(&pad);
 
-    while (appletMainLoop()) {
-        padUpdate(&pad);
-        if (padGetButtonsDown(&pad) & HidNpadButton_Plus) {
-            break;
-        }
-        consoleUpdate(NULL);
+    (void)daemoon_nx_config_load(DAEMOON_NX_CONFIG_PATH, &g_config);
+    select_language();
+
+    printf("%s\n\n", daemoon_str(DAEMOON_STR_APP_TITLE));
+    consoleUpdate(NULL);
+
+    /* Somewhere to put backups and staging, before anything needs it. */
+    (void)daemoon_fs_newlib_backend.mkdir_p(NULL, DAEMOON_NX_WORK_DIR);
+    daemoon_nx_trace("app/start", NULL);
+
+    applet = appletGetAppletType();
+    if (applet != AppletType_Application && applet != AppletType_SystemApplication) {
+        /* Limited memory, and the account selector is a library applet that needs the
+         * memory an application has. Said now rather than failing partway through. */
+        printf("%s\n\n", daemoon_str(DAEMOON_STR_WARN_APPLET_MODE));
+        daemoon_nx_trace("app/applet-mode", NULL);
+        wait_for_a();
+        consoleExit(NULL);
+        return 0;
     }
 
+    if (R_FAILED(nsInitialize())) {
+        /* Names come from here. Without it the list is hex, which is worse and not
+         * fatal - exactly what the 3DS does when an SMDH cannot be read. */
+        daemoon_nx_trace("app/ns", "failed");
+        g_save_ctx.names_available = 0;
+    } else {
+        g_save_ctx.names_available = 1;
+    }
+
+    if (daemoon_nx_account_select(&g_save_ctx.account) != DAEMOON_OK) {
+        printf("%s\n", daemoon_str(DAEMOON_STR_NX_NO_ACCOUNT));
+        wait_for_a();
+        consoleExit(NULL);
+        return 0;
+    }
+
+    g_net_ctx.ca_bundle = g_config.ca_bundle;
+    if (daemoon_nx_config_can_sync(&g_config)) {
+        (void)daemoon_net_curl_init();
+    }
+
+    daemoon_nx_ui_init(&g_ui_ctx);
+    g_archive.count = 0;
+
+    memset(&g_env, 0, sizeof(g_env));
+    g_env.save = &daemoon_nx_save_backend;
+    g_env.fs = &daemoon_fs_newlib_backend;
+    g_env.ui = &daemoon_nx_ui_backend;
+    g_env.net = &daemoon_net_curl_backend;
+    g_env.save_ctx = &g_save_ctx;
+    g_env.net_ctx = &g_net_ctx;
+    g_env.ui_ctx = &g_ui_ctx;
+    g_env.device_label = g_config.device_label;
+    g_env.server_url = g_config.server_url;
+    g_env.token = g_config.token[0] != '\0' ? g_config.token : NULL;
+    g_env.work_dir = DAEMOON_NX_WORK_DIR;
+    g_env.clock_iso8601 = clock_iso8601;
+    g_env.scratch = g_scratch;
+    g_env.scratch_len = sizeof(g_scratch);
+
+    load_titles();
+
+    while (appletMainLoop()) {
+        u64 down;
+
+        draw();
+        padUpdate(&pad);
+        down = padGetButtonsDown(&pad);
+
+        if (down & HidNpadButton_Plus) {
+            break;
+        }
+        if ((down & HidNpadButton_Down) && g_selected + 1 < g_count) {
+            ++g_selected;
+        }
+        if ((down & HidNpadButton_Up) && g_selected > 0) {
+            --g_selected;
+        }
+        if (down & HidNpadButton_A) {
+            action_backup();
+        }
+        if (down & HidNpadButton_Y) {
+            action_sync();
+        }
+        if (down & HidNpadButton_X) {
+            /* Both shoulders with it, so the destructive one cannot be reached by a
+             * single button on a list of saves. */
+            if (padGetButtons(&pad) & (HidNpadButton_L | HidNpadButton_R)) {
+                action_conformance();
+            } else {
+                load_titles();
+            }
+        }
+    }
+
+    if (g_titles != NULL) {
+        g_env.save->free_titles(g_env.save_ctx, g_titles, g_count);
+    }
+    daemoon_net_curl_exit();
+    nsExit();
+    accountExit();
+    daemoon_nx_trace("app/exit", NULL);
     consoleExit(NULL);
     return 0;
 }

@@ -66,6 +66,7 @@ DaeMoon/
 │       ├── i18n.c
 │       └── util/{sha256.c,strbuf.c,utf8.c}
 ├── platform/
+│   ├── common/                 what both consoles share, no platform headers
 │   ├── 3ds/                    Makefile, app.rsf, assets/, source/
 │   ├── nx/                     Makefile, assets/, source/
 │   └── posix/                  test only backend, no console needed
@@ -112,6 +113,17 @@ typedef struct {
 ```
 
 Note that the UI backend takes string IDs, not `const char *`. See the i18n section.
+
+`platform/common` holds what turned out to be identical on both consoles once the
+Switch build existed: the SD card backend over newlib stdio, the libcurl request loop,
+walking and clearing a directory, and the key=value line reader. **The same rule core
+has applies here: never include `3ds.h` or `switch.h`.** Each platform keeps the parts
+that are genuinely its own - bringing sockets up, asking for free space, deciding where
+the trace file goes - behind a named function the shared code calls.
+
+The network one is the reason this directory exists rather than a nicety. That file
+holds the fix that cost Phase 2 a hardware round, and two copies of it would have been
+two chances to lose it.
 
 `platform/posix` presents a local directory as a fake save archive. **It is a required component, not optional.** It lets the entire sync path be unit tested without a console, and console debugging is by far the most expensive kind. New core logic passes posix tests before it goes near hardware.
 
@@ -260,6 +272,7 @@ GET    /v1/shares/{code}           download shared save, no auth
   "parent_version": 41,
   "sha256": "...",
   "device_label": "user set string",
+  "secure_value": 1234567890,
   "created_at": "iso8601, informational only, never used for ordering"
 }
 ```
@@ -299,6 +312,30 @@ INCLUDES := source ../../core/include ../../vendor
 
 Emulators (Citra/Azahar, Ryujinx) do not reproduce real save archive behavior. **Final verification is always on hardware.**
 
+### CI and releases
+
+`.github/workflows/`:
+
+| workflow | when | what |
+|---|---|---|
+| `ci.yml` | every push and pull request | contracts, core under both compilers and both sanitizers, the server, end to end |
+| `console.yml` | pull requests touching console paths | the CIA (with its exheader read back) and the NRO |
+| `nightly.yml` | every push to main, daily, or by hand | `make check`, then all four targets, published as one moving prerelease |
+
+The nightly tag is `nightly` and it **moves**. There is one question it answers - what
+main builds into right now - and a tag per build would be a release list nobody can
+read. Versioned releases are prefixed per target (`3ds/v1.2.0`, `server/v2.1.0`) and
+are a decision a person makes, not something a workflow does.
+
+Nothing is published that has not passed the same checks a pull request has to. "It is
+only a nightly" is how a broken one gets published on purpose.
+
+**The Go version comes from `server/go.mod` and nowhere else.** It was written out as a
+literal in three workflow jobs and in `docker/dev.Dockerfile`, and it said 1.22 while
+the module said 1.25 and the password hashing used `crypto/pbkdf2` - which is 1.24 and
+later. Every Go job was failing on a number nobody had a reason to look at. `setup-go`
+reads `go-version-file`; use it.
+
 ---
 
 ## Roadmap
@@ -314,6 +351,15 @@ Each phase starts only after the previous one is verified on hardware.
 | 4 | QR and device code auth | tokens issue and revoke |
 | 5 | Luma autoboot sync | boot, sync, return to HOME |
 | 6 | Switch backend | account selection and title takeover work |
+
+Phase 5 is written and runs as an ARM binary: `make emu-autosync` boots a console in an
+emulator against a real server and checks the report it leaves behind. What is left for
+hardware is the two things about booting - whether Luma autoboots this title, and
+whether exiting it lands on HOME.
+
+Phase 6 has an MVP: an NRO that lists the saves for a chosen account, backs one up,
+syncs one, and can run the conformance suite against a dummy title. Its "done when" is
+still a console away, which is the point of that column.
 | 7 | Share codes | requires the secure value question to be resolved |
 
 Phase 0 comes first because everything verifiable without a console should be locked down before hardware debugging starts.

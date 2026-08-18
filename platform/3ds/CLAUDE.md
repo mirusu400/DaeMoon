@@ -403,6 +403,48 @@ console; the order of the pages does not. The test also pins that "not now" is t
 last choice, because leaving the screen returns the last one and a reorder would
 make START pair the console.
 
+## Phase 5: the sync that happens on the way to HOME
+
+Luma can autoboot a title when the console is switched on. Set it to this one and every
+power-on becomes: sync, then HOME. The argument for it is in the root `CLAUDE.md` - a
+sync is only valid before or after a game runs, and there is no moment more certainly
+"before" than the console having just been turned on.
+
+It is also the moment nobody is watching, and **that narrows what it may do rather than
+widening it**. `daemoon_3ds_autosync_opts` is the whole safety argument:
+
+- **DEFER on conflict.** The only defensible answer. The other two policies pick a
+  side, and picking a side is a decision - one this project will not make on somebody's
+  save while they are not there. A deferred conflict leaves both versions exactly where
+  they are and gets counted, so the next launch has something to say.
+- **The upload question is answered**, because an upload cannot lose anything: the
+  console is unchanged and the server adds a version.
+- **The restore question is answered too**, and that is safe *because* of the first
+  point. After DEFER has taken the conflicts out, every remaining download replaces a
+  copy of a version the server still holds - and rule 1 puts it on the card first
+  regardless.
+
+Three things it owes somebody who is not looking at it: a way out before anything runs
+(B **held**, not pressed - a window you cannot see is not a way out), a report on the
+card because the screen is gone by the time anyone could read it, and the network being
+absent as a line in that report rather than a hang. Wi-Fi is not up the instant a
+console is, so it probes the server for ten seconds first.
+
+Off by default, and a Settings row rather than a flag file: it does something on every
+launch, and a launch somebody made deliberately should not be spent on it unasked. It
+is also decided **before** the welcome screens, because a console that boots into a
+sync must not stop at an explanation waiting for A.
+
+`make emu-autosync` runs the whole thing as an ARM binary against a real daemoond and
+checks the report. What is left for hardware is the two things about booting: whether
+Luma lands on this title, and whether exiting it puts somebody at HOME.
+
+## Adding a Settings row means checking the arithmetic, or not having to
+
+Twice a row was added and drawn below 240 - once at 214..244, again at 223..250 - and
+both times it was a settings entry nobody could see or reach. The spacing now comes
+from the row count rather than the row count having to fit the spacing.
+
 ## The token is not on the SD card
 
 It lives in this application's own save archive, which is why the shipped build
@@ -504,8 +546,18 @@ temp-then-rename or archive-then-commit, so stopping between titles cannot leave
 anything half written - and stopping inside one is not something this screen could
 promise.
 
+**Both libraries, not the one on screen.** It used to run over whichever list was
+showing, which made "everything" mean half of it on a console that carries the installed
+titles and the DS saves - and the startup sync always did both, so the two disagreed
+about what the word meant. The count in the confirmation is the total across both, which
+is why opening the screen reads the library that has not been read yet: a number in a
+question has to be the number of things that will happen. The library the person was
+looking at is put back afterwards.
+
 `batch_steps.c` holds the order and what each answer means, has no citro2d in it, and
-is checked on a desktop. Same split as the welcome, for the same reason.
+is checked on a desktop. Same split as the welcome, for the same reason. `LIB_3DS` and
+`LIB_NDS` moved into the header when this changed: batch.c and autosync.c index by them
+now, so they are part of the contract rather than names local to main.c.
 
 ## The self test is not a button any more
 
@@ -518,6 +570,47 @@ linked in, `make core-test` still runs it against the stub, and `run_autotest` s
 runs it on hardware against **this application's own save archive**, which is the
 only archive it has any business destroying. What is gone is the one press between a
 real save and a wipe.
+
+## The secure value belongs to the save, not to the console
+
+It used to be arranged in `main.c`: read the console's current value before a restore,
+put it back after. That preserves the *console's* value - which is not the same as the
+one the save being restored was bound to. Back up a save, play the game some more, then
+restore: the value has moved on, the game checks the restored save against it, they do
+not match, and the game deletes the save. Doing nothing at all would have failed the
+same way.
+
+So it is packed **with** the save. `daemoon_save_backend_t` grew `read_secure_value` and
+`write_secure_value` - core cannot call libctru, and this is exactly what backend.h is
+for - the manifest carries `secure_value`, and a restore writes back the value from the
+package after the commit.
+
+Three states, and they stay distinguishable all the way through:
+
+- **a value** - packed, and written back on restore
+- **no value** (the title has none) - nothing packed, nothing written. Zero is a
+  legitimate value, so this cannot be a zero in the field
+- **could not be read** - nothing packed, and the backup still happens. A diagnostic
+  failure must not turn into a save nobody has a copy of
+
+A package written before this has no field, so a restore from one leaves the console's
+value alone, exactly as it did. `make core-test` pins all four cases.
+
+Written after the commit, not before: a value pointing at a save that was not written
+is worse than one pointing at the save that was. A failure to write it is reported and
+does not fail the restore, because the save is already on the console and telling
+somebody it failed would send them to restore it again.
+
+## Survey is a diagnostic, and sits where diagnostics sit
+
+It was on the grid between Sync and Settings, labelled "look at every title and write it
+to the SD card", which reads like a backup. It is not one: it opens every archive, reads
+what each step returned, records the secure value, the build stamp and which languages
+this console can draw, and writes one text file. Nothing it does touches a save.
+
+It is in Settings now, called "collect debug information", with a line under it saying
+what it is for. It is still the button to press when a name or an icon looks wrong,
+because it ignores the name cache and clears it afterwards.
 
 ## Proving the backend
 

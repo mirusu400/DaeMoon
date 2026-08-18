@@ -138,6 +138,33 @@ typedef struct {
      * never valid: writes corrupt it and reads come back stale. NULL means the
      * platform cannot tell, and the caller warns instead. */
     daemoon_result_t (*is_title_running)(void *ctx, const daemoon_title_t *t, int *out_running);
+
+    /* Optional, and only the 3DS has it. Some titles bind their save to a value the
+     * console stores outside the archive, and a save whose value does not match is
+     * one the game treats as corrupt and deletes.
+     *
+     * Which means the value is part of the save, not part of the console: a backup
+     * that does not carry it cannot be fully restored, because the value may have
+     * moved on since. So it goes into the manifest at pack time and is written back
+     * after a restore. NULL on a platform with no such concept, and both must be
+     * NULL or neither.
+     *
+     * out_exists distinguishes "this title has no secure value" from "the value is
+     * zero", which are different states and only one of them is worth writing back. */
+    daemoon_result_t (*read_secure_value)(void *ctx, const daemoon_title_t *t,
+                                          int *out_exists, unsigned long long *out_value);
+    daemoon_result_t (*write_secure_value)(void *ctx, const daemoon_title_t *t,
+                                           unsigned long long value);
+    /* Removes the console's value for this title, which is what a save that arrived
+     * without one needs.
+     *
+     * A package written before this project recorded the value carries none, and the
+     * console still holds the one belonging to whatever save was there before. The
+     * game compares them, they differ, and it refuses the restored save. Leaving the
+     * value alone makes every such backup unusable on the titles that have one;
+     * removing it takes the comparison away rather than losing it, and the game
+     * records a fresh value the next time it saves. */
+    daemoon_result_t (*clear_secure_value)(void *ctx, const daemoon_title_t *t);
 } daemoon_save_backend_t;
 
 /* -------------------------------------------------------------- net backend */

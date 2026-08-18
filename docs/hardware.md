@@ -92,6 +92,39 @@ DaeMoon back when it declared no save data at all. A clean uninstall and install
 should settle it. Until then the fallback keeps the token on the card and the
 settings screen says so.
 
+## Phase 5: sync on the way to HOME
+
+**Written, and run as an ARM binary.** `make emu-autosync` boots a console in an
+emulator against a real daemoond, with nothing touching the controls, and checks the
+report the run leaves on the card. The grace period expires on its own, the network
+probe answers, a save goes up, and the server has the title.
+
+**Still open, and it is only two things:** whether Luma's autoboot lands on this title,
+and whether exiting it puts somebody at the HOME menu. Neither is answerable anywhere
+but on a console that has been switched off and on.
+
+What the emulator cannot stage is a deferred conflict, because that needs a second
+device. Core's tests cover it: a run with the unattended options asks nothing, touches
+neither side, and counts the title.
+
+## Phase 6: the Switch backend
+
+**An MVP exists and builds.** An NRO that lists the saves for a chosen account, backs
+one up to the card, syncs one against a server, and can run the conformance suite
+against a dummy title. Zero warnings from a clean build.
+
+**Nothing about it has been on hardware.** That is the whole of what is open, and the
+order to answer it in is written in `platform/nx/CLAUDE.md`: the conformance suite
+first, under a selected account, against a dummy title, before a real save is anywhere
+near it.
+
+Writing it moved four files into `platform/common`, which is the thing worth recording
+here. The SD card backend, the curl request loop, a directory tree walk and the config
+line reader were all identical to the 3DS versions - and the curl one holds the fix
+that cost Phase 2 a hardware round. Two copies of that file would have been two chances
+to lose it. The 3DS build was rebuilt and re-verified on the shared code before any of
+it was called Phase 6.
+
 ---
 
 ## Things this console said that nothing else could

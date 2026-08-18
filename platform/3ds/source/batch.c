@@ -120,11 +120,23 @@ int daemoon_3ds_batch_run(const daemoon_3ds_batch_ctx_t *ctx)
     daemoon_conflict_policy_t policy = DAEMOON_CONFLICT_POLICY_ASK;
     daemoon_str_ref_t ask;
     char count_text[12];
-    size_t i;
+    size_t counts[DAEMOON_3DS_BATCH_LIBRARIES];
+    size_t total = 0;
+    int    library;
     size_t done = 0;
     int stopped = 0;
 
-    if (ctx->count == 0) {
+    /* Both libraries, counted before anything is offered: the confirmation names a
+     * number and it has to be the number of things that will actually happen.
+     *
+     * Reading the library that is not on screen costs what it costs - it opens every
+     * save archive on the console - and it happens here rather than mid run, so the
+     * count is honest and the wait is before the question rather than after it. */
+    for (library = 0; library < DAEMOON_3DS_BATCH_LIBRARIES; ++library) {
+        counts[library] = ctx->count(ctx->user, library);
+        total += counts[library];
+    }
+    if (total == 0) {
         ctx->message(DAEMOON_STR_BATCH_EMPTY, GFX_WARN);
         return 0;
     }
@@ -154,7 +166,7 @@ int daemoon_3ds_batch_run(const daemoon_3ds_batch_ctx_t *ctx)
      * and asking again per title would turn a decision into a reflex. The
      * safeguards under it do not move - every restore still backs up first, every
      * digest is still checked, every write is still committed. */
-    (void)snprintf(count_text, sizeof(count_text), "%u", (unsigned)ctx->count);
+    (void)snprintf(count_text, sizeof(count_text), "%u", (unsigned)total);
     memset(&ask, 0, sizeof(ask));
     if (daemoon_3ds_batch_op_label(op) == DAEMOON_STR_BATCH_SYNC) {
         if (policy == DAEMOON_CONFLICT_POLICY_KEEP_SERVER) {
@@ -185,24 +197,28 @@ int daemoon_3ds_batch_run(const daemoon_3ds_batch_ctx_t *ctx)
                       daemoon_3ds_batch_op_label(op) == DAEMOON_STR_BATCH_SYNC
                           ? "sync" : "backup");
 
-    for (i = 0; i < ctx->count; ++i) {
-        u32 down;
+    for (library = 0; library < DAEMOON_3DS_BATCH_LIBRARIES && !stopped; ++library) {
+        size_t i;
 
-        hidScanInput();
-        down = hidKeysDown();
-        if ((down & KEY_B) || !aptMainLoop()) {
-            stopped = 1;
-            break;
-        }
+        for (i = 0; i < counts[library]; ++i) {
+            u32 down;
 
-        draw_progress(daemoon_3ds_batch_op_label(op), ctx->name(ctx->user, i), done,
-                      ctx->count);
-        if (daemoon_3ds_batch_op_label(op) == DAEMOON_STR_BATCH_SYNC) {
-            ctx->sync_one(ctx->user, i, policy);
-        } else {
-            ctx->backup_one(ctx->user, i);
+            hidScanInput();
+            down = hidKeysDown();
+            if ((down & KEY_B) || !aptMainLoop()) {
+                stopped = 1;
+                break;
+            }
+
+            draw_progress(daemoon_3ds_batch_op_label(op),
+                          ctx->name(ctx->user, library, i), done, total);
+            if (daemoon_3ds_batch_op_label(op) == DAEMOON_STR_BATCH_SYNC) {
+                ctx->sync_one(ctx->user, library, i, policy);
+            } else {
+                ctx->backup_one(ctx->user, library, i);
+            }
+            ++done;
         }
-        ++done;
     }
 
     daemoon_3ds_trace("batch/done", stopped ? "stopped" : "all");

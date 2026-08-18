@@ -427,5 +427,8 @@ const daemoon_save_backend_t daemoon_3ds_nds_backend = {
     remove_all,
     commit,
     close_save,
-    NULL /* is_title_running: nds-bootstrap has exited by the time this runs */
+    NULL, /* is_title_running: nds-bootstrap has exited by the time this runs */
+    /* A .sav is the whole save. Nothing binds one to a console, which is the
+     * reason Phase 2 syncs these first. */
+    NULL, NULL, NULL
 };

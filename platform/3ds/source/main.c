@@ -81,7 +81,7 @@ static struct {
 
 static daemoon_3ds_save_ctx_t g_save_ctx;
 static daemoon_3ds_nds_ctx_t  g_nds_ctx;
-static daemoon_3ds_net_ctx_t  g_net_ctx;
+static daemoon_net_curl_ctx_t  g_net_ctx;
 static daemoon_3ds_config_t   g_config;
 /* Which library is on screen: the console's own titles, or the DS saves
  * nds-bootstrap keeps as plain files. Phase 2 syncs the second one first because
@@ -107,8 +107,8 @@ typedef struct {
     int                scroll;
 } library_t;
 
-#define LIB_3DS 0
-#define LIB_NDS 1
+/* LIB_3DS and LIB_NDS are in daemoon_3ds.h: batch.c and autosync.c index by them
+ * too, so they are part of the contract rather than local names. */
 
 static library_t g_lib[2];
 
@@ -411,7 +411,7 @@ static void draw_details(u32 down, touchPosition touch, int *out_action)
     static const daemoon_str_id_t labels[] = {
         DAEMOON_STR_MENU_BACKUP, DAEMOON_STR_MENU_RESTORE,
         DAEMOON_STR_MENU_SYNC,   DAEMOON_STR_MENU_BATCH,
-        DAEMOON_STR_MENU_SURVEY, DAEMOON_STR_MENU_SETTINGS
+        DAEMOON_STR_MENU_SETTINGS
     };
     const daemoon_title_t *t = NULL;
     char line[160];
@@ -628,25 +628,25 @@ static void action_restore(void)
         return;
     }
 
-    /* The secure value is read before anything is written and put back after. A
-     * title that binds its save to this console will otherwise treat the restored
-     * save as corrupt and delete it. */
+    /* The secure value is core's business now.
+     *
+     * It used to be arranged here: read the console's current value before the
+     * restore, put it back after. That preserved the *console's* value, which is not
+     * the same as the one the save being restored was bound to - and when they differ
+     * the game treats the restored save as corrupt and deletes it.
+     *
+     * So it is packed with the save and written back from the package, which is a
+     * property of the backup rather than a step a caller has to remember. A package
+     * written before that carries none, and then nothing is written and the console
+     * keeps what it has, exactly as this did.
+     */
     {
-        daemoon_3ds_secure_value_t secure;
-        daemoon_result_t sr = daemoon_3ds_read_secure_value(&CUR->titles[CUR->selected], &secure);
         daemoon_result_t r;
 
-        daemoon_3ds_trace("restore/secure-read", daemoon_result_code(sr));
         daemoon_3ds_trace("restore/core", pick);
         r = daemoon_sync_restore_package(&g_env, &g_archive, &CUR->titles[CUR->selected], pick);
         daemoon_3ds_trace("restore/core-done", daemoon_result_code(r));
         report(DAEMOON_STR_OP_RESTORE, r);
-
-        if (r == DAEMOON_OK && sr == DAEMOON_OK && secure.exists) {
-            report(DAEMOON_STR_OP_SECURE_VALUE,
-                   daemoon_3ds_write_secure_value(&CUR->titles[CUR->selected], &secure));
-            daemoon_3ds_trace("restore/secure-written", NULL);
-        }
     }
 }
 
@@ -761,13 +761,14 @@ static int edit_field(daemoon_str_id_t label, const char *hint, char *value, siz
     return 1;
 }
 
-#define SETTINGS_ROWS 7
+#define SETTINGS_ROWS 9
 
 static const daemoon_str_id_t k_settings_labels[SETTINGS_ROWS] = {
     DAEMOON_STR_SETTINGS_SERVER, DAEMOON_STR_SETTINGS_TOKEN,
     DAEMOON_STR_SETTINGS_LABEL, DAEMOON_STR_SETTINGS_LANGUAGE,
     DAEMOON_STR_PAIR_SCAN, DAEMOON_STR_PAIR_TITLE,
-    DAEMOON_STR_SETTINGS_WELCOME
+    DAEMOON_STR_SETTINGS_WELCOME, DAEMOON_STR_SETTINGS_AUTOSYNC,
+    DAEMOON_STR_SETTINGS_SURVEY
 };
 
 /* What the language row shows: the chosen language, or the console's with a note
@@ -819,6 +820,9 @@ static void draw_settings(int selected)
     values[4] = daemoon_str(DAEMOON_STR_PAIR_AIM);
     values[5] = daemoon_str(DAEMOON_STR_PAIR_ENTER_CODE);
     values[6] = daemoon_str(DAEMOON_STR_WELCOME_CONNECT_HOW);
+    values[7] = daemoon_str(g_config.autosync ? DAEMOON_STR_SETTINGS_ON
+                                              : DAEMOON_STR_SETTINGS_OFF);
+    values[8] = daemoon_str(DAEMOON_STR_SETTINGS_SURVEY_HINT);
 
     daemoon_gfx_top();
     daemoon_gfx_rect(0.0f, 0.0f, GFX_TOP_W, 28.0f, GFX_ACCENT_D);
@@ -835,16 +839,25 @@ static void draw_settings(int selected)
                      DAEMOON_3DS_CONFIG_PATH);
 
     daemoon_gfx_bottom();
-    /* Seven rows and 240 pixels. The last row used to start at 214 and run to 244,
-     * which is off the bottom of the screen - a settings entry nobody could see or
-     * reach. Adding a row means checking this arithmetic, every time. */
-    y = 6.0f;
-    for (i = 0; i < SETTINGS_ROWS; ++i) {
-        daemoon_gfx_rect(8.0f, y, GFX_BOTTOM_W - 16.0f, 27.0f,
-                         (int)i == selected ? GFX_ACCENT : GFX_PANEL);
-        daemoon_gfx_text_fit(16.0f, y + 6.0f, GFX_BOTTOM_W - 32.0f, 0.42f, GFX_TEXT,
-                             daemoon_str(labels[i]));
-        y += 31.0f;
+    /* The spacing comes from the row count rather than the row count having to fit
+     * the spacing.
+     *
+     * Twice now a row has been added and drawn below 240: once at 214..244 and again
+     * at 223..250, and both times it was a settings entry nobody could see or reach.
+     * A screen is 240 pixels whatever the list is, so divide by the list. */
+    {
+        const float top = 6.0f;
+        const float step = (GFX_SCREEN_H - top - 6.0f) / (float)SETTINGS_ROWS;
+        const float height = step - 4.0f;
+
+        y = top;
+        for (i = 0; i < SETTINGS_ROWS; ++i) {
+            daemoon_gfx_rect(8.0f, y, GFX_BOTTOM_W - 16.0f, height,
+                             (int)i == selected ? GFX_ACCENT : GFX_PANEL);
+            daemoon_gfx_text_fit(16.0f, y + (height - 14.0f) / 2.0f, GFX_BOTTOM_W - 32.0f,
+                                 0.42f, GFX_TEXT, daemoon_str(labels[i]));
+            y += step;
+        }
     }
     daemoon_gfx_text(10.0f, GFX_SCREEN_H - 18.0f, 0.34f, GFX_TEXT_DIM,
                      daemoon_str(DAEMOON_STR_HINT_EDIT));
@@ -1038,7 +1051,7 @@ static int finish_pairing(const char *grant, const char *code)
     /* The network may not have been opened at startup: a console with no server
      * configured has no reason to hold a soc:U session, and this is the moment it
      * gets one. */
-    if (daemoon_3ds_net_init() != DAEMOON_OK) {
+    if (daemoon_net_curl_init() != DAEMOON_OK) {
         report(DAEMOON_STR_OP_SYNC, DAEMOON_ERR_NETWORK_ERROR);
         return 0;
     }
@@ -1287,24 +1300,157 @@ static void run_welcome(void)
             paired ? GFX_OK : GFX_ACCENT);
 }
 
+/* --------------------------------------------------------------- autosync */
+
+/* Phase 5, from main.c's side: lend the autosync loop the four things it cannot do
+ * itself, and let it decide the rest.
+ *
+ * Both libraries are indexed rather than "the one on screen", because at boot there
+ * is no screen and the person who set this up did not set it up for half of their
+ * saves. */
+static size_t autosync_count(void *user, int library)
+{
+    (void)user;
+    if (show_library(library == LIB_NDS) != DAEMOON_OK) {
+        return 0;
+    }
+    return g_lib[library].count;
+}
+
+static const char *autosync_name(void *user, int library, size_t index)
+{
+    (void)user;
+    return g_lib[library].titles[index].name;
+}
+
+static daemoon_result_t autosync_sync_one(void *user, int library, size_t index,
+                                          const daemoon_sync_opts_t *opts,
+                                          daemoon_sync_stats_t *stats)
+{
+    daemoon_result_t r;
+
+    (void)user;
+    /* The backend pairing follows the library, the same way it does for L and R.
+     * Syncing a DS save through the savedata backend would fail in a way that reads
+     * as a permission problem. */
+    select_backend(library == LIB_NDS);
+
+    daemoon_3ds_trace("autosync/title", g_lib[library].titles[index].id);
+    r = daemoon_sync_title_with(&g_env, &g_archive, &g_lib[library].titles[index],
+                                opts, stats);
+    daemoon_3ds_trace("autosync/title-done", daemoon_result_code(r));
+    return r;
+}
+
+static void autosync_when(void *user, char *buf, size_t len)
+{
+    (void)user;
+    if (clock_iso8601(NULL, buf, len) != DAEMOON_OK) {
+        (void)daemoon_strlcpy(buf, len, "unknown");
+    }
+}
+
+/* Wi-Fi is not up the instant a console is.
+ *
+ * A cheap request against the server, retried, rather than asking the system whether
+ * it thinks it has a link: what matters is whether this server answers, and a console
+ * that has associated with an access point can still have no route. The title id is
+ * one that cannot exist, so a success and a 404 are both "the server is there" and
+ * neither touches a save. */
+#define AUTOSYNC_NET_TRIES 10
+
+static int autosync_wait_for_network(void *user)
+{
+    int attempt;
+
+    (void)user;
+    if (daemoon_net_curl_init() != DAEMOON_OK) {
+        daemoon_3ds_trace("autosync/net-init", "failed");
+        return 0;
+    }
+
+    for (attempt = 0; attempt < AUTOSYNC_NET_TRIES; ++attempt) {
+        daemoon_remote_meta_t meta;
+        daemoon_result_t r;
+        char detail[32];
+
+        if (!aptMainLoop()) {
+            return 0;
+        }
+        r = daemoon_api_get_latest(&g_env, DAEMOON_PLATFORM_3DS,
+                                   "0000000000000000", &meta);
+        (void)snprintf(detail, sizeof(detail), "%d %s", attempt,
+                       daemoon_result_code(r));
+        daemoon_3ds_trace("autosync/net-probe", detail);
+
+        /* Not found is the server answering. Unauthorized is the server answering
+         * too, and a token that has been revoked is worth finding out about here
+         * rather than once per title. */
+        if (r == DAEMOON_OK || r == DAEMOON_ERR_NOT_FOUND) {
+            return 1;
+        }
+        if (r == DAEMOON_ERR_UNAUTHORIZED || r == DAEMOON_ERR_DEVICE_REVOKED) {
+            return 0;
+        }
+        svcSleepThread(1000000000LL); /* one second */
+    }
+    return 0;
+}
+
+/* Returns nonzero when the run went ahead, which is main.c's cue to head for HOME
+ * rather than draw a library. */
+static int run_autosync(void)
+{
+    daemoon_3ds_autosync_ctx_t ctx;
+
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.env = &g_env;
+    ctx.when = autosync_when;
+    ctx.count = autosync_count;
+    ctx.name = autosync_name;
+    ctx.sync_one = autosync_sync_one;
+    ctx.wait_for_network = autosync_wait_for_network;
+
+    return daemoon_3ds_autosync_run(&ctx);
+}
+
 /* ------------------------------------------------------------------ batch */
 
 /* What the batch screen borrows. Indices are into the library that is showing, so
  * batch.c never learns that there are two of them and switching with L or R before
  * opening it is the whole of "which library does this run over". */
-static const char *batch_name(void *user, size_t index)
+/* Reading the other library is what makes a run cover both, and it is also what makes
+ * opening this screen slow the first time: the list that is not on screen has never
+ * been read. Paid once, before the confirmation, so the count in the question is the
+ * number of things that will actually happen. */
+static size_t batch_count(void *user, int library)
 {
     (void)user;
-    return CUR->titles[index].name;
+    if (show_library(library == LIB_NDS) != DAEMOON_OK) {
+        return 0;
+    }
+    return g_lib[library].count;
 }
 
-static void batch_backup_one(void *user, size_t index)
+static const char *batch_name(void *user, int library, size_t index)
+{
+    (void)user;
+    return g_lib[library].titles[index].name;
+}
+
+static void batch_backup_one(void *user, int library, size_t index)
 {
     daemoon_result_t r;
 
     (void)user;
-    daemoon_3ds_trace("batch/backup", CUR->titles[index].id);
-    r = daemoon_sync_backup_local(&g_env, &g_archive, &CUR->titles[index], NULL, 0);
+    /* The backend pairing follows the library, the same way it does for L and R.
+     * Backing a DS save up through the savedata backend would fail in a way that
+     * reads as a permission problem. */
+    select_backend(library == LIB_NDS);
+
+    daemoon_3ds_trace("batch/backup", g_lib[library].titles[index].id);
+    r = daemoon_sync_backup_local(&g_env, &g_archive, &g_lib[library].titles[index],
+                                  NULL, 0);
     daemoon_3ds_trace("batch/backup-done", daemoon_result_code(r));
     /* A title that fails is a line in the trace and not a dialog. Stopping a run
      * over forty titles to say that one of them has an empty archive is how a
@@ -1318,12 +1464,15 @@ static void batch_backup_one(void *user, size_t index)
     }
 }
 
-static void batch_sync_one(void *user, size_t index, daemoon_conflict_policy_t policy)
+static void batch_sync_one(void *user, int library, size_t index,
+                           daemoon_conflict_policy_t policy)
 {
     daemoon_sync_opts_t opts;
     daemoon_result_t r;
 
     (void)user;
+    select_backend(library == LIB_NDS);
+
     memset(&opts, 0, sizeof(opts));
     opts.conflict = policy;
     /* Asked once, on the way in, with the count in it. Uploading changes nothing on
@@ -1342,9 +1491,9 @@ static void batch_sync_one(void *user, size_t index, daemoon_conflict_policy_t p
      * still aborts if that fails. What is replaced is a dialog, not a safeguard. */
     opts.restore_confirmed = 1;
 
-    daemoon_3ds_trace("batch/sync", CUR->titles[index].id);
-    r = daemoon_sync_title_with(&g_env, &g_archive, &CUR->titles[index], &opts,
-                                &g_batch.sync);
+    daemoon_3ds_trace("batch/sync", g_lib[library].titles[index].id);
+    r = daemoon_sync_title_with(&g_env, &g_archive, &g_lib[library].titles[index],
+                                &opts, &g_batch.sync);
     daemoon_3ds_trace("batch/sync-done", daemoon_result_code(r));
     if (r != DAEMOON_OK && r != DAEMOON_ERR_USER_CANCELLED) {
         ++g_batch.failed;
@@ -1372,11 +1521,14 @@ static int action_batch(void)
 {
     daemoon_3ds_batch_ctx_t ctx;
     char body[256];
+    /* The run walks both libraries and leaves the backend pointed at the last one, so
+     * the library the person was looking at is put back before this returns. */
+    const int was_nds = g_source_nds;
 
     memset(&g_batch, 0, sizeof(g_batch));
 
     memset(&ctx, 0, sizeof(ctx));
-    ctx.count = CUR->count;
+    ctx.count = batch_count;
     ctx.name = batch_name;
     ctx.backup_one = batch_backup_one;
     ctx.sync_one = batch_sync_one;
@@ -1388,8 +1540,10 @@ static int action_batch(void)
         /* Backed out before anything ran. Re-reading the library here was a minute
          * of loading as the price of pressing B, which is the one thing a person
          * does on this screen when they did not mean to open it. */
+        (void)show_library(was_nds);
         return 0;
     }
+    (void)show_library(was_nds);
 
     /* One tally at the end, in the same shape a single sync reports. */
     if (g_batch.sync.uploaded || g_batch.sync.downloaded || g_batch.sync.skipped ||
@@ -1425,6 +1579,9 @@ static int action_batch(void)
      * neither changes a single thing the grid or the details pane reads out. */
     return g_batch.sync.downloaded > 0;
 }
+
+/* Defined below, and reached from Settings now rather than from the grid. */
+static void action_survey(void);
 
 static void action_settings(void)
 {
@@ -1484,12 +1641,26 @@ static void action_settings(void)
             case 5:
                 edited = pair_with_typed_code();
                 break;
-            default:
+            case 6:
                 /* On purpose, and not only for somebody who skipped it: the pages
                  * are where the rule about not syncing while a game runs is
                  * written down, and that is worth being able to go back to. */
                 run_welcome();
                 edited = 1;
+                break;
+            case 7:
+                /* A toggle rather than a screen. It only does anything when Luma is
+                 * set to autoboot this title, and the row says which way it is
+                 * pointing rather than describing what it would do. */
+                g_config.autosync = !g_config.autosync;
+                edited = 1;
+                break;
+            default:
+                /* Moved off the grid, where it sat beside Back up and read like one.
+                 * It is a diagnostic: it opens every archive, records what each step
+                 * returned, and writes one text file. Nothing it does touches a save,
+                 * and nothing that touches a save belongs next to it. */
+                action_survey();
                 break;
             }
             dirty = dirty || edited;
@@ -1555,7 +1726,7 @@ static void action_settings(void)
         }
     }
         if (daemoon_3ds_config_can_sync(&g_config)) {
-            (void)daemoon_3ds_net_init();
+            (void)daemoon_net_curl_init();
         }
         message(daemoon_str(DAEMOON_STR_APP_TITLE),
                 daemoon_str(DAEMOON_STR_SETTINGS_SAVED), GFX_OK);
@@ -1883,7 +2054,7 @@ static void run_autopair(void)
                               parsed.server);
         g_env.server_url = g_config.server_url;
 
-        r = daemoon_3ds_net_init();
+        r = daemoon_net_curl_init();
         daemoon_strbuf_add(&sb, " net=");
         daemoon_strbuf_add(&sb, daemoon_result_code(r));
 
@@ -2026,14 +2197,14 @@ int main(void)
     /* The network is opened once. Doing it per request would mean a soc:U session
      * per sync, and that service does not enjoy being churned. */
     if (daemoon_3ds_config_can_sync(&g_config)) {
-        (void)daemoon_3ds_net_init();
+        (void)daemoon_net_curl_init();
     }
 
     memset(&g_env, 0, sizeof(g_env));
     g_env.save = &daemoon_3ds_save_backend;
-    g_env.fs = &daemoon_3ds_fs_backend;
+    g_env.fs = &daemoon_fs_newlib_backend;
     g_env.ui = &daemoon_3ds_ui_backend;
-    g_env.net = &daemoon_3ds_net_backend;
+    g_env.net = &daemoon_net_curl_backend;
     g_env.net_ctx = &g_net_ctx;
     g_env.save_ctx = &g_save_ctx;
     g_env.fs_ctx = NULL;
@@ -2066,11 +2237,28 @@ int main(void)
         int unattended = g_env.fs->exists(g_env.fs_ctx, DAEMOON_3DS_WORK_DIR "/AUTOTEST") ||
                          g_env.fs->exists(g_env.fs_ctx, DAEMOON_3DS_AUTOPAIR_PATH);
 
+        /* Phase 5, and it is decided before the welcome for a reason: a console that
+         * boots into a sync must not stop at an explanation waiting for A. Every
+         * reason not to run is a separate one, which is why the decision is a pure
+         * function with four arguments rather than a chain of ifs here. */
+        hidScanInput();
+        int autosync = daemoon_3ds_autosync_due(g_config.autosync,
+                                                daemoon_3ds_config_can_sync(&g_config),
+                                                (hidKeysHeld() & KEY_B) != 0,
+                                                unattended);
+
         /* Before the library rather than after it. The first launch is the one with
          * no name and icon cache and so the slowest, and an explanation that
          * arrives after a minute of loading is one nobody reads. */
-        if (!unattended && daemoon_3ds_welcome_needed(&g_config)) {
+        if (!unattended && !autosync && daemoon_3ds_welcome_needed(&g_config)) {
             run_welcome();
+        }
+
+        if (autosync && run_autosync()) {
+            /* Out, rather than into the grid. The console was switched on to play
+             * something, and this application was in the way of the HOME menu for as
+             * long as the sync took. */
+            goto done;
         }
     }
 
@@ -2147,6 +2335,7 @@ int main(void)
         case 0: action_backup(); break;
         case 1: action_restore(); break;
         case 2: action_sync(); break;
+        case 4: action_settings(); break;
         case 3:
             /* Reloaded only when a save archive on this console actually changed.
              * The names and icons come from the cache either way, but re-reading the
@@ -2157,8 +2346,6 @@ int main(void)
                 (void)reload_titles();
             }
             break;
-        case 4: action_survey(); break;
-        case 5: action_settings(); break;
         default: break;
         }
     }
@@ -2169,7 +2356,7 @@ done:
     free_library(&g_lib[LIB_NDS]);
     (void)daemoon_3ds_cache_flush(g_save_ctx.cache, DAEMOON_3DS_CACHE_PATH);
     daemoon_3ds_cache_close(g_save_ctx.cache);
-    daemoon_3ds_net_exit();
+    daemoon_net_curl_exit();
     amExit();
     cfguExit();
     daemoon_gfx_exit();

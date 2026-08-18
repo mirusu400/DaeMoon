@@ -953,6 +953,13 @@ static void free_titles(void *ctx, daemoon_title_t *titles, size_t count)
     free(titles);
 }
 
+static daemoon_result_t backend_read_secure_value(void *ctx, const daemoon_title_t *t,
+                                                  int *out_exists,
+                                                  unsigned long long *out_value);
+static daemoon_result_t backend_write_secure_value(void *ctx, const daemoon_title_t *t,
+                                                   unsigned long long value);
+static daemoon_result_t backend_clear_secure_value(void *ctx, const daemoon_title_t *t);
+
 const daemoon_save_backend_t daemoon_3ds_save_backend = {
     list_titles,
     free_titles,
@@ -963,7 +970,10 @@ const daemoon_save_backend_t daemoon_3ds_save_backend = {
     remove_all,
     commit,
     close_save,
-    NULL /* is_title_running: there is no reliable way to ask, so the UI warns */
+    NULL, /* is_title_running: there is no reliable way to ask, so the UI warns */
+    backend_read_secure_value,
+    backend_write_secure_value,
+    backend_clear_secure_value
 };
 
 /* --------------------------------------------------------- own archive only */
@@ -1030,6 +1040,82 @@ daemoon_result_t daemoon_3ds_read_secure_value(const daemoon_title_t *t,
     out->exists = exists ? 1 : 0;
     out->value = value;
     return DAEMOON_OK;
+}
+
+/* Deleting the value, which is the answer for a save that arrived without one.
+ *
+ * A package written before this project recorded secure values carries none, and the
+ * console still holds the value belonging to whatever save was there before. The game
+ * compares the two, they do not match, and it refuses the restored save - "this is not
+ * the data that was saved last". Leaving the value alone makes every backup taken
+ * before today unusable on the titles that have one.
+ *
+ * Deleting it removes the comparison rather than losing a fight with it: with nothing
+ * recorded there is nothing to mismatch, and the game writes a fresh value the next
+ * time it saves. This is what the other save managers do, and SECURESAVE_ACTION_DELETE
+ * is documented as exactly that.
+ *
+ * The input is the packed form the service wants: slot in the high word, then the
+ * unique id and the variation, the same fields the get and set calls take apart.
+ */
+daemoon_result_t daemoon_3ds_clear_secure_value(const daemoon_title_t *t)
+{
+    u64 title_id = 0;
+    u64 input;
+    u8  existed = 0;
+
+    DAEMOON_TRY(daemoon_3ds_parse_title_id(t->id, &title_id));
+
+    input = ((u64)SECUREVALUE_SLOT_SD << 32) |
+            (u64)(((title_id >> 8) & 0xffffffu) << 8) |
+            (u64)(title_id & 0xffu);
+
+    return from_result(FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE,
+                                                &input, sizeof(input),
+                                                &existed, sizeof(existed)));
+}
+
+/* The interface's shape, onto the two above.
+ *
+ * core cannot call libctru, so a value that is part of a save reaches a manifest
+ * through here. Both are present or neither: backend.h says so, and a backend that
+ * could read one and not write it would produce packages it cannot restore. */
+static daemoon_result_t backend_read_secure_value(void *ctx, const daemoon_title_t *t,
+                                                  int *out_exists, unsigned long long *out_value)
+{
+    daemoon_3ds_secure_value_t sv;
+
+    (void)ctx;
+    DAEMOON_TRY(daemoon_3ds_read_secure_value(t, &sv));
+    *out_exists = sv.exists;
+    *out_value = sv.value;
+    return DAEMOON_OK;
+}
+
+static daemoon_result_t backend_write_secure_value(void *ctx, const daemoon_title_t *t,
+                                                   unsigned long long value)
+{
+    daemoon_3ds_secure_value_t sv;
+    daemoon_result_t r;
+
+    (void)ctx;
+    sv.exists = 1;
+    sv.value = value;
+    r = daemoon_3ds_write_secure_value(t, &sv);
+    /* Traced, because the last time this went wrong the file said nothing about it and
+     * the only evidence was a sentence on a television. */
+    daemoon_3ds_trace("secure/write", daemoon_result_code(r));
+    return r;
+}
+
+static daemoon_result_t backend_clear_secure_value(void *ctx, const daemoon_title_t *t)
+{
+    daemoon_result_t r;
+
+    (void)ctx;
+    r = daemoon_3ds_clear_secure_value(t);
+    daemoon_3ds_trace("secure/clear", daemoon_result_code(r));
+    return r;
 }
 
 daemoon_result_t daemoon_3ds_write_secure_value(const daemoon_title_t *t,

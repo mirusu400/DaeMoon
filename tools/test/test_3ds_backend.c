@@ -378,7 +378,7 @@ TEST_CASE(a_backup_and_restore_round_trip_through_the_3ds_backends)
 
     memset(&env, 0, sizeof(env));
     env.save = &daemoon_3ds_save_backend;
-    env.fs = &daemoon_3ds_fs_backend;   /* the SD card side, also console code */
+    env.fs = &daemoon_fs_newlib_backend;   /* the SD card side, also console code */
     env.ui = &daemoon_posix_ui_backend; /* a console UI needs a console */
     env.save_ctx = &save_ctx;
     env.ui_ctx = &ui;
@@ -474,12 +474,12 @@ TEST_CASE(the_sd_backend_handles_nested_paths_and_replacement)
 
     /* Opening for writing creates the directories the path needs. core never
      * creates one, so if this does not, every backup fails on a fresh card. */
-    CHECK_OK(daemoon_3ds_fs_backend.open(NULL, nested, DAEMOON_OPEN_WRITE, &f));
+    CHECK_OK(daemoon_fs_newlib_backend.open(NULL, nested, DAEMOON_OPEN_WRITE, &f));
     CHECK_OK(daemoon_stream_write(f, "package", 7));
     CHECK_OK(daemoon_stream_close(f));
-    CHECK(daemoon_3ds_fs_backend.exists(NULL, nested));
+    CHECK(daemoon_fs_newlib_backend.exists(NULL, nested));
 
-    CHECK_OK(daemoon_3ds_fs_backend.open(NULL, nested, DAEMOON_OPEN_READ, &f));
+    CHECK_OK(daemoon_fs_newlib_backend.open(NULL, nested, DAEMOON_OPEN_READ, &f));
     CHECK_OK(daemoon_stream_read(f, buf, sizeof(buf) - 1, &got));
     CHECK_OK(daemoon_stream_close(f));
     buf[got] = '\0';
@@ -493,14 +493,14 @@ TEST_CASE(the_sd_backend_handles_nested_paths_and_replacement)
     daemoon_strbuf_add(&sb, "/DaeMoon/state/x.json");
     CHECK_OK(daemoon_strbuf_result(&sb));
 
-    CHECK_OK(daemoon_3ds_fs_backend.open(NULL, other, DAEMOON_OPEN_WRITE, &f));
+    CHECK_OK(daemoon_fs_newlib_backend.open(NULL, other, DAEMOON_OPEN_WRITE, &f));
     CHECK_OK(daemoon_stream_write(f, "old", 3));
     CHECK_OK(daemoon_stream_close(f));
 
-    CHECK_OK(daemoon_3ds_fs_backend.rename(NULL, nested, other));
-    CHECK(!daemoon_3ds_fs_backend.exists(NULL, nested));
+    CHECK_OK(daemoon_fs_newlib_backend.rename(NULL, nested, other));
+    CHECK(!daemoon_fs_newlib_backend.exists(NULL, nested));
 
-    CHECK_OK(daemoon_3ds_fs_backend.open(NULL, other, DAEMOON_OPEN_READ, &f));
+    CHECK_OK(daemoon_fs_newlib_backend.open(NULL, other, DAEMOON_OPEN_READ, &f));
     CHECK_OK(daemoon_stream_read(f, buf, sizeof(buf) - 1, &got));
     CHECK_OK(daemoon_stream_close(f));
     buf[got] = '\0';
@@ -508,13 +508,13 @@ TEST_CASE(the_sd_backend_handles_nested_paths_and_replacement)
 
     /* Removing something that is not there is not a failure: the cleanup paths
      * call this after a failure that may or may not have created the file. */
-    CHECK_OK(daemoon_3ds_fs_backend.remove(NULL, nested));
-    CHECK_OK(daemoon_3ds_fs_backend.remove(NULL, other));
-    CHECK(!daemoon_3ds_fs_backend.exists(NULL, other));
+    CHECK_OK(daemoon_fs_newlib_backend.remove(NULL, nested));
+    CHECK_OK(daemoon_fs_newlib_backend.remove(NULL, other));
+    CHECK(!daemoon_fs_newlib_backend.exists(NULL, other));
 
     /* A missing file reads as not_found, which is how the state file being absent
      * is told apart from the card being unreadable. */
-    CHECK_RESULT(daemoon_3ds_fs_backend.open(NULL, other, DAEMOON_OPEN_READ, &f),
+    CHECK_RESULT(daemoon_fs_newlib_backend.open(NULL, other, DAEMOON_OPEN_READ, &f),
                  DAEMOON_ERR_NOT_FOUND);
 
     (void)daemoon_posix_rmtree(root);
@@ -555,7 +555,7 @@ TEST_CASE(an_empty_archive_is_not_backed_up)
 
     memset(&env, 0, sizeof(env));
     env.save = &daemoon_3ds_save_backend;
-    env.fs = &daemoon_3ds_fs_backend;
+    env.fs = &daemoon_fs_newlib_backend;
     env.ui = &daemoon_posix_ui_backend;
     env.save_ctx = &save_ctx;
     env.ui_ctx = &ui;
@@ -825,7 +825,7 @@ static void backup_env(daemoon_env_t *env, daemoon_3ds_save_ctx_t *save_ctx,
 
     memset(env, 0, sizeof(*env));
     env->save = &daemoon_3ds_save_backend;
-    env->fs = &daemoon_3ds_fs_backend;
+    env->fs = &daemoon_fs_newlib_backend;
     env->ui = &daemoon_posix_ui_backend;
     env->save_ctx = save_ctx;
     env->ui_ctx = ui;
@@ -1481,7 +1481,7 @@ TEST_CASE(an_nds_save_round_trips_through_core)
 
     memset(&env, 0, sizeof(env));
     env.save = &daemoon_3ds_nds_backend;
-    env.fs = &daemoon_3ds_fs_backend;
+    env.fs = &daemoon_fs_newlib_backend;
     env.ui = &daemoon_posix_ui_backend;
     env.save_ctx = &ctx;
     env.ui_ctx = &ui;
@@ -2114,6 +2114,21 @@ TEST_CASE(every_welcome_screen_has_text_and_an_index_cannot_run_off_the_end)
 
 /* -------------------------------------------------------------------- batch */
 
+/* A run over "everything" means both libraries.
+ *
+ * It used to mean whichever list was on screen, which made it half of everything on a
+ * console that carries the installed titles and the DS saves - and the startup sync
+ * always did both, so the two disagreed about what the word meant. */
+TEST_CASE(a_batch_run_covers_both_libraries)
+{
+    CHECK_EQ_INT(DAEMOON_3DS_BATCH_LIBRARIES, 2);
+    /* The indices the callbacks are handed are the library constants main.c indexes
+     * g_lib with, so a reorder here would sync the DS saves through the savedata
+     * backend and fail in a way that reads as a permission problem. */
+    CHECK_EQ_INT(LIB_3DS, 0);
+    CHECK_EQ_INT(LIB_NDS, 1);
+}
+
 TEST_CASE(the_batch_screen_starts_on_the_answer_that_asks)
 {
     size_t i;
@@ -2148,6 +2163,137 @@ TEST_CASE(the_batch_screen_starts_on_the_answer_that_asks)
     }
 }
 
+/* ----------------------------------------------------------------- autosync */
+
+/* Phase 5's whole safety argument, as an assertion.
+ *
+ * A sync at startup has nobody to ask, so what it may do is narrower than what a
+ * person may ask for - and the narrowing is the conflict policy, not the safeguards.
+ */
+TEST_CASE(an_unattended_run_defers_every_conflict_and_never_picks_a_side)
+{
+    daemoon_sync_opts_t opts = daemoon_3ds_autosync_opts();
+
+    /* Neither of the answers that picks a side. A deferred conflict leaves both
+     * versions where they are, which is the only decision nobody has to have made. */
+    CHECK(opts.conflict == DAEMOON_CONFLICT_POLICY_DEFER);
+    CHECK(opts.conflict != DAEMOON_CONFLICT_POLICY_KEEP_LOCAL);
+    CHECK(opts.conflict != DAEMOON_CONFLICT_POLICY_KEEP_SERVER);
+
+    /* Both questions are answered, because there is no screen to answer them on.
+     * That is safe only *because* of the line above: after DEFER has taken the
+     * conflicts out, every remaining download replaces a copy of a version the
+     * server still holds, and rule 1 puts it on the card first anyway. */
+    CHECK_EQ_INT(opts.upload_confirmed, 1);
+    CHECK_EQ_INT(opts.restore_confirmed, 1);
+}
+
+TEST_CASE(a_startup_sync_needs_all_four_reasons_to_be_yes)
+{
+    /* enabled, can_sync, cancel_held, unattended */
+    CHECK(daemoon_3ds_autosync_due(1, 1, 0, 0));
+
+    CHECK(!daemoon_3ds_autosync_due(0, 1, 0, 0)); /* turned off */
+    CHECK(!daemoon_3ds_autosync_due(1, 0, 0, 0)); /* nowhere to sync to */
+    CHECK(!daemoon_3ds_autosync_due(1, 1, 1, 0)); /* B held: the menu was asked for */
+    /* Another unattended mode already owns this launch. A leftover AUTOTEST turning
+     * a boot into a conformance run has happened once already. */
+    CHECK(!daemoon_3ds_autosync_due(1, 1, 0, 1));
+}
+
+TEST_CASE(the_startup_setting_survives_a_write_and_a_read)
+{
+    char root[256];
+    char path[320];
+    daemoon_3ds_config_t cfg;
+    daemoon_3ds_config_t back;
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-autosync"), 0);
+    (void)snprintf(path, sizeof(path), "%s/config.txt", root);
+
+    daemoon_3ds_config_defaults(&cfg);
+    /* Off unless asked for: it does something on every launch, and a launch somebody
+     * made deliberately should not be spent on it by default. */
+    CHECK(!cfg.autosync);
+
+    cfg.autosync = 1;
+    CHECK_OK(daemoon_3ds_config_save(path, &cfg));
+    CHECK_OK(daemoon_3ds_config_load(path, &back));
+    CHECK(back.autosync);
+
+    cfg.autosync = 0;
+    CHECK_OK(daemoon_3ds_config_save(path, &cfg));
+    CHECK_OK(daemoon_3ds_config_load(path, &back));
+    CHECK(!back.autosync);
+}
+
+/* Nobody reads the screen, so the file is the account. It is written even when the
+ * run did nothing, because an absent file cannot be told apart from a build that
+ * does not have this feature. */
+TEST_CASE(a_startup_run_writes_down_what_it_did)
+{
+    char root[256];
+    char path[320];
+    daemoon_env_t env;
+    daemoon_posix_ui_ctx_t ui;
+    daemoon_3ds_autosync_report_t rep;
+    char body[512];
+    size_t got = 0;
+    daemoon_stream_t *in = NULL;
+    static unsigned char scratch[8 * 1024];
+
+    CHECK_EQ_INT(daemoon_test_tempdir(root, sizeof(root), "3ds-autoreport"), 0);
+    (void)snprintf(path, sizeof(path), "%s/autosync.txt", root);
+
+    daemoon_posix_ui_init(&ui);
+    memset(&env, 0, sizeof(env));
+    env.save = &daemoon_3ds_save_backend;
+    env.fs = &daemoon_fs_newlib_backend;
+    env.ui = &daemoon_posix_ui_backend;
+    env.ui_ctx = &ui;
+    env.device_label = "3DS";
+    env.work_dir = root;
+    env.scratch = scratch;
+    env.scratch_len = sizeof(scratch);
+
+    memset(&rep, 0, sizeof(rep));
+    rep.titles = 7;
+    rep.sync.uploaded = 3;
+    rep.sync.downloaded = 1;
+    rep.sync.skipped = 2;
+    rep.sync.conflicts = 1;
+    rep.failed = 0;
+    rep.network = 1;
+
+    CHECK_OK(daemoon_3ds_autosync_write_report(&env, path, "2026-08-17T04:00:00Z",
+                                               &rep));
+    CHECK_OK(env.fs->open(env.fs_ctx, path, DAEMOON_OPEN_READ, &in));
+    CHECK_OK(daemoon_stream_read(in, body, sizeof(body) - 1, &got));
+    (void)daemoon_stream_close(in);
+    body[got] = '\0';
+
+    CHECK(strstr(body, "titles=7") != NULL);
+    CHECK(strstr(body, "uploaded=3") != NULL);
+    CHECK(strstr(body, "downloaded=1") != NULL);
+    CHECK(strstr(body, "unchanged=2") != NULL);
+    /* The one outcome that needs somebody. It has to be findable in the file, not
+     * only on a screen that is gone. */
+    CHECK(strstr(body, "deferred=1") != NULL);
+    CHECK(strstr(body, "network=ok") != NULL);
+    CHECK(strstr(body, "2026-08-17T04:00:00Z") != NULL);
+
+    /* And a run that found no network says so rather than leaving no file. */
+    memset(&rep, 0, sizeof(rep));
+    CHECK_OK(daemoon_3ds_autosync_write_report(&env, path, NULL, &rep));
+    CHECK_OK(env.fs->open(env.fs_ctx, path, DAEMOON_OPEN_READ, &in));
+    got = 0;
+    CHECK_OK(daemoon_stream_read(in, body, sizeof(body) - 1, &got));
+    (void)daemoon_stream_close(in);
+    body[got] = '\0';
+    CHECK(strstr(body, "network=unreachable") != NULL);
+    CHECK(strstr(body, "titles=0") != NULL);
+}
+
 void test_3ds_backend(void)
 {
     printf("3ds backend (stubbed libctru)\n");
@@ -2171,7 +2317,14 @@ void test_3ds_backend(void)
     RUN(the_welcome_flag_survives_a_write_and_a_read);
     RUN(every_welcome_screen_has_text_and_an_index_cannot_run_off_the_end);
 
+    RUN(a_batch_run_covers_both_libraries);
     RUN(the_batch_screen_starts_on_the_answer_that_asks);
+
+    printf("sync at startup\n");
+    RUN(an_unattended_run_defers_every_conflict_and_never_picks_a_side);
+    RUN(a_startup_sync_needs_all_four_reasons_to_be_yes);
+    RUN(the_startup_setting_survives_a_write_and_a_read);
+    RUN(a_startup_run_writes_down_what_it_did);
 
     printf("backup picker\n");
     RUN(the_backup_list_reads_each_package_and_marks_the_current_one);

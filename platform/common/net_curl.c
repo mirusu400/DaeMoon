@@ -1,76 +1,58 @@
-/* The 3DS network backend: libcurl over 3ds-curl and 3ds-mbedtls.
+/* The network backend both consoles use: libcurl over the devkitPro curl and mbedtls
+ * ports.
  *
- * Not httpc:C. That service ships old cipher suites and a root CA store that was
- * current in 2011, and it fails against ordinary modern servers - including, in
- * practice, anything behind Let's Encrypt. A self hosted server is exactly the
- * case where the operator cannot be asked to downgrade their TLS to suit a
+ * Not the system HTTP service. On the 3DS, httpc:C ships old cipher suites and a root
+ * CA store that was current in 2011, and it fails against ordinary modern servers -
+ * including, in practice, anything behind Let's Encrypt. A self hosted server is
+ * exactly the case where the operator cannot be asked to downgrade their TLS to suit a
  * console, so the TLS stack is linked in rather than borrowed from the system.
  *
+ * Shared, and it has to be. The one thing in here that is platform specific is
+ * bringing sockets up, which is two lines behind daemoon_net_sockets_init. Everything
+ * else is the request loop - and that loop contains the fix that cost Phase 2 a
+ * hardware round: the HTTP status is read off the status line in the header callback
+ * rather than with curl_easy_getinfo afterwards, because callbacks run first and a
+ * successful upload's body would otherwise be routed to the error sink. Two copies of
+ * this file would be two chances to lose that.
+ *
  * Bodies stream in both directions. A save never exists whole in memory here: the
- * request body is pulled from a daemoon_read_fn as curl asks for it, and the
- * response is pushed into a daemoon_write_fn as it arrives.
+ * request body is pulled from a daemoon_read_fn as curl asks for it, and the response
+ * is pushed into a daemoon_write_fn as it arrives.
  */
-#include "daemoon_3ds.h"
+#include "daemoon_newlib.h"
 
 #include <daemoon/util/strbuf.h>
 
-#include <3ds.h>
 #include <curl/curl.h>
 
-#include <malloc.h>
 #include <stdio.h>
 #include <string.h>
 
-/* soc:U wants a page aligned buffer it keeps for the lifetime of the session.
- * 128 KiB is what the 3DS examples use and is enough for one connection at a
- * time, which is all this ever opens. */
-#define SOC_BUFFER_SIZE  (128 * 1024)
-#define SOC_BUFFER_ALIGN 0x1000
+static int g_ready;
 
-static u32 *g_soc_buffer;
-static int  g_soc_ready;
-
-daemoon_result_t daemoon_3ds_net_init(void)
+daemoon_result_t daemoon_net_curl_init(void)
 {
-    Result res;
-
-    if (g_soc_ready) {
+    if (g_ready) {
         return DAEMOON_OK;
     }
-
-    g_soc_buffer = (u32 *)memalign(SOC_BUFFER_ALIGN, SOC_BUFFER_SIZE);
-    if (g_soc_buffer == NULL) {
-        return DAEMOON_ERR_OUT_OF_MEMORY;
-    }
-
-    res = socInit(g_soc_buffer, SOC_BUFFER_SIZE);
-    if (R_FAILED(res)) {
-        free(g_soc_buffer);
-        g_soc_buffer = NULL;
-        return DAEMOON_ERR_NETWORK_ERROR;
-    }
+    DAEMOON_TRY(daemoon_net_sockets_init());
 
     if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
-        socExit();
-        free(g_soc_buffer);
-        g_soc_buffer = NULL;
+        daemoon_net_sockets_exit();
         return DAEMOON_ERR_NETWORK_ERROR;
     }
-
-    g_soc_ready = 1;
+    g_ready = 1;
     return DAEMOON_OK;
 }
 
-void daemoon_3ds_net_exit(void)
+void daemoon_net_curl_exit(void)
 {
-    if (!g_soc_ready) {
+    if (!g_ready) {
         return;
     }
     curl_global_cleanup();
-    socExit();
-    free(g_soc_buffer);
-    g_soc_buffer = NULL;
-    g_soc_ready = 0;
+    daemoon_net_sockets_exit();
+    g_ready = 0;
 }
 
 /* --------------------------------------------------------------- callbacks */
@@ -232,7 +214,7 @@ static daemoon_result_t from_curl(CURLcode code)
 static daemoon_result_t net_request(void *vctx, const daemoon_http_req_t *req,
                                     daemoon_http_resp_t *resp)
 {
-    daemoon_3ds_net_ctx_t *ctx = (daemoon_3ds_net_ctx_t *)vctx;
+    daemoon_net_curl_ctx_t *ctx = (daemoon_net_curl_ctx_t *)vctx;
     struct curl_slist *headers = NULL;
     upload_ctx_t up;
     download_ctx_t down;
@@ -248,7 +230,7 @@ static daemoon_result_t net_request(void *vctx, const daemoon_http_req_t *req,
     size_t i;
     daemoon_result_t r;
 
-    if (!g_soc_ready) {
+    if (!g_ready) {
         return DAEMOON_ERR_NETWORK_ERROR;
     }
 
@@ -360,9 +342,9 @@ static daemoon_result_t net_request(void *vctx, const daemoon_http_req_t *req,
         }
         (void)snprintf(line, sizeof(line), "curl=%d %s", (int)code,
                        errbuf[0] != '\0' ? errbuf : curl_easy_strerror(code));
-        daemoon_3ds_trace("net/failed", line);
+        daemoon_newlib_trace("net/failed", line);
     }
     return r;
 }
 
-const daemoon_net_backend_t daemoon_3ds_net_backend = { net_request };
+const daemoon_net_backend_t daemoon_net_curl_backend = { net_request };

@@ -364,6 +364,232 @@ TEST_CASE(a_failed_commit_is_a_failed_restore)
     fixture_close(&f);
 }
 
+/* ---------------------------------------------------------- secure value */
+
+/* A stand in for the console stored value. The posix backend has no such concept, so
+ * the cases below wrap it: what is being checked is that core packs the value with the
+ * save and writes it back from the package, not how a 3DS stores one. */
+static int          g_sv_exists;
+static unsigned long long g_sv_value;
+static unsigned     g_sv_writes;
+static unsigned     g_sv_clears;
+static int          g_sv_read_fails;
+
+static daemoon_result_t sv_read(void *ctx, const daemoon_title_t *t, int *exists,
+                                unsigned long long *value)
+{
+    (void)ctx; (void)t;
+    if (g_sv_read_fails) {
+        return DAEMOON_ERR_BACKEND_ERROR;
+    }
+    *exists = g_sv_exists;
+    *value = g_sv_value;
+    return DAEMOON_OK;
+}
+
+static daemoon_result_t sv_write(void *ctx, const daemoon_title_t *t,
+                                 unsigned long long value)
+{
+    (void)ctx; (void)t;
+    ++g_sv_writes;
+    g_sv_exists = 1;
+    g_sv_value = value;
+    return DAEMOON_OK;
+}
+
+static daemoon_result_t sv_clear(void *ctx, const daemoon_title_t *t)
+{
+    (void)ctx; (void)t;
+    ++g_sv_clears;
+    g_sv_exists = 0;
+    g_sv_value = 0;
+    return DAEMOON_OK;
+}
+
+/* Wires the hooks onto whatever backend the fixture is using. */
+static daemoon_save_backend_t with_secure_value(const daemoon_save_backend_t *base)
+{
+    daemoon_save_backend_t b = *base;
+
+    b.read_secure_value = sv_read;
+    b.write_secure_value = sv_write;
+    b.clear_secure_value = sv_clear;
+    return b;
+}
+
+/* The value is part of the save, not part of the console: a backup that does not carry
+ * it cannot be fully restored, because the console's may have moved on since. */
+TEST_CASE(a_backup_carries_the_value_its_save_was_bound_to)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_save_backend_t backend;
+    char pkg[DAEMOON_PATH_MAX];
+    char buf[256];
+
+    CHECK_EQ_INT(fixture_open(&f, "secure-backup"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    (void)fixture_write_save_file(&f, t, "main.sav", "bound to a value");
+
+    backend = with_secure_value(f.env.save);
+    f.env.save = &backend;
+    g_sv_exists = 1;
+    g_sv_value = 0x0123456789ABCDEFull;
+    g_sv_writes = 0;
+    g_sv_clears = 0;
+    g_sv_read_fails = 0;
+
+    CHECK_OK(daemoon_sync_backup_local(&f.env, &f.actx, t, pkg, sizeof(pkg)));
+
+    /* The console moves on: the game played again and the value changed. This is the
+     * case the old behaviour got wrong - it put *this* value back after a restore,
+     * not the one the restored save belongs with. */
+    g_sv_value = 0xFFFFFFFFFFFFFFFFull;
+    (void)fixture_write_save_file(&f, t, "main.sav", "played since");
+
+    CHECK_OK(daemoon_sync_restore_package(&f.env, &f.actx, t, pkg));
+
+    CHECK_EQ_INT(fixture_read_save_file(&f, t, "main.sav", buf, sizeof(buf)), 0);
+    CHECK_STR(buf, "bound to a value");
+    /* Written back from the package, and it is the value from backup time. */
+    CHECK_EQ_INT((int)g_sv_writes, 1);
+    CHECK(g_sv_value == 0x0123456789ABCDEFull);
+
+    fixture_close(&f);
+}
+
+/* Zero is a legitimate value and "this title has none" is a different state. A backend
+ * that reports no value must not produce a package that writes zero over one. */
+TEST_CASE(a_title_with_no_value_produces_a_package_that_writes_none)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_save_backend_t backend;
+    char pkg[DAEMOON_PATH_MAX];
+
+    CHECK_EQ_INT(fixture_open(&f, "secure-none"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    (void)fixture_write_save_file(&f, t, "main.sav", "no value here");
+
+    backend = with_secure_value(f.env.save);
+    f.env.save = &backend;
+    g_sv_exists = 0;
+    g_sv_value = 0;
+    g_sv_writes = 0;
+    g_sv_clears = 0;
+    g_sv_read_fails = 0;
+
+    CHECK_OK(daemoon_sync_backup_local(&f.env, &f.actx, t, pkg, sizeof(pkg)));
+    CHECK_OK(daemoon_sync_restore_package(&f.env, &f.actx, t, pkg));
+
+    CHECK_EQ_INT((int)g_sv_writes, 0);
+
+    fixture_close(&f);
+}
+
+/* A backend that cannot read one still produces a usable backup. Refusing would make a
+ * diagnostic failure into a save nobody has a copy of. */
+TEST_CASE(a_backend_that_cannot_read_the_value_still_backs_the_save_up)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_save_backend_t backend;
+    char pkg[DAEMOON_PATH_MAX];
+    char buf[256];
+
+    CHECK_EQ_INT(fixture_open(&f, "secure-unreadable"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    (void)fixture_write_save_file(&f, t, "main.sav", "still worth keeping");
+
+    backend = with_secure_value(f.env.save);
+    f.env.save = &backend;
+    g_sv_read_fails = 1;
+    g_sv_writes = 0;
+    g_sv_clears = 0;
+
+    CHECK_OK(daemoon_sync_backup_local(&f.env, &f.actx, t, pkg, sizeof(pkg)));
+    (void)fixture_write_save_file(&f, t, "main.sav", "changed");
+    CHECK_OK(daemoon_sync_restore_package(&f.env, &f.actx, t, pkg));
+
+    CHECK_EQ_INT(fixture_read_save_file(&f, t, "main.sav", buf, sizeof(buf)), 0);
+    CHECK_STR(buf, "still worth keeping");
+    /* Nothing recorded, so nothing written: the console keeps what it has, which is
+     * what every package written before this field existed does. */
+    CHECK_EQ_INT((int)g_sv_writes, 0);
+
+    fixture_close(&f);
+}
+
+/* A package written before this field existed carries no value, and the console still
+ * holds the one belonging to the save being replaced. Leaving it is what made a real
+ * restore fail on hardware: Pokemon Y refused the save as "not the data that was saved
+ * last", because the value did not match it.
+ *
+ * So the value is removed. Nothing recorded means nothing to mismatch, and the game
+ * writes a fresh one the next time it saves. */
+TEST_CASE(a_package_without_a_value_clears_the_consoles_rather_than_leaving_a_mismatch)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_save_backend_t backend;
+    char pkg[DAEMOON_PATH_MAX];
+    char buf[256];
+
+    CHECK_EQ_INT(fixture_open(&f, "secure-legacy"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    (void)fixture_write_save_file(&f, t, "main.sav", "packed by an older build");
+
+    /* Packed with no hooks at all, the way the backend used to be. */
+    CHECK_OK(daemoon_sync_backup_local(&f.env, &f.actx, t, pkg, sizeof(pkg)));
+
+    backend = with_secure_value(f.env.save);
+    f.env.save = &backend;
+    /* The console has moved on and holds a value for the save about to be replaced. */
+    g_sv_exists = 1;
+    g_sv_value = 0xAAAAAAAAAAAAAAAAull;
+    g_sv_writes = 0;
+    g_sv_clears = 0;
+    g_sv_read_fails = 0;
+    (void)fixture_write_save_file(&f, t, "main.sav", "played since");
+
+    CHECK_OK(daemoon_sync_restore_package(&f.env, &f.actx, t, pkg));
+
+    CHECK_EQ_INT(fixture_read_save_file(&f, t, "main.sav", buf, sizeof(buf)), 0);
+    CHECK_STR(buf, "packed by an older build");
+
+    /* Removed, not overwritten: writing a value the package never had would be
+     * inventing one, and zero is a legitimate value rather than an absence. */
+    CHECK_EQ_INT((int)g_sv_clears, 1);
+    CHECK_EQ_INT((int)g_sv_writes, 0);
+    CHECK_EQ_INT(g_sv_exists, 0);
+
+    fixture_close(&f);
+}
+
+/* A backend with no such concept is not asked to clear anything. NULL hooks mean the
+ * platform has no value, not that it has one worth removing. */
+TEST_CASE(a_platform_without_secure_values_is_left_alone_entirely)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    char pkg[DAEMOON_PATH_MAX];
+
+    CHECK_EQ_INT(fixture_open(&f, "secure-absent"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    (void)fixture_write_save_file(&f, t, "main.sav", "no hooks at all");
+
+    g_sv_clears = 0;
+    g_sv_writes = 0;
+
+    CHECK_OK(daemoon_sync_backup_local(&f.env, &f.actx, t, pkg, sizeof(pkg)));
+    CHECK_OK(daemoon_sync_restore_package(&f.env, &f.actx, t, pkg));
+
+    CHECK_EQ_INT((int)g_sv_clears, 0);
+    CHECK_EQ_INT((int)g_sv_writes, 0);
+
+    fixture_close(&f);
+}
+
 /* -------------------------------------------------------------- conflicts */
 
 /* Puts the fixture into the state where both sides moved. */
@@ -661,6 +887,70 @@ TEST_CASE(the_published_restore_has_no_way_to_skip_its_question)
     fixture_close(&f);
 }
 
+/* The policy an unattended run uses. Nobody is there, so nothing is chosen: both
+ * versions stay where they are and the title is counted for somebody to come back
+ * to. This is the assertion that a sync at startup cannot lose a save. */
+TEST_CASE(a_deferring_policy_leaves_both_sides_untouched_and_asks_nothing)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+    /* Exactly what daemoon_3ds_autosync_opts returns: defer, and both questions
+     * already answered, because there is no screen to answer them on. */
+    daemoon_sync_opts_t opts = { DAEMOON_CONFLICT_POLICY_DEFER, 1, 1 };
+    char buf[256];
+
+    CHECK_EQ_INT(fixture_open(&f, "policy-defer"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    make_conflict(&f, t);
+
+    memset(&stats, 0, sizeof(stats));
+    CHECK_OK(daemoon_sync_title_with(&f.env, &f.actx, t, &opts, &stats));
+
+    /* No dialog of any kind was reached, which is the point: this runs on a console
+     * nobody is holding. */
+    CHECK_EQ_INT(f.ui.chooses, 0);
+    CHECK_EQ_INT(f.ui.confirms, 0);
+
+    CHECK_EQ_INT(stats.conflicts, 1);
+    CHECK_EQ_INT(stats.uploaded, 0);
+    CHECK_EQ_INT(stats.downloaded, 0);
+
+    /* Neither side moved. The server is where it was and the console still holds its
+     * own save, so the choice is still there to be made later. */
+    CHECK_EQ_INT(f.server.uploads, 0);
+    CHECK_EQ_INT(f.server.titles[0].nversions, 2);
+    CHECK_EQ_INT(fixture_read_save_file(&f, t, "main.sav", buf, sizeof(buf)), 0);
+    CHECK_STR(buf, "local progress");
+
+    fixture_close(&f);
+}
+
+/* And the titles that are not in conflict still sync, which is what makes the run
+ * worth doing at all: last night's save is on the server before anybody picks the
+ * console up. */
+TEST_CASE(a_deferring_policy_still_uploads_what_only_this_console_changed)
+{
+    fixture_t f;
+    const daemoon_title_t *t;
+    daemoon_sync_stats_t stats;
+    daemoon_sync_opts_t opts = { DAEMOON_CONFLICT_POLICY_DEFER, 1, 1 };
+
+    CHECK_EQ_INT(fixture_open(&f, "defer-upload"), 0);
+    t = fixture_add_title(&f, "0004000000055D00", DAEMOON_PLATFORM_3DS);
+    (void)fixture_write_save_file(&f, t, "main.sav", "last night");
+
+    f.ui.confirm_answer = 0; /* nothing may be asked, so nothing may depend on it */
+    memset(&stats, 0, sizeof(stats));
+    CHECK_OK(daemoon_sync_title_with(&f.env, &f.actx, t, &opts, &stats));
+
+    CHECK_EQ_INT(f.ui.confirms, 0);
+    CHECK_EQ_INT(stats.uploaded, 1);
+    CHECK_EQ_INT(stats.conflicts, 0);
+
+    fixture_close(&f);
+}
+
 /* The plain entry point is the asking one. A caller that has not thought about
  * policies gets the behaviour the rules describe. */
 TEST_CASE(sync_title_is_the_asking_policy)
@@ -924,6 +1214,11 @@ void test_sync(void)
     RUN(download_backs_up_verifies_and_commits);
     RUN(a_corrupt_download_never_reaches_the_save);
     RUN(a_failed_commit_is_a_failed_restore);
+    RUN(a_backup_carries_the_value_its_save_was_bound_to);
+    RUN(a_title_with_no_value_produces_a_package_that_writes_none);
+    RUN(a_backend_that_cannot_read_the_value_still_backs_the_save_up);
+    RUN(a_package_without_a_value_clears_the_consoles_rather_than_leaving_a_mismatch);
+    RUN(a_platform_without_secure_values_is_left_alone_entirely);
     RUN(conflict_keeping_local_uploads_without_discarding_the_server_copy);
     RUN(conflict_keeping_the_server_copy_backs_up_first);
     RUN(conflict_deferring_touches_nothing);
@@ -934,6 +1229,8 @@ void test_sync(void)
     RUN(the_upload_question_is_asked_when_it_has_not_been_answered);
     RUN(an_answered_restore_question_is_not_asked_again_but_the_backup_still_happens);
     RUN(the_published_restore_has_no_way_to_skip_its_question);
+    RUN(a_deferring_policy_leaves_both_sides_untouched_and_asks_nothing);
+    RUN(a_deferring_policy_still_uploads_what_only_this_console_changed);
     RUN(sync_title_is_the_asking_policy);
     RUN(cancelling_the_conflict_dialog_is_the_same_as_deferring);
     RUN(a_race_at_upload_time_becomes_a_conflict_not_an_overwrite);

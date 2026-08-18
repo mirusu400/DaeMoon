@@ -9,7 +9,7 @@ ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 .PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check stack-check \
         core-isolation spec-check server 3ds nx run-server clean \
         docker-images docker-3ds docker-cia docker-nx docker-test docker-shell \
-        cia-verify emu-selftest 3ds-install 3ds-selftest
+        cia-verify emu-selftest emu-autosync 3ds-install 3ds-selftest
 
 all: help
 
@@ -23,6 +23,7 @@ help:
 	@echo "make docker-cia    3DS CIA in a container, no toolchain to install"
 	@echo "make cia-verify    read the built CIA back and check its permissions"
 	@echo "make emu-selftest  run the backend suite inside an emulator"
+	@echo "make emu-autosync  boot, sync and return, inside an emulator"
 	@echo "make 3ds-install HOST=<ip>   install the CIA over wifi, no SD card"
 	@echo "make 3ds-selftest HOST=<ip>  install, run the suite, collect the result"
 	@echo "make docker-nx     Switch NRO in a container"
@@ -53,6 +54,13 @@ lang-check: gen-check
 core-isolation:
 	@if grep -rnE '#[[:space:]]*include[[:space:]]*[<"](3ds|switch)\.h[>"]' $(ROOT)/core/ ; then \
 		echo "core/ includes a platform header - see the coding rules in CLAUDE.md"; \
+		exit 1; \
+	fi
+	@# platform/common is the code both consoles share. The same rule applies to it for
+	@# the same reason: the moment it includes one of these it belongs to one platform
+	@# again, and the other build stops compiling.
+	@if grep -rnE '#[[:space:]]*include[[:space:]]*[<"](3ds|switch)\.h[>"]' $(ROOT)/platform/common/ ; then \
+		echo "platform/common includes a platform header - it is shared by both consoles"; \
 		exit 1; \
 	fi
 	@echo "core isolation: ok"
@@ -167,6 +175,11 @@ emu-pair:
 
 emu-selftest:
 	@sh $(ROOT)/tools/emu-selftest.sh
+
+# Phase 5, as an ARM binary against a real server. What is left for hardware is
+# whether Luma autoboots this title and whether exiting it lands on HOME.
+emu-autosync:
+	@sh $(ROOT)/tools/emu-autosync.sh
 
 # Over wifi, so the SD card stays in the console. Taking it out for every build
 # is a minute of fiddling per iteration, and the thing being iterated on writes to

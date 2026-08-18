@@ -18,102 +18,62 @@
 #include <stdio.h>
 #include <string.h>
 
-static void trim(char *s)
-{
-    size_t len = strlen(s);
-    size_t start = 0;
-
-    while (len > 0 && (s[len - 1] == '\n' || s[len - 1] == '\r' || s[len - 1] == ' ' ||
-                       s[len - 1] == '\t')) {
-        s[--len] = '\0';
-    }
-    while (s[start] == ' ' || s[start] == '\t') {
-        ++start;
-    }
-    if (start > 0) {
-        memmove(s, s + start, len - start + 1);
-    }
-}
-
 void daemoon_3ds_config_defaults(daemoon_3ds_config_t *cfg)
 {
     memset(cfg, 0, sizeof(*cfg));
     (void)daemoon_strlcpy(cfg->device_label, sizeof(cfg->device_label), "3DS");
 }
 
+/* One key. The chain is the same shape it always was; what moved out from under it is
+ * the loop that reads the file, which is now shared with the Switch build. */
+static void config_pair(void *user, const char *key, const char *value)
+{
+    daemoon_3ds_config_t *cfg = (daemoon_3ds_config_t *)user;
+
+    if (strcmp(key, "server") == 0) {
+        size_t len = strlen(value);
+
+        /* A trailing slash here becomes a double slash in every path built
+         * from it, and some servers answer those differently. */
+        (void)daemoon_strlcpy(cfg->server_url, sizeof(cfg->server_url), value);
+        len = strlen(cfg->server_url);
+        while (len > 0 && cfg->server_url[len - 1] == '/') {
+            cfg->server_url[--len] = '\0';
+        }
+    } else if (strcmp(key, "token") == 0) {
+        /* Only ever read, and only so a console paired before the token moved
+         * into the save archive can be carried across once. */
+        (void)daemoon_strlcpy(cfg->token, sizeof(cfg->token), value);
+    } else if (strcmp(key, "label") == 0) {
+        /* Shown on another console in a conflict dialog, so it has to survive
+         * a round trip as UTF-8 and be worth reading. */
+        if (value[0] != '\0' && daemoon_utf8_valid(value, strlen(value))) {
+            (void)daemoon_strlcpy(cfg->device_label, sizeof(cfg->device_label),
+                                  value);
+        }
+    } else if (strcmp(key, "device") == 0) {
+        (void)daemoon_strlcpy(cfg->device_id, sizeof(cfg->device_id), value);
+    } else if (strcmp(key, "language") == 0) {
+        daemoon_lang_t parsed;
+
+        /* Kept only if this build knows it. A typo here would otherwise be a
+         * console that silently ignores the setting and shows English. */
+        if (daemoon_i18n_language_from_code(value, &parsed) == DAEMOON_OK) {
+            (void)daemoon_strlcpy(cfg->language, sizeof(cfg->language), value);
+        }
+    } else if (strcmp(key, "autosync") == 0) {
+        cfg->autosync = value[0] == '1';
+    } else if (strcmp(key, "welcomed") == 0) {
+        cfg->welcomed = value[0] == '1';
+    } else if (strcmp(key, "ca_bundle") == 0) {
+        (void)daemoon_strlcpy(cfg->ca_bundle, sizeof(cfg->ca_bundle), value);
+    }
+}
+
 daemoon_result_t daemoon_3ds_config_load(const char *path, daemoon_3ds_config_t *cfg)
 {
-    char line[512];
-    FILE *fp;
-
     daemoon_3ds_config_defaults(cfg);
-
-    fp = fopen(path, "rb");
-    if (fp == NULL) {
-        /* No configuration is not a failure. It is a console that has not been
-         * pointed at a server yet, and everything local still works. */
-        return DAEMOON_ERR_NOT_FOUND;
-    }
-
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        char *eq;
-        const char *key;
-        const char *value;
-
-        trim(line);
-        if (line[0] == '\0' || line[0] == '#') {
-            continue;
-        }
-        eq = strchr(line, '=');
-        if (eq == NULL) {
-            continue;
-        }
-        *eq = '\0';
-        key = line;
-        value = eq + 1;
-        trim((char *)key);
-        trim((char *)value);
-
-        if (strcmp(key, "server") == 0) {
-            size_t len = strlen(value);
-
-            /* A trailing slash here becomes a double slash in every path built
-             * from it, and some servers answer those differently. */
-            (void)daemoon_strlcpy(cfg->server_url, sizeof(cfg->server_url), value);
-            len = strlen(cfg->server_url);
-            while (len > 0 && cfg->server_url[len - 1] == '/') {
-                cfg->server_url[--len] = '\0';
-            }
-        } else if (strcmp(key, "token") == 0) {
-            /* Only ever read, and only so a console paired before the token moved
-             * into the save archive can be carried across once. */
-            (void)daemoon_strlcpy(cfg->token, sizeof(cfg->token), value);
-        } else if (strcmp(key, "label") == 0) {
-            /* Shown on another console in a conflict dialog, so it has to survive
-             * a round trip as UTF-8 and be worth reading. */
-            if (value[0] != '\0' && daemoon_utf8_valid(value, strlen(value))) {
-                (void)daemoon_strlcpy(cfg->device_label, sizeof(cfg->device_label),
-                                      value);
-            }
-        } else if (strcmp(key, "device") == 0) {
-            (void)daemoon_strlcpy(cfg->device_id, sizeof(cfg->device_id), value);
-        } else if (strcmp(key, "language") == 0) {
-            daemoon_lang_t parsed;
-
-            /* Kept only if this build knows it. A typo here would otherwise be a
-             * console that silently ignores the setting and shows English. */
-            if (daemoon_i18n_language_from_code(value, &parsed) == DAEMOON_OK) {
-                (void)daemoon_strlcpy(cfg->language, sizeof(cfg->language), value);
-            }
-        } else if (strcmp(key, "welcomed") == 0) {
-            cfg->welcomed = value[0] == '1';
-        } else if (strcmp(key, "ca_bundle") == 0) {
-            (void)daemoon_strlcpy(cfg->ca_bundle, sizeof(cfg->ca_bundle), value);
-        }
-    }
-    (void)fclose(fp);
-
-    return DAEMOON_OK;
+    return daemoon_config_read_lines(path, config_pair, cfg);
 }
 
 /* Writes the file back, keeping the shape a person can still edit by hand.
@@ -163,6 +123,9 @@ daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_con
         /* Absent rather than empty when unset, so the file says "follow the
          * console" by not mentioning it. */
         ok = fprintf(fp, "language = %s\n", cfg->language) > 0;
+    }
+    if (ok && cfg->autosync) {
+        ok = fprintf(fp, "autosync = 1\n") > 0;
     }
     if (ok && cfg->welcomed) {
         ok = fprintf(fp, "welcomed = 1\n") > 0;

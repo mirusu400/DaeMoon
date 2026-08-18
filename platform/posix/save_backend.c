@@ -331,5 +331,6 @@ const daemoon_save_backend_t daemoon_posix_save_backend = {
     remove_all,
     commit,
     close_save,
-    NULL /* is_title_running: a desktop cannot have the title running */
+    NULL, /* is_title_running: a desktop cannot have the title running */
+    NULL, NULL, NULL /* secure value: a directory has none */
 };

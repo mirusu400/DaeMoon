@@ -143,6 +143,18 @@ daemoon_result_t daemoon_manifest_parse(const char *json, size_t len, daemoon_ma
     (void)daemoon_json_get_str(json, toks, ntok, 0, "title_name", m.title_name,
                                sizeof(m.title_name));
 
+    /* Optional in the same way, and the flag is what says whether it was there: zero
+     * is a legitimate secure value, so a missing field and a zero one have to stay
+     * distinguishable all the way to the restore that decides whether to write it. */
+    {
+        unsigned long long sv = 0;
+
+        if (daemoon_json_get_uint(json, toks, ntok, 0, "secure_value", &sv) == DAEMOON_OK) {
+            m.has_secure_value = 1;
+            m.secure_value = sv;
+        }
+    }
+
     DAEMOON_TRY(daemoon_json_get_uint(json, toks, ntok, 0, "version", &n));
     if (n > 0xffffffffull) {
         return DAEMOON_ERR_INVALID_MANIFEST;
@@ -226,7 +238,15 @@ daemoon_result_t daemoon_manifest_write(const daemoon_manifest_t *m, char *buf, 
         daemoon_strbuf_add(&sb, "\",\"title_name\":\"");
         daemoon_strbuf_add_json(&sb, m->title_name);
     }
-    daemoon_strbuf_add(&sb, "\"}");
+    daemoon_strbuf_add(&sb, "\"");
+
+    /* A number rather than a string, and absent when the title has none, so a package
+     * from a platform without the concept is byte identical to what it always was. */
+    if (m->has_secure_value) {
+        daemoon_strbuf_add(&sb, ",\"secure_value\":");
+        daemoon_strbuf_add_uint(&sb, m->secure_value);
+    }
+    daemoon_strbuf_add(&sb, "}");
 
     DAEMOON_TRY(daemoon_strbuf_result(&sb));
 

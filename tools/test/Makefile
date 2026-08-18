@@ -19,7 +19,8 @@ SAN ?= -fsanitize=address,undefined -fno-omit-frame-pointer
 # desktop the only one that exists is the one under ctru_stub.
 INCLUDES := -I$(ROOT)/tools/test/ctru_stub \
             -I$(ROOT)/core/include -I$(ROOT)/vendor -I$(ROOT)/vendor/quirc -I$(ROOT)/platform/posix \
-            -I$(ROOT)/tools/test -I$(ROOT)/platform/3ds/source
+            -I$(ROOT)/tools/test -I$(ROOT)/platform/3ds/source -I$(ROOT)/platform/common \
+            -I$(ROOT)/platform/nx/source
 
 CFLAGS := $(CSTD) $(WARN) $(SAN) -g -O1 -MMD -MP $(INCLUDES)
 LDFLAGS := $(SAN)
@@ -31,7 +32,12 @@ TEST_SRC := $(wildcard $(ROOT)/tools/test/*.c) $(ROOT)/tools/test/ctru_stub/ctru
 # The 3DS backend, run here against the stub. Only the files that are free of
 # libctru's UI and service init: the rest of platform/3ds needs a console.
 TDS_SRC := $(ROOT)/platform/3ds/source/save_backend.c \
-           $(ROOT)/platform/3ds/source/fs_backend.c \
+           $(ROOT)/platform/common/fs_newlib.c \
+           $(ROOT)/platform/3ds/source/free_space.c \
+           $(ROOT)/platform/common/dir_tree.c \
+           $(ROOT)/platform/common/config_lines.c \
+           $(ROOT)/platform/nx/source/title_id.c \
+           $(ROOT)/platform/nx/source/config.c \
            $(ROOT)/platform/3ds/source/nds_backend.c \
            $(ROOT)/platform/3ds/source/nds_icon.c \
            $(ROOT)/platform/3ds/source/cam_tile.c \
@@ -40,6 +46,7 @@ TDS_SRC := $(ROOT)/platform/3ds/source/save_backend.c \
            $(ROOT)/platform/3ds/source/backup_list.c \
            $(ROOT)/platform/3ds/source/welcome_steps.c \
            $(ROOT)/platform/3ds/source/batch_steps.c \
+           $(ROOT)/platform/3ds/source/autosync_steps.c \
            $(ROOT)/platform/3ds/source/trace.c \
            $(ROOT)/platform/3ds/source/title_id.c
 VENDOR_SRC := $(ROOT)/vendor/miniz/miniz.c $(wildcard $(ROOT)/vendor/quirc/*.c)

@@ -756,6 +756,34 @@ Result FSUSER_SetSaveDataSecureValue(u64 value, FS_SecureValueSlot slot, u32 tit
     return 0;
 }
 
+/* The packed form the real service takes: slot in the high word, then the unique id
+ * shifted up by eight with the variation underneath it. Unpacked here so a caller that
+ * packs it wrongly fails in the tests rather than on a console. */
+Result FSUSER_ControlSecureSave(FS_SecureSaveAction action, void *input, u32 inputSize,
+                                void *output, u32 outputSize)
+{
+    u64 packed;
+    u32 unique;
+    int i;
+
+    if (action != SECURESAVE_ACTION_DELETE || input == NULL || inputSize != sizeof(u64)) {
+        return stub_error(RS_INVALIDARG, RD_INVALID_ARGUMENT);
+    }
+    memcpy(&packed, input, sizeof(packed));
+    unique = (u32)((packed >> 8) & 0xffffffu);
+
+    i = secure_slot(unique);
+    if (i < 0) {
+        return stub_error(RS_NOTFOUND, RD_NOT_FOUND);
+    }
+    if (output != NULL && outputSize >= 1) {
+        ((u8 *)output)[0] = g_secure_present[i] ? 1 : 0;
+    }
+    g_secure_present[i] = 0;
+    g_secure_values[i] = 0;
+    return 0;
+}
+
 Result AM_GetTitleCount(FS_MediaType mediatype, u32 *count)
 {
     size_t i;

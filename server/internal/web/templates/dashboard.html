@@ -5,7 +5,6 @@
     <h1>{{$.T "web.nav.saves"}}</h1>
     <div class="sub mono">{{$.Tf "web.saves.subtitle" (len .Titles) .LiveDevices (len .Devices)}}</div>
   </div>
-  <div class="row-actions"><a class="btn btn-key" href="/pair">{{$.T "web.nav.add_console"}}</a></div>
 </div>
 
 <div class="stats">
@@ -16,16 +15,16 @@
 </div>
 
 {{if .Titles}}
-<div class="card">
+<div class="card table-card">
   <table>
     <thead><tr>
-      <th>{{$.T "web.col.title"}}</th><th>{{$.T "web.col.platform"}}</th><th>{{$.T "web.col.kind"}}</th>
-      <th class="num">{{$.T "web.col.version"}}</th><th>{{$.T "web.col.updated"}}</th>
+      <th scope="col">{{$.T "web.col.title"}}</th><th scope="col">{{$.T "web.col.platform"}}</th><th scope="col">{{$.T "web.col.kind"}}</th>
+      <th scope="col" class="num">{{$.T "web.col.version"}}</th><th scope="col">{{$.T "web.col.updated"}}</th>
     </tr></thead>
     <tbody>
     {{range .Titles}}
     <tr>
-      <td class="title-cell">
+      <td class="title-cell" data-label="{{$.T "web.col.title"}}">
         {{if .TitleName}}
           <a href="/titles/{{.Platform}}/{{.TitleID}}">{{.TitleName}}</a>
           <span class="id mono t-mut">{{.TitleID}}</span>
@@ -33,10 +32,10 @@
           <a class="mono" href="/titles/{{.Platform}}/{{.TitleID}}">{{.TitleID}}</a>
         {{end}}
       </td>
-      <td><span class="tg tg-{{.Platform}}">{{.Platform}}</span></td>
-      <td class="t-mut">{{.SaveType}}</td>
-      <td class="num">{{.LatestVersion}}</td>
-      <td class="mono t-mut">{{.UpdatedAt}}</td>
+      <td data-label="{{$.T "web.col.platform"}}"><span class="tg tg-{{.Platform}}">{{.Platform}}</span></td>
+      <td class="t-mut" data-label="{{$.T "web.col.kind"}}">{{.SaveType}}</td>
+      <td class="num" data-label="{{$.T "web.col.version"}}">{{.LatestVersion}}</td>
+      <td class="mono t-mut" data-label="{{$.T "web.col.updated"}}">{{.UpdatedAt}}</td>
     </tr>
     {{end}}
     </tbody>

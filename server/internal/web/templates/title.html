@@ -11,22 +11,22 @@
 <p class="t-mut" style="font-size:.9rem;margin:0 0 1.2rem">{{$.T "web.title.note"}}</p>
 
 {{if .Versions}}
-<div class="card">
+<div class="card table-card">
   <table>
     <thead><tr>
-      <th class="num">{{$.T "web.col.version"}}</th><th class="num">{{$.T "web.col.parent"}}</th><th class="num">{{$.T "web.col.size"}}</th>
-      <th>{{$.T "web.col.from"}}</th><th>{{$.T "web.col.received"}}</th><th>{{$.T "web.col.digest"}}</th><th></th>
+      <th scope="col" class="num">{{$.T "web.col.version"}}</th><th scope="col" class="num">{{$.T "web.col.parent"}}</th><th scope="col" class="num">{{$.T "web.col.size"}}</th>
+      <th scope="col">{{$.T "web.col.from"}}</th><th scope="col">{{$.T "web.col.received"}}</th><th scope="col">{{$.T "web.col.digest"}}</th><th scope="col"></th>
     </tr></thead>
     <tbody>
     {{range .Versions}}
     <tr>
-      <td class="num" style="font-weight:700">{{.Version}}</td>
-      <td class="num t-mut">{{if .ParentVersion}}{{.ParentVersion}}{{else}}-{{end}}</td>
-      <td class="num">{{bytes .Size}}</td>
-      <td>{{.DeviceLabel}}</td>
-      <td class="mono t-mut">{{.ReceivedAt}}</td>
-      <td class="mono t-mut">{{slice .SHA256 0 12}}</td>
-      <td class="acts">
+      <td class="num" style="font-weight:700" data-label="{{$.T "web.col.version"}}">{{.Version}}</td>
+      <td class="num t-mut" data-label="{{$.T "web.col.parent"}}">{{if .ParentVersion}}{{.ParentVersion}}{{else}}-{{end}}</td>
+      <td class="num" data-label="{{$.T "web.col.size"}}">{{bytes .Size}}</td>
+      <td data-label="{{$.T "web.col.from"}}">{{.DeviceLabel}}</td>
+      <td class="mono t-mut" data-label="{{$.T "web.col.received"}}">{{.ReceivedAt}}</td>
+      <td class="mono t-mut" data-label="{{$.T "web.col.digest"}}">{{slice .SHA256 0 12}}</td>
+      <td class="acts" data-label="">
         <div class="row-actions">
           <a class="btn btn-ghost btn-sm"
              href="/titles/{{$.Data.Platform}}/{{$.Data.TitleID}}/blob/{{.Version}}">{{$.T "web.action.download"}}</a>

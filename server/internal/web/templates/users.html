@@ -2,20 +2,20 @@
 <div class="pagehead"><div><h1>{{.T "web.nav.people"}}</h1>
 <div class="sub mono">{{.T "web.people.subtitle"}}</div></div></div>
 
-<div class="card">
+<div class="card table-card">
   <table>
-    <thead><tr><th>{{.T "web.col.name"}}</th><th>{{.T "web.col.role"}}</th><th>{{.T "web.col.added"}}</th><th></th></tr></thead>
+    <thead><tr><th scope="col">{{.T "web.col.name"}}</th><th scope="col">{{.T "web.col.role"}}</th><th scope="col">{{.T "web.col.added"}}</th><th scope="col"></th></tr></thead>
     <tbody>
     {{range .Data.Users}}
     <tr>
-      <td class="title-cell">
+      <td class="title-cell" data-label="{{$.T "web.col.name"}}">
         {{if .Username}}{{.Username}}{{else}}<span class="mono t-mut">{{.ID}}</span>{{end}}
         {{if not .HasPassword}}<span class="tg tg-mut">{{$.T "web.people.no_password"}}</span>{{end}}
       </td>
-      <td>{{if .IsAdmin}}<span class="tg tg-3ds">{{$.T "web.people.admin"}}</span>
+      <td data-label="{{$.T "web.col.role"}}">{{if .IsAdmin}}<span class="tg tg-3ds">{{$.T "web.people.admin"}}</span>
           {{else}}<span class="t-mut">{{$.T "web.people.member"}}</span>{{end}}</td>
-      <td class="mono t-mut">{{.CreatedAt}}</td>
-      <td class="acts">
+      <td class="mono t-mut" data-label="{{$.T "web.col.added"}}">{{.CreatedAt}}</td>
+      <td class="acts" data-label="">
         <div class="row-actions">
           <form method="post" action="/users/{{.ID}}/delete"
                 onsubmit="return confirm('{{$.T "web.people.confirm_remove"}}')">

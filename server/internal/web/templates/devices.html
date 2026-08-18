@@ -8,20 +8,20 @@
 </div>
 
 {{if .Data}}
-<div class="card">
+<div class="card table-card">
   <table>
-    <thead><tr><th>{{.T "web.col.name"}}</th><th>{{.T "web.col.platform"}}</th><th>{{.T "web.col.added"}}</th><th>{{.T "web.col.status"}}</th><th></th></tr></thead>
+    <thead><tr><th scope="col">{{.T "web.col.name"}}</th><th scope="col">{{.T "web.col.platform"}}</th><th scope="col">{{.T "web.col.added"}}</th><th scope="col">{{.T "web.col.status"}}</th><th scope="col"></th></tr></thead>
     <tbody>
     {{range .Data}}
     <tr>
-      <td class="title-cell">{{.Label}}<span class="id mono t-mut">{{.ID}}</span></td>
-      <td><span class="tg tg-{{.Platform}}">{{.Platform}}</span></td>
-      <td class="mono t-mut">{{.CreatedAt}}</td>
-      <td>
+      <td class="title-cell" data-label="{{$.T "web.col.name"}}">{{.Label}}<span class="id mono t-mut">{{.ID}}</span></td>
+      <td data-label="{{$.T "web.col.platform"}}"><span class="tg tg-{{.Platform}}">{{.Platform}}</span></td>
+      <td class="mono t-mut" data-label="{{$.T "web.col.added"}}">{{.CreatedAt}}</td>
+      <td data-label="{{$.T "web.col.status"}}">
         {{if .Revoked}}<span class="tg tg-mut">{{$.T "web.consoles.revoked"}}</span>
         {{else}}<span class="tg tg-ok">{{$.T "web.consoles.live"}}</span>{{end}}
       </td>
-      <td class="acts">
+      <td class="acts" data-label="">
         <div class="row-actions">
           {{if not .Revoked}}
           <form method="post" action="/devices/{{.ID}}/revoke">

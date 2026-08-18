@@ -8,7 +8,7 @@
 {{if .User.ID}}
 <div class="shell">
   <aside class="sidebar">
-    <div class="brand"><span class="sq">大</span> DaeMoon</div>
+    <div class="brand"><span class="sq">大</span><span class="brand-name">DaeMoon</span></div>
 
     <p class="sechead">{{.T "web.nav.library"}}</p>
     <ul class="nav">
@@ -19,33 +19,54 @@
       {{end}}
     </ul>
 
-    <a class="btn btn-ghost btn-sm" href="/pair" style="display:block;text-align:center;margin-bottom:1.6rem">+ {{.T "web.nav.add_console"}}</a>
+    <a class="btn btn-ghost btn-sm" href="/pair" style="display:block;text-align:center;margin-bottom:1.6rem"
+       title="{{.T "web.nav.add_console"}}" aria-label="{{.T "web.nav.add_console"}}">
+      <span class="add-icon" aria-hidden="true">+</span><span class="add-label">{{.T "web.nav.add_console"}}</span>
+    </a>
 
     <div class="side-foot">
-      <p class="sechead">{{.T "web.nav.appearance"}}</p>
-      <form class="themes" method="post" action="/theme">
-        <input type="hidden" name="from" value="{{.Path}}">
-        {{$p := .}}
-        {{range .Themes}}
-        <button name="theme" value="{{.ID}}" class="theme-btn{{if .Current}} on{{end}}"
-                title="{{$p.T .Label}}">{{$p.T .Label}}</button>
-        {{end}}
-      </form>
+      <div class="side-preferences">
+        <p class="sechead">{{.T "web.nav.appearance"}}</p>
+        <details class="side-menu" name="side-preference">
+          <summary class="menu-trigger" title="{{.T "web.nav.appearance"}}" aria-label="{{.T "web.nav.appearance"}}">
+            <span class="ui-icon icon-theme" aria-hidden="true"></span>
+          </summary>
+          <form class="menu-panel" method="post" action="/theme">
+            <input type="hidden" name="from" value="{{.Path}}">
+            {{$p := .}}
+            {{range .Themes}}
+            <button name="theme" value="{{.ID}}" class="menu-option{{if .Current}} on{{end}}">
+              {{$p.T .Label}}
+            </button>
+            {{end}}
+          </form>
+        </details>
 
-      <p class="sechead" style="margin-top:1.4rem">{{.T "web.nav.language"}}</p>
-      <form method="post" action="/lang">
-        <input type="hidden" name="from" value="{{.Path}}">
-        <select name="lang" onchange="this.form.submit()">
-          {{range .Langs}}
-          <option value="{{.ID}}"{{if .Current}} selected{{end}}>{{.Label}}</option>
-          {{end}}
-        </select>
-        <noscript><button class="btn btn-ghost btn-sm" style="margin-top:.4rem">{{.T "web.nav.language"}}</button></noscript>
-      </form>
+        <p class="sechead" style="margin-top:1.4rem">{{.T "web.nav.language"}}</p>
+        <details class="side-menu side-menu-lang" name="side-preference">
+          <summary class="menu-trigger" title="{{.T "web.nav.language"}}" aria-label="{{.T "web.nav.language"}}">
+            <span class="ui-icon icon-language" aria-hidden="true"></span>
+          </summary>
+          <form class="menu-panel" method="post" action="/lang">
+            <input type="hidden" name="from" value="{{.Path}}">
+            {{range .Langs}}
+            <button name="lang" value="{{.ID}}" class="menu-option{{if .Current}} on{{end}}">
+              {{.Label}}
+            </button>
+            {{end}}
+          </form>
+        </details>
+      </div>
 
-      <p class="sechead" style="margin-top:1.4rem">{{.T "web.nav.signed_in"}}</p>
-      <div class="mono t-mut" style="margin-bottom:.6rem">{{.User.Username}}{{if .User.IsAdmin}} · {{.T "web.people.admin"}}{{end}}</div>
-      <form method="post" action="/logout"><button class="btn btn-ghost btn-sm">{{.T "web.nav.sign_out"}}</button></form>
+      <div class="side-session">
+        <p class="sechead" style="margin-top:1.4rem">{{.T "web.nav.signed_in"}}</p>
+        <div class="mono t-mut" style="margin-bottom:.6rem">{{.User.Username}}{{if .User.IsAdmin}} · {{.T "web.people.admin"}}{{end}}</div>
+        <form method="post" action="/logout">
+          <button class="btn btn-ghost btn-sm" title="{{.T "web.nav.sign_out"}}" aria-label="{{.T "web.nav.sign_out"}}">
+            <span class="ui-icon icon-signout" aria-hidden="true"></span><span class="signout-label">{{.T "web.nav.sign_out"}}</span>
+          </button>
+        </form>
+      </div>
     </div>
   </aside>
 

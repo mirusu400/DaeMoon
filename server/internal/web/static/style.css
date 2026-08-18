@@ -1,17 +1,22 @@
-/* One stylesheet, embedded in the binary, no framework and no CDN.
+/* One stylesheet and its small set of assets, embedded in the binary, with no
+ * framework and no CDN.
  *
- * The design this follows was drawn against Bootstrap and a Google font. Neither
- * is here on purpose: this panel is served by a self hosted binary on somebody's
- * home network, and a stylesheet that arrives from a CDN is a page that loses its
- * design the day that network has no route out - which is a normal state for the
- * thing this project is for. "One static binary plus one database file" stops
- * being true at the first <link> to somewhere else.
+ * This panel is served by a self hosted binary on somebody's home network, so a
+ * stylesheet, font, or icon that arrives from a CDN is a page that loses its
+ * design when that network has no route out. Pretendard Variable and the three
+ * Font Awesome SVGs used here live under /static and are embedded with this file.
  *
- * So the look is reproduced rather than imported: the palette, the type scale, the
- * hairline tables, the outline tags. The typeface is the system's, with the
- * tracking the design uses, because shipping a webfont would be a quarter of a
- * megabyte to avoid saying "system-ui".
+ * The full third-party packages are deliberately not shipped. One variable font
+ * covers every weight, and only the SVGs drawn by the controls are included.
  */
+
+@font-face {
+  font-family: "Pretendard Variable";
+  font-style: normal;
+  font-weight: 45 920;
+  font-display: swap;
+  src: url("/static/fonts/PretendardVariable.woff2") format("woff2");
+}
 
 /* Three appearances, one set of names.
  *
@@ -95,7 +100,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--tx);
-  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-serif;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+               system-ui, "Segoe UI", "Noto Sans KR", sans-serif;
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
 }
@@ -176,23 +182,87 @@ a:hover { color: var(--ds); }
    list above it reads as the point of the sidebar. */
 .side-foot { margin-top: 2rem; }
 
-/* Three small buttons in a row rather than a select: the choice is between three
-   fixed things and a dropdown would hide two of them. */
-.themes { display: flex; gap: .3rem; }
-.theme-btn {
-  flex: 1;
-  background: transparent;
+/* Appearance and language stay out of the way until asked for. Native details
+   gives both controls a keyboard-operable popover without adding panel-wide JS. */
+.side-menu { position: relative; width: max-content; }
+.side-menu summary { list-style: none; }
+.side-menu summary::-webkit-details-marker { display: none; }
+.ui-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: .9rem;
+  height: .9rem;
+  background: currentColor;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.icon-theme {
+  -webkit-mask-image: url("/static/icons/circle-half-stroke.svg");
+  mask-image: url("/static/icons/circle-half-stroke.svg");
+}
+.icon-language {
+  -webkit-mask-image: url("/static/icons/globe.svg");
+  mask-image: url("/static/icons/globe.svg");
+}
+.icon-signout {
+  -webkit-mask-image: url("/static/icons/right-from-bracket.svg");
+  mask-image: url("/static/icons/right-from-bracket.svg");
+}
+.menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  min-width: 2.5rem;
+  min-height: 2.25rem;
+  padding: .35rem .65rem;
   color: var(--mut);
+  background: transparent;
   border: 1px solid var(--bd);
-  border-radius: var(--r-sm);
-  padding: .35rem .2rem;
-  font-size: .72rem;
+  border-radius: var(--pill);
+  cursor: pointer;
+  font-size: .7rem;
   font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
+  user-select: none;
 }
-.theme-btn:hover { color: var(--tx); border-color: var(--mut); }
-.theme-btn.on { background: var(--tx); color: var(--bg); border-color: var(--tx); }
+.menu-trigger::after { content: "▾"; font-size: .65rem; transition: transform .15s ease; }
+.side-menu[open] .menu-trigger { color: var(--tx); border-color: var(--mut); }
+.side-menu[open] .menu-trigger::after { transform: rotate(180deg); }
+.menu-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + .4rem);
+  left: 0;
+  display: grid;
+  gap: .15rem;
+  min-width: 9rem;
+  padding: .35rem;
+  background: var(--surf);
+  border: 1px solid var(--bd);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow);
+}
+.menu-option {
+  width: 100%;
+  min-height: 0;
+  padding: .48rem .65rem;
+  color: var(--mut);
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--r-sm) - 2px);
+  text-align: left;
+  white-space: nowrap;
+  font-size: .78rem;
+}
+.menu-option:hover { color: var(--tx); background: var(--surf2); }
+.menu-option.on { color: var(--bg); background: var(--tx); }
+.side-session button { display: inline-flex; align-items: center; gap: .45rem; }
 
 /* --------------------------------------------------------------- surfaces */
 
@@ -336,6 +406,7 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
 
 .pair-split { display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: flex-start; }
 .qr { background: #fff; padding: .7rem; border-radius: var(--r-sm); display: inline-block; line-height: 0; }
+.qr img { display: block; max-width: 100%; height: auto; }
 .code {
   font: 800 2.6rem/1 ui-monospace, monospace;
   letter-spacing: .28em;
@@ -357,8 +428,159 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
 ::selection { background: var(--ds); color: var(--bg); }
 :focus-visible { outline: 2px solid var(--ds); outline-offset: 2px; }
 
+/* A phone is not a narrow desktop. The navigation becomes a short horizontal
+ * strip, and data tables change into labelled rows instead of requiring a
+ * horizontal scroll (which makes their actions especially easy to miss). */
 @media (max-width: 46rem) {
+  body { font-size: 16px; }
+
   .shell { display: block; }
-  .sidebar { width: auto; flex: none; border-right: 0; border-bottom: 1px solid var(--bd); }
+  .sidebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "brand controls controls"
+      "nav nav add";
+    align-items: center;
+    column-gap: .7rem;
+    row-gap: .65rem;
+    width: auto;
+    flex: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--bd);
+    padding: .7rem 1rem;
+  }
+  .brand { grid-area: brand; min-width: 0; margin: 0; }
+  .sidebar > .sechead { display: none; }
+
+  .nav {
+    grid-area: nav;
+    min-width: 0;
+    display: flex;
+    gap: .45rem;
+    overflow-x: auto;
+    margin: 0;
+    padding-bottom: .1rem;
+    scrollbar-width: thin;
+  }
+  .nav li { flex: 0 0 auto; }
+  .nav a .mono { display: none; }
+  .nav a {
+    min-height: 2.75rem;
+    padding: .55rem .75rem;
+    gap: .55rem;
+    white-space: nowrap;
+  }
+  .sidebar > .btn {
+    grid-area: add;
+    display: grid !important;
+    place-items: center;
+    width: 2.75rem;
+    min-height: 2.75rem;
+    margin: 0 !important;
+    padding: 0;
+    font-size: 1.15rem;
+  }
+  .sidebar > .btn .add-label { display: none; }
+
+  .side-foot {
+    grid-area: controls;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-top: 0;
+    padding: 0;
+    border: 0;
+  }
+  .side-preferences {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: .4rem;
+    align-items: center;
+  }
+  .side-preferences .sechead,
+  .side-session .sechead { display: none; }
+  .side-menu .menu-panel { left: auto; right: 0; }
+  .menu-trigger {
+    justify-content: center;
+    gap: .2rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: .3rem .5rem;
+  }
+  .menu-option { min-height: 2.5rem; }
+  .side-session {
+    margin: 0;
+  }
+  .side-session > div { display: none; }
+  .side-session .btn {
+    min-height: 2.5rem;
+    padding: .35rem .6rem;
+    white-space: nowrap;
+    font-size: .72rem;
+  }
+  .side-session .signout-label { display: none; }
+
   .content { padding: 1.2rem 1rem 3rem; }
+  .pagehead { align-items: stretch; margin-bottom: 1.2rem; }
+  .pagehead h1 { font-size: 1.45rem; }
+  .pagehead .row-actions { width: 100%; }
+  .pagehead .row-actions .btn { flex: 1; min-height: 2.75rem; text-align: center; }
+
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin-bottom: 1rem; }
+  .stat { padding: .85rem; }
+  .stat .v { font-size: 1.6rem; }
+
+  .table-card { overflow: hidden; }
+  .table-card table,
+  .table-card tbody,
+  .table-card tr,
+  .table-card td { display: block; width: 100%; }
+  .table-card thead { display: none; }
+  .table-card tbody { display: grid; gap: .55rem; padding: .55rem; }
+  .table-card tbody tr {
+    border: 1px solid var(--bd);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+  }
+  .table-card tbody tr:hover td { background: transparent; }
+  .table-card tbody td {
+    display: grid;
+    grid-template-columns: minmax(5.7rem, .85fr) minmax(0, 1.4fr);
+    gap: .75rem;
+    align-items: center;
+    padding: .65rem .75rem;
+    text-align: left;
+  }
+  .table-card tbody td::before {
+    content: attr(data-label);
+    color: var(--mut);
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+  .table-card tbody td.num { text-align: left; }
+  .table-card tbody td.acts { display: block; }
+  .table-card tbody td.acts::before { content: none; }
+  .table-card tbody td.acts .row-actions { justify-content: flex-start; }
+  .table-card tbody td.acts .btn { min-height: 2.6rem; }
+  .table-card .mono { overflow-wrap: anywhere; }
+
+  form.stack { max-width: none; }
+  button, .btn { min-height: 2.75rem; }
+  .btn-sm { min-height: 2.5rem; }
+
+  .pair-split { gap: .8rem; }
+  .pair-split > .card { width: 100%; }
+  .qr { width: min(100%, 15.5rem); }
+  .code { font-size: clamp(1.85rem, 12vw, 2.6rem); letter-spacing: .2em; }
+
+  .gate { padding: 1.25rem .85rem; }
+  .gate .card.pad { padding: 1rem; }
+}
+
+@media (max-width: 23rem) {
+  .stats { grid-template-columns: 1fr; }
+  .sidebar .brand-name { display: none; }
 }

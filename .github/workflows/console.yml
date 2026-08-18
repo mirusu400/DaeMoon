@@ -2,24 +2,20 @@ name: console
 
 # devkitPro builds. Split out and filtered: they need a container image and they
 # have nothing to say about a server change.
+# Pull requests only. A push to main builds both consoles in the nightly workflow -
+# including reading the CIA's exheader back - and doing it here as well would build the
+# same two toolchain images twice for every commit.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'core/**'
-      - 'platform/3ds/**'
-      - 'platform/nx/**'
-      - 'vendor/**'
-      - 'shared/lang/**'
-      - '.github/workflows/console.yml'
   pull_request:
     paths:
       - 'core/**'
+      - 'platform/common/**'
       - 'platform/3ds/**'
       - 'platform/nx/**'
       - 'vendor/**'
       - 'shared/lang/**'
       - '.github/workflows/console.yml'
+  workflow_dispatch:
 
 jobs:
   3ds:

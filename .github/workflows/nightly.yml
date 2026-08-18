@@ -1,0 +1,275 @@
+name: nightly
+
+# One prerelease, rebuilt whenever main moves, so there is always a current build of
+# all four targets without cutting a version for it.
+#
+# The tag is `nightly` and it moves. That is deliberate: a tag per build would leave a
+# release list nobody can read and a hundred tags to prune, and there is exactly one
+# question this answers - "what does main build into right now".
+#
+# Versioned releases are a separate thing and are not automated. The root CLAUDE.md
+# says they are prefixed per target (`3ds/v1.2.0`, `server/v2.1.0`), which is a
+# decision a person makes.
+on:
+  push:
+    branches: [main]
+  # A backstop. If a push run failed for a reason that has since gone away - a
+  # registry timeout is the usual one - the build comes back on its own rather than
+  # waiting for the next commit.
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  # The release.
+  contents: write
+  # The container image, pushed to this repository's own registry namespace.
+  packages: write
+
+concurrency:
+  # One at a time. Two runs publishing to the same moving tag would race, and the
+  # loser would leave a release holding half of one build and half of another.
+  group: nightly
+  # Queued rather than cancelled. Publishing deletes the release and recreates it, so
+  # a run cancelled between those two leaves no nightly at all until the next push -
+  # which is a worse outcome than a few minutes of waiting behind a build.
+  cancel-in-progress: false
+
+jobs:
+  # Nothing is published that has not passed the same checks a pull request has to.
+  # A nightly is the build people actually download, and "it is only a nightly" is how
+  # a broken one gets published on purpose.
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: build daemoonctl
+        run: make -C tools/cli ROOT=$PWD
+      - name: everything CI runs except the console builds
+        run: make check
+
+  server:
+    name: server (${{ matrix.goos }}/${{ matrix.goarch }})
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # What somebody self hosting actually runs on. The SQLite driver is pure Go
+          # and cross compiles without cgo, which is why this is a matrix rather than
+          # one build and an apology.
+          - { goos: linux,   goarch: amd64 }
+          - { goos: linux,   goarch: arm64 }
+          - { goos: linux,   goarch: arm,   goarm: '7' }
+          - { goos: darwin,  goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: '0'
+        run: |
+          set -eux
+          name="daemoond-${GOOS}-${GOARCH}${GOARM:+v$GOARM}"
+          # An `if`, not `[ ... ] && ...`. Under `set -e` the second form exits the
+          # whole script the moment the test is false, which here is every build that
+          # is not Windows - that is to say, almost all of them.
+          if [ "$GOOS" = windows ]; then
+            name="$name.exe"
+          fi
+          mkdir -p out
+          cd server
+          # -trimpath so the binary does not carry this runner's directory layout,
+          # and the version stamped in so a downloaded binary can say what it is.
+          go build -trimpath \
+            -ldflags "-s -w -X main.version=nightly-$(git rev-parse --short HEAD)" \
+            -o "../out/$name" ./cmd/daemoond
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
+          path: out/*
+          if-no-files-found: error
+
+  image:
+    name: container image
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      # amd64 and arm64. The second is not a nicety: a t4g or any other Graviton
+      # instance is arm64, and those are the cheapest thing this will be run on.
+      #
+      # No QEMU step, because nothing is emulated. The build stage runs natively and Go
+      # cross compiles to the target - emulating an arm64 toolchain to produce an arm64
+      # binary is slower and it does not even work: `go mod download` dies with exit 255
+      # under QEMU.
+      - name: build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/server.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/daemoon-server:nightly
+          build-args: VERSION=nightly-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  3ds:
+    name: 3ds cia
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: toolchain image
+        run: docker build -f docker/3ds.Dockerfile -t daemoon-3ds:local .
+      # The stamp is what tells two builds apart in a bug report, and a commit alone
+      # is not enough: two builds from the same dirty tree carried the same stamp
+      # once and a survey could not be attributed to either.
+      - name: build the cia
+        run: make docker-cia
+      - name: check the cia permissions
+        run: |
+          docker build -f docker/ctrtool.Dockerfile -t daemoon-ctrtool:local .
+          make cia-verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cia
+          path: platform/3ds/daemoon.cia
+          if-no-files-found: error
+
+  nx:
+    name: switch nro
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: toolchain image
+        run: docker build -f docker/nx.Dockerfile -t daemoon-nx:local .
+      - name: build the nro
+        run: make docker-nx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nro
+          path: platform/nx/daemoon.nro
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: [server, image, 3ds, nx]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The whole history, so the notes below can list what changed since the
+          # last nightly rather than saying nothing.
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: collect
+        id: collect
+        run: |
+          set -eu
+          mkdir -p release
+          short=$(git rev-parse --short HEAD)
+
+          # Named after the commit. A file on somebody's disk a week later has to be
+          # able to say which build it is, and "daemoon.cia" cannot.
+          for path in $(find artifacts -type f | sort); do
+            base=$(basename "$path")
+            case "$base" in
+              daemoon.cia) out="daemoon-3ds-$short.cia" ;;
+              daemoon.nro) out="daemoon-switch-$short.nro" ;;
+              *.exe)       out="${base%.exe}-$short.exe" ;;
+              *)           out="$base-$short" ;;
+            esac
+            cp "$path" "release/$out"
+          done
+
+          ls -l release
+          echo "short=$short" >> "$GITHUB_OUTPUT"
+      # Checksums, in the release rather than only in the log. A console build that
+      # writes to save data is not something to install from a file nobody can check.
+      - name: checksums
+        run: cd release && sha256sum * | tee SHA256SUMS
+      - name: notes
+        id: notes
+        run: |
+          set -eu
+          {
+            echo "Built from \`$(git rev-parse HEAD)\` on $(git log -1 --format=%cI)."
+            echo
+            echo "**This is a build of main, not a release.** It moves whenever main"
+            echo "does. Every commit here passed \`make check\`, and the 3DS CIA had"
+            echo "its exheader read back - but nothing here has been on a console"
+            echo "unless the commit message says so."
+            echo
+            echo "| file | what |"
+            echo "|---|---|"
+            echo "| \`daemoon-3ds-*.cia\` | 3DS. Install with FBI. A CIA, because a 3dsx cannot reach another title's save archive. |"
+            echo "| \`daemoon-switch-*.nro\` | Switch. Phase 6 MVP: nothing in it has been verified on hardware yet. |"
+            echo "| \`daemoond-*\` | the server. One static binary plus one database file. |"
+            echo
+            echo "The server is also a container image, amd64 and arm64:"
+            echo
+            echo '```'
+            echo "docker run -d -p 8080:8080 -v daemoon-data:/data \\"
+            echo "  ghcr.io/${{ github.repository_owner }}/daemoon-server:nightly"
+            echo '```'
+            echo
+            echo "Or \`docker compose up -d\` with the \`compose.yml\` in the repository."
+            echo "| \`SHA256SUMS\` | check what you downloaded before installing something that writes to save data. |"
+            echo
+            echo "### Since the last nightly"
+            echo
+            prev=$(git rev-parse -q --verify refs/tags/nightly^{commit} 2>/dev/null || true)
+            if [ -n "$prev" ] && [ "$prev" != "$(git rev-parse HEAD)" ]; then
+              git log --no-merges --format='- %s (`%h`)' "$prev..HEAD" | head -40
+            else
+              echo "- nothing new, or no previous nightly to compare against"
+            fi
+          } > NOTES.md
+          cat NOTES.md
+      # The gh CLI rather than a third party action. It is already on the runner, and
+      # this repository rejects dependencies by default - a step that uploads files to
+      # an API this workflow is already authenticated against is not the place to make
+      # an exception.
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          short='${{ steps.collect.outputs.short }}'
+
+          # Deleted and recreated rather than edited. `gh release edit` leaves the old
+          # assets in place, so a build that stopped producing one of them would ship
+          # a release holding a file from a week ago beside four from today.
+          gh release delete nightly --yes --cleanup-tag 2>/dev/null || true
+
+          # A prerelease, so "latest" keeps pointing at a version somebody chose.
+          gh release create nightly \
+            --title "nightly ($short)" \
+            --notes-file NOTES.md \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            release/*

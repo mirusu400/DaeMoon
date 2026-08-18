@@ -1,0 +1,68 @@
+# One service, one volume. That is the deployment.
+#
+#   docker compose up -d
+#
+# Then open http://<host>:8080/ and make the first account. It is an administrator, and
+# that page stops working the moment it exists.
+#
+# TLS is not terminated here on purpose. A console has to trust the certificate, and
+# the two ways that works are a real certificate from a proxy in front of this, or a
+# self signed one with its CA on the console's SD card - which is a decision about the
+# network this runs on rather than something a compose file should assume. To serve TLS
+# directly, mount the pair and set DAEMOON_TLS_CERT and DAEMOON_TLS_KEY.
+
+services:
+  daemoond:
+    image: ghcr.io/mirusu400/daemoon-server:nightly
+    # To build from a checkout instead of pulling:
+    #   docker compose build
+    build:
+      context: .
+      dockerfile: docker/server.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Everything the service knows is in here: accounts, devices, metadata and every
+      # save blob. Blobs live in SQLite rather than on a filesystem so that this one
+      # directory is the backup, and so an upload cannot leave an orphaned file behind.
+      - daemoon-data:/data
+    environment:
+      DAEMOON_ADDR: ":8080"
+      DAEMOON_DB: /data/daemoon.db
+      # A save larger than this is refused before the body is read. 64 MiB is the
+      # default and is generous for a 3DS; Switch saves are the reason to raise it.
+      DAEMOON_MAX_SAVE_SIZE: "67108864"
+
+    # Nothing writes to the image, so the root filesystem is read only and the one
+    # directory that is written to is a tmpfs. An upload is staged in a temp file - a
+    # zip has to be read back to front to find its central directory - so /tmp needs to
+    # hold one package, not one per user.
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    user: "65532:65532"
+
+    # The image has no shell, so the check runs from outside it. `docker compose` needs
+    # a command it can exec *inside* the container, which scratch cannot provide, so
+    # this is deliberately absent and the endpoint is left for whatever watches the
+    # host: GET /healthz returns 200 and the version.
+    #
+    # If you want compose to do it, put a proxy in front and health check that.
+
+    # A save sync server on a home network does not need much, and this is measured
+    # rather than guessed: about 13 MB of process memory with thirty titles synced,
+    # the rest of what `docker stats` reports being reclaimable page cache.
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  daemoon-data:

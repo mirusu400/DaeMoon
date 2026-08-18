@@ -13,17 +13,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The version comes from server/go.mod rather than a literal. It was a
+      # literal, and it said 1.22 while the module said 1.25 and the password
+      # hashing used crypto/pbkdf2 - which is 1.24 and later. Every Go job in this
+      # file was failing on a version nobody had a reason to look at.
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
       # The generator is the language parity check: it refuses to emit a table when
       # a key is missing from any language, is empty, or uses a different
       # placeholder set than English.
       - name: generated files are current
         run: make gen-check
-      - name: core includes no platform headers
+      - name: core and platform/common include no platform headers
         run: make core-isolation
+      # The structures are the same size on a desktop, which is the part that goes
+      # wrong: a 50 KiB frame is invisible here and a data abort on a console.
+      - name: no oversized stack frames
+        run: make stack-check
       - name: handlers match shared/openapi.yaml
         run: make spec-check
       - name: tools
@@ -55,9 +63,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The version comes from server/go.mod rather than a literal. It was a
+      # literal, and it said 1.22 while the module said 1.25 and the password
+      # hashing used crypto/pbkdf2 - which is 1.24 and later. Every Go job in this
+      # file was failing on a version nobody had a reason to look at.
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
       - name: vet
         run: cd server && go vet ./...
@@ -78,9 +90,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The version comes from server/go.mod rather than a literal. It was a
+      # literal, and it said 1.22 while the module said 1.25 and the password
+      # hashing used crypto/pbkdf2 - which is 1.24 and later. Every Go job in this
+      # file was failing on a version nobody had a reason to look at.
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
       # The real daemoonctl against the real daemoond. The unit suites each pass
       # against a stand in, and the two bugs this catches were only visible when

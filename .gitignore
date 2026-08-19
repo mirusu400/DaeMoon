@@ -16,3 +16,5 @@ daemoon-work/
 !platform/3ds/assets/banner.bnr
 *.icn
 *.map
+__pycache__/
+*.pyc

@@ -125,6 +125,67 @@ def check(path):
     print(f"banner: ok ({path})")
     for k, v in have.items():
         print(f"  {k}: {v}")
+    for note in texture_notes(cgfx, data_off):
+        print(f"  {note}")
+
+
+# Bytes per texel for the PICA formats a banner texture is likely to use. The
+# format the hardware is told about lives in the texture object; the GL pair
+# beside it is a mirror of the same thing for tools.
+BYTES_PER_TEXEL = {0: 4, 1: 3, 2: 2, 3: 2, 4: 2, 5: 2, 6: 1, 7: 1, 8: 1}
+PICA_FORMAT = {0: "RGBA8", 1: "RGB8", 2: "RGBA5551", 3: "RGB565", 4: "RGBA4444",
+               5: "LA8", 6: "HILO8", 7: "L8", 8: "A8"}
+
+
+def texture_notes(cgfx, data_off):
+    """Look at the texture the banner will actually sample.
+
+    A texture object can be present and still describe nothing usable, so the
+    parts that decide whether a sampler can read it are checked here: the size,
+    that the dimensions are powers of two, and that the image really holds
+    width x height texels of the format it claims.
+    """
+    field = data_off + 8 + 1 * 8
+    count, rel = struct.unpack_from("<Ii", cgfx, field)
+    if not count:
+        return []
+    dic = field + 4 + rel
+    entry = dic + 0x0C + 0x10
+    obj = entry + 0x0C + struct.unpack_from("<i", cgfx, entry + 0x0C)[0]
+    if cgfx[obj + 4:obj + 8] != b"TXOB":
+        raise ValueError("the textures dictionary does not point at a TXOB")
+
+    height, width = struct.unpack_from("<II", cgfx, obj + 0x18)
+    gl_format, gl_type = struct.unpack_from("<II", cgfx, obj + 0x20)
+    hw_format = struct.unpack_from("<I", cgfx, obj + 0x34)[0]
+    image_bytes = struct.unpack_from("<I", cgfx, obj + 0x44)[0]
+
+    if not width or not height:
+        raise ValueError(f"the banner texture is {width}x{height}")
+    for side, name in ((width, "width"), (height, "height")):
+        if side & (side - 1):
+            raise ValueError(f"texture {name} {side} is not a power of two, "
+                             "which the GPU requires")
+    if not image_bytes:
+        raise ValueError("the banner texture declares no image data")
+
+    bpp = BYTES_PER_TEXEL.get(hw_format)
+    if bpp and image_bytes != width * height * bpp:
+        raise ValueError(
+            f"the texture says {width}x{height} in "
+            f"{PICA_FORMAT.get(hw_format, hw_format)} but carries {image_bytes} "
+            f"bytes, not {width * height * bpp}")
+
+    notes = [f"texture: {width}x{height} "
+             f"{PICA_FORMAT.get(hw_format, hw_format)}, {image_bytes} bytes"]
+    # Not fatal on its own - the hardware format above is the field that decides
+    # what the sampler reads - but a working banner from bannertool fills both,
+    # and an exporter that leaves these at zero is worth knowing about before a
+    # console is the thing that tells you.
+    if not gl_format or not gl_type:
+        notes.append(f"note: glFormat={gl_format:#x} glType={gl_type:#x} are unset; "
+                     "bannertool writes 0x6752 / 0x8033 for RGBA4444")
+    return notes
 
 
 if __name__ == "__main__":

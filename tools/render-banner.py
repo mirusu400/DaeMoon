@@ -50,6 +50,17 @@ def load(path):
                             count=n, offset=off)
         return raw.astype(np.float64).reshape(a["count"], COUNT[a["type"]])
 
+    # The model colours itself from a stripe atlas: every material samples one
+    # band of a 64x64 texture. One lookup per mesh is enough here, because a mesh
+    # and a colour are the same thing in this model - and it keeps this a
+    # rasteriser rather than a texture unit.
+    atlas = None
+    if g.get("images"):
+        import io
+        uri = g["images"][0]["uri"]
+        atlas = np.asarray(Image.open(io.BytesIO(
+            base64.b64decode(uri.split(",", 1)[1]))).convert("RGB")) / 255.0
+
     parts = []
     for node in g["nodes"]:
         for prim in g["meshes"][node["mesh"]]["primitives"]:
@@ -58,8 +69,13 @@ def load(path):
             # No index buffer in this file: the primitives are plain triangle lists.
             idx = (accessor(prim["indices"]).ravel().astype(int)
                    if "indices" in prim else np.arange(len(pos)))
-            colour = np.array(g["materials"][prim["material"]]
-                              ["pbrMetallicRoughness"]["baseColorFactor"][:3])
+            pbr = g["materials"][prim["material"]]["pbrMetallicRoughness"]
+            if atlas is not None and "baseColorTexture" in pbr:
+                uv = accessor(prim["attributes"]["TEXCOORD_0"]).mean(axis=0)
+                h, w = atlas.shape[:2]
+                colour = atlas[min(int(uv[1] * h), h - 1), min(int(uv[0] * w), w - 1)]
+            else:
+                colour = np.array(pbr["baseColorFactor"][:3])
             parts.append((pos, nrm, idx.reshape(-1, 3), colour))
     return parts
 

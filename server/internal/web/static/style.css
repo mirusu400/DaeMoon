@@ -3,8 +3,9 @@
  *
  * This panel is served by a self hosted binary on somebody's home network, so a
  * stylesheet, font, or icon that arrives from a CDN is a page that loses its
- * design when that network has no route out. Pretendard Variable and the three
- * Font Awesome SVGs used here live under /static and are embedded with this file.
+ * design when that network has no route out. Pretendard Variable, the three Font
+ * Awesome SVGs and GitHub's own mark all live under /static and are embedded with
+ * this file.
  *
  * The full third-party packages are deliberately not shipped. One variable font
  * covers every weight, and only the SVGs drawn by the controls are included.
@@ -211,6 +212,12 @@ a:hover { color: var(--ds); }
 .icon-signout {
   -webkit-mask-image: url("/static/icons/right-from-bracket.svg");
   mask-image: url("/static/icons/right-from-bracket.svg");
+}
+/* GitHub's own mark rather than a Font Awesome one, because a logo should be the
+   logo. Octicons, MIT, one icon: see static/licenses/. */
+.icon-github {
+  -webkit-mask-image: url("/static/icons/github.svg");
+  mask-image: url("/static/icons/github.svg");
 }
 .menu-trigger {
   display: inline-flex;
@@ -558,9 +565,10 @@ a.lrow:hover .mono { color: var(--ds); }
 
 .lfoot { border-top: 1px solid var(--bd); margin-top: 3.5rem; color: var(--mut); font-size: .82rem; }
 .lfoot-in { display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; padding-top: 1.6rem; padding-bottom: 2.4rem; }
-.lfoot-name { max-width: 46ch; }
-.lfoot a { color: var(--tx); }
-.lfoot a:hover { color: var(--ds); }
+.lfoot a { color: var(--mut); }
+.lfoot a:hover { color: var(--tx); }
+.lfoot-gh { display: inline-flex; }
+.lfoot-gh .ui-icon { width: 1.25rem; height: 1.25rem; }
 .lfoot-lang { margin-left: auto; }
 .lfoot-lang select { width: auto; color: var(--mut); }
 

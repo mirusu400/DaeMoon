@@ -158,10 +158,6 @@
         <span class="t-mut">{{.T "web.welcome.dl_server"}}</span>
         <span class="mono">daemoond · linux / macos / windows</span>
       </a>
-      <div class="lrow">
-        <span class="t-mut">{{.T "web.welcome.install.pairing"}}</span>
-        <span class="mono">DAEMOON|1|&lt;server&gt;|&lt;code&gt;</span>
-      </div>
     </div>
     <p class="t-mut lnote">{{.T "web.welcome.dl_3ds_note"}}</p>
     <p class="t-mut lnote">{{.T "web.welcome.dl_nx_note"}}</p>
@@ -181,9 +177,11 @@
 
 <footer class="lfoot">
   <div class="lwrap lfoot-in">
-    <span class="lfoot-name">{{.T "web.welcome.foot_name"}}</span>
-    <a href="{{.Downloads.Source}}" rel="noopener">{{.T "web.welcome.source"}}</a>
-    <a href="{{.Downloads.ThreeDS}}" rel="noopener">{{.T "web.welcome.downloads"}}</a>
+    {{/* The mark alone, so it still has a name for anyone not looking at it. */}}
+    <a class="lfoot-gh" href="{{.Downloads.Source}}" rel="noopener"
+       title="{{.T "web.welcome.source"}}" aria-label="{{.T "web.welcome.source"}}">
+      <span class="ui-icon icon-github" aria-hidden="true"></span>
+    </a>
     <form method="post" action="/lang" class="lfoot-lang">
       <input type="hidden" name="from" value="{{.Path}}">
       <select name="lang" onchange="this.form.submit()">

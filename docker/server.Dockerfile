@@ -50,11 +50,19 @@ RUN printf 'daemoon:x:65532:65532:daemoon:/nonexistent:/sbin/nologin\n' > /out/p
 # the Dockerfile.
 RUN mkdir -m 1777 /out/tmp
 
+# /data has to exist in the image, owned by the user that runs. Docker seeds an empty
+# named volume from the image's directory - contents *and* ownership - and when the
+# directory is absent it creates the mountpoint root owned instead. On scratch that is
+# every fresh deployment: the server comes up, cannot create its database file, and
+# restarts forever on `unable to open database file (14)`.
+RUN mkdir -m 755 /out/data
+
 FROM scratch
 
 COPY --from=build /out/passwd /etc/passwd
 COPY --from=build /out/daemoond /daemoond
 COPY --from=build --chown=65532:65532 /out/tmp /tmp
+COPY --from=build --chown=65532:65532 /out/data /data
 
 # Where the one database file goes. Everything the service knows is in here - accounts,
 # devices, metadata and every save blob - which is the point of putting blobs in SQLite

@@ -124,6 +124,14 @@ jobs:
       # under QEMU.
       - name: build and push
         uses: docker/build-push-action@v6
+        # This action uploads a build record as an extra `*.dockerbuild` artifact,
+        # and publish downloads every artifact this run produced. That download
+        # failed after five retries on both nightlies that got as far as trying,
+        # taking a release down with it - so the whole publish job was lost to a
+        # file nothing here reads. Nothing consumes the build record; the release
+        # is assembled from the artifacts the jobs upload by name.
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           context: .
           file: docker/server.Dockerfile

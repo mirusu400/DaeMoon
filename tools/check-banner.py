@@ -127,6 +127,36 @@ def check(path):
         print(f"  {k}: {v}")
     for note in texture_notes(cgfx, data_off):
         print(f"  {note}")
+    for note in model_notes(cgfx, data_off):
+        print(f"  {note}")
+
+
+def model_notes(cgfx, data_off):
+    """What the model says about itself, beside what a working banner says.
+
+    Not failures. These are the differences left between a banner that draws and
+    one that does not, written down where the next person looking at a blank top
+    screen will find them.
+    """
+    field = data_off + 8
+    count, rel = struct.unpack_from("<Ii", cgfx, field)
+    if not count:
+        return []
+    entry = field + 4 + rel + 0x0C + 0x10
+    obj = entry + 0x0C + struct.unpack_from("<i", cgfx, entry + 0x0C)[0]
+    if cgfx[obj + 4:obj + 8] != b"CMDL":
+        return []
+
+    notes = []
+    # +0x28 is how many animation groups the model declares and +0x2c points at
+    # them. bannertool writes three - SkeletalAnimation, VisibilityAnimation and
+    # MaterialAnimation - even for a banner that never moves.
+    groups = struct.unpack_from("<I", cgfx, obj + 0x28)[0]
+    if not groups:
+        notes.append("note: the model declares no animation groups; a banner "
+                     "from bannertool declares SkeletalAnimation, "
+                     "VisibilityAnimation and MaterialAnimation even when static")
+    return notes
 
 
 # Bytes per texel for the PICA formats a banner texture is likely to use. The

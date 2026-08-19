@@ -30,7 +30,6 @@ OUT = ROOT / "platform/3ds/assets/banner.png"
 
 W, H = 256, 128          # what a 3DS banner is
 SS = 4                   # supersampling, then averaged down
-TEXT_ABOVE = 14.0        # model units: everything above this is the 3D wordmark
 TOP, BOTTOM = (0x0B, 0x1A, 0x46), (0x05, 0x0B, 0x22)
 
 COMPONENT = {5120: "i1", 5121: "u1", 5122: "i2", 5123: "u2", 5125: "u4", 5126: "f4"}
@@ -165,19 +164,13 @@ def font(bold, size):
 def main():
     parts = load(MODEL)
 
-    # Leave the 3D wordmark out: at 256x128 it is a smudge, and the name is set
-    # in type below where it can be read.
-    gate = [(pos, nrm, tris[~(pos[tris][:, :, 1] > TEXT_ABOVE).all(axis=1)], col)
-            for pos, nrm, tris, col in parts]
-
-    side = 512
-    rgb, alpha = render(gate, side * SS, side * SS,
-                        np.deg2rad(-18), np.deg2rad(8), distance=2.6)
-    rgb = rgb.reshape(side, SS, side, SS, 3).mean(axis=(1, 3))
-    alpha = alpha.reshape(side, SS, side, SS).mean(axis=(1, 3))
-    model = Image.fromarray(
-        (np.concatenate([rgb, alpha[..., None]], -1) * 255).astype(np.uint8), "RGBA")
-    model = model.crop(model.getbbox())
+    # The model is the whole banner now: gate, moon and wordmark laid out
+    # landscape. Nothing is left out and nothing is added - an earlier model was
+    # portrait with the name stacked on top, and that one needed both.
+    rgb, alpha = render(parts, W * SS, H * SS,
+                        np.deg2rad(-12), np.deg2rad(5), distance=2.05)
+    rgb = rgb.reshape(H, SS, W, SS, 3).mean(axis=(1, 3))
+    alpha = alpha.reshape(H, SS, W, SS).mean(axis=(1, 3))
 
     banner = Image.new("RGB", (W, H))
     draw = ImageDraw.Draw(banner)
@@ -186,14 +179,9 @@ def main():
         draw.line([(0, y), (W, y)],
                   fill=tuple(int(round(a + (b - a) * t)) for a, b in zip(TOP, BOTTOM)))
 
-    scaled = model.resize((max(1, round(model.width * 108 / model.height)), 108),
-                          Image.LANCZOS)
-    banner.paste(scaled, (8, (H - scaled.height) // 2 + 2), scaled)
-
-    draw.text((126, H // 2 - 11), "DaeMoon", font=font(True, 22),
-              fill=(0xED, 0xEE, 0xF0), anchor="lm")
-    draw.text((128, H // 2 + 10), "save data sync", font=font(False, 10),
-              fill=(0x8F, 0xA6, 0xD8), anchor="lm")
+    model = Image.fromarray(
+        (np.concatenate([rgb, alpha[..., None]], -1) * 255).astype(np.uint8), "RGBA")
+    banner.paste(model, (0, 0), model)
 
     banner.save(OUT)
     print(f"wrote {OUT.relative_to(ROOT)} ({W}x{H})")

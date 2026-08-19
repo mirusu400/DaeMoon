@@ -12,8 +12,6 @@ daemoon-work/
 *.smdh
 *.nacp
 *.bnr
-# The prebuilt banner is a source asset, not a build artifact.
-!platform/3ds/assets/banner.bnr
 *.icn
 *.map
 __pycache__/

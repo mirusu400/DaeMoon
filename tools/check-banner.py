@@ -100,6 +100,8 @@ def check(path):
     if raw[cwav_off:cwav_off + 4] != b"CWAV":
         raise ValueError("the audio the CBMD points at is not a CWAV")
 
+    audio_notes = check_audio(raw[cwav_off:])
+
     cgfx = lz11(raw[cgfx_off:cwav_off])
     if cgfx[:4] != b"CGFX":
         raise ValueError(f"the compressed banner is not a CGFX (magic {cgfx[:4]!r})")
@@ -129,6 +131,35 @@ def check(path):
         print(f"  {note}")
     for note in model_notes(cgfx, data_off):
         print(f"  {note}")
+    for note in audio_notes:
+        print(f"  {note}")
+
+
+# What a banner's audio runs at. bannertool resamples to this whatever it is
+# handed, and every banner known to draw carries it.
+BANNER_RATE = 32000
+
+
+def check_audio(cwav):
+    """The field that cost four hardware rounds.
+
+    Four banners in a row drew nothing. Their CGFX was byte for byte what
+    bannertool produces from the same model, and the only difference left in the
+    whole file was the audio: 44100 Hz where a banner's is 32000. The HOME Menu
+    drew no banner at all and reported nothing, so the sample rate of a sound
+    nobody was listening for took out the picture.
+    """
+    info = cwav.find(b"INFO")
+    if info < 0:
+        raise ValueError("the banner audio has no INFO block")
+    rate = struct.unpack_from("<I", cwav, info + 0x0C)[0]
+    if rate != BANNER_RATE:
+        raise ValueError(
+            f"the banner audio is {rate} Hz; a banner's is {BANNER_RATE}. "
+            "Four banners drew nothing with this as the only difference left. "
+            "Build the banner from a CGFX with bannertool rather than taking a "
+            "finished .bnr, and the audio comes out right.")
+    return [f"audio: {rate} Hz"]
 
 
 def model_notes(cgfx, data_off):

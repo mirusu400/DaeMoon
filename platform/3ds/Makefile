@@ -156,23 +156,30 @@ $(BUILD)/savedata.stamp: FORCE
 
 FORCE:
 
-# A prebuilt banner (3D model + audio, made with bannertool makebanner -cgfx / a
-# CBMD authoring tool) takes precedence over the flat png+wav one. Drop it at
-# assets/banner.bnr; removing it reverts to generating a banner from banner.png
-# and audio.wav.
-BANNER_BNR := $(wildcard $(TOPDIR)/assets/banner.bnr)
+# The banner is assembled here, from a model or a picture plus our own audio.
+#
+# It used to accept a finished .bnr as well, and that is how four banners in a
+# row failed to draw. The CGFX inside them was fine - byte for byte what
+# bannertool produces from the same model - but each carried its own CWAV at
+# 44100 Hz, where a banner's audio is 32000. The HOME Menu drew nothing at all
+# and said nothing about why.
+#
+# So a container from somewhere else is not an input any more. Drop in a CGFX
+# and the audio beside it is ours; drop in nothing and the picture is used.
+BANNER_CGFX := $(wildcard $(TOPDIR)/assets/banner.cgfx)
 
 $(OUTPUT).cia: $(OUTPUT).elf $(OUTPUT).smdh $(RSF) $(BUILD)/savedata.stamp \
-              $(if $(BANNER_BNR),$(BANNER_BNR),$(TOPDIR)/assets/banner.png $(TOPDIR)/assets/audio.wav)
-ifneq ($(BANNER_BNR),)
-	@cp $(BANNER_BNR) $(OUTPUT).bnr
+              $(TOPDIR)/assets/audio.wav \
+              $(if $(BANNER_CGFX),$(BANNER_CGFX),$(TOPDIR)/assets/banner.png)
+ifneq ($(BANNER_CGFX),)
+	@bannertool makebanner -ci $(BANNER_CGFX) -a $(TOPDIR)/assets/audio.wav \
+		-o $(OUTPUT).bnr >/dev/null
 else
 	@bannertool makebanner -i $(TOPDIR)/assets/banner.png -a $(TOPDIR)/assets/audio.wav \
 		-o $(OUTPUT).bnr >/dev/null
 endif
 	@# Read it back. A banner can be a valid CBMD holding a valid CGFX and still
-	@# draw nothing, which is what a 3D scene export did: no texture object, and
-	@# an empty top screen with no error anywhere to explain it.
+	@# draw nothing, so what is checkable is checked before it reaches a console.
 	@python3 $(TOPDIR)/../../tools/check-banner.py $(OUTPUT).bnr >/dev/null
 	@makerom -f cia -o $@ -elf $(OUTPUT).elf -rsf $(RSF) \
 		-DSAVEDATA_SIZE=$(SAVEDATA_SIZE) \

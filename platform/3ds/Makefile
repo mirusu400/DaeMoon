@@ -170,6 +170,10 @@ else
 	@bannertool makebanner -i $(TOPDIR)/assets/banner.png -a $(TOPDIR)/assets/audio.wav \
 		-o $(OUTPUT).bnr >/dev/null
 endif
+	@# Read it back. A banner can be a valid CBMD holding a valid CGFX and still
+	@# draw nothing, which is what a 3D scene export did: no texture object, and
+	@# an empty top screen with no error anywhere to explain it.
+	@python3 $(TOPDIR)/../../tools/check-banner.py $(OUTPUT).bnr >/dev/null
 	@makerom -f cia -o $@ -elf $(OUTPUT).elf -rsf $(RSF) \
 		-DSAVEDATA_SIZE=$(SAVEDATA_SIZE) \
 		-icon $(OUTPUT).smdh -banner $(OUTPUT).bnr -exefslogo -target t \

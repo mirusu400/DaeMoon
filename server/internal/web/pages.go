@@ -153,14 +153,20 @@ func (s *Server) postPair(w http.ResponseWriter, r *http.Request) {
 // 192.168.1.13:8443 hands out that address rather than whatever was configured once
 // and then moved.
 func (s *Server) pairPayload(r *http.Request, code string) string {
+	return fmt.Sprintf("DAEMOON|1|%s|%s", requestOrigin(r), code)
+}
+
+// requestOrigin is the scheme and host this instance was actually reached at.
+//
+// Taken from the request rather than from configuration, so an instance reached
+// at 192.168.1.13:8443 hands out that address rather than whatever was set once
+// and then moved. X-Forwarded-Proto because TLS is usually terminated in front.
+func requestOrigin(r *http.Request) string {
 	scheme := "http"
-	if r.TLS != nil {
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "https"
 	}
-	if proto := r.Header.Get("X-Forwarded-Proto"); proto == "https" {
-		scheme = "https"
-	}
-	return fmt.Sprintf("DAEMOON|1|%s://%s|%s", scheme, r.Host, code)
+	return scheme + "://" + r.Host
 }
 
 // getPairStatus is polled by the page while somebody carries a console across the
@@ -187,15 +193,21 @@ func (s *Server) getPairQR(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	img, err := qr.Encode([]byte(s.pairPayload(r, code)))
+	writeQRSVG(w, r, s.pairPayload(r, code))
+}
+
+// writeQRSVG draws one code.
+//
+// SVG rather than a raster: no image encoder, no size to choose, and it scales to
+// whatever the browser gives it - which matters when the thing reading it is a
+// console camera being held at arm's length.
+func writeQRSVG(w http.ResponseWriter, r *http.Request, payload string) {
+	img, err := qr.Encode([]byte(payload))
 	if err != nil {
-		s.fail(w, r, err, "could not draw the code")
+		http.Error(w, "could not draw the code", http.StatusInternalServerError)
 		return
 	}
 
-	// SVG rather than a raster: no image encoder, no size to choose, and it scales
-	// to whatever the browser gives it - which matters when the thing reading it is
-	// a 3DS camera being held at arm's length.
 	const quiet = 4
 	side := img.Size + quiet*2
 

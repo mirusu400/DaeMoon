@@ -146,10 +146,30 @@
   <div>
     <p class="sechead">{{.T "web.welcome.nav.install"}}</p>
     <div class="card lrows">
+      {{if .InstallQR}}
+      {{/* The 3DS row opens rather than leaves: a console with a camera does not
+           need somebody to carry a file to it. details, so this works with no
+           JavaScript, like every other control here. */}}
+      <details class="lrow-qr">
+        <summary class="lrow">
+          <span class="t-mut">{{.T "web.welcome.dl_3ds"}}</span>
+          <span class="mono">daemoon-3ds-*.cia · FBI</span>
+        </summary>
+        <div class="lqr">
+          <img class="qr" src="/install/3ds.qr.svg" width="180" height="180" alt="">
+          <div>
+            <p class="lqr-head">{{.T "web.welcome.qr.head"}}</p>
+            <p class="t-mut lqr-how">{{.T "web.welcome.qr.how"}}</p>
+            <p class="lqr-alt"><a href="{{.Downloads.ThreeDS}}" rel="noopener">{{.T "web.welcome.qr.manual"}}</a></p>
+          </div>
+        </div>
+      </details>
+      {{else}}
       <a class="lrow" href="{{.Downloads.ThreeDS}}" rel="noopener">
         <span class="t-mut">{{.T "web.welcome.dl_3ds"}}</span>
         <span class="mono">daemoon-3ds-*.cia · FBI</span>
       </a>
+      {{end}}
       <a class="lrow" href="{{.Downloads.Switch}}" rel="noopener">
         <span class="t-mut">{{.T "web.welcome.dl_nx"}}</span>
         <span class="mono">daemoon-switch-*.nro · /switch/</span>

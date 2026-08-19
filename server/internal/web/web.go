@@ -57,9 +57,10 @@ const (
 )
 
 type Server struct {
-	store *store.Store
-	cfg   config.Config
-	tpl   *template.Template
+	store    *store.Store
+	cfg      config.Config
+	tpl      *template.Template
+	releases *releaseCache
 }
 
 func New(st *store.Store, cfg config.Config) (*Server, error) {
@@ -74,7 +75,7 @@ func New(st *store.Store, cfg config.Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
-	return &Server{store: st, cfg: cfg, tpl: tpl}, nil
+	return &Server{store: st, cfg: cfg, tpl: tpl, releases: &releaseCache{}}, nil
 }
 
 /* Static files are addressed by what is in them.
@@ -146,6 +147,11 @@ func (s *Server) Routes() chi.Router {
 	// The root is the one address somebody is given, so it answers for whoever
 	// arrives at it rather than bouncing everybody to a sign in form. See getRoot.
 	r.Get("/", s.getRoot)
+
+	// No session on either: the thing reading the code is a console that has
+	// never signed in to anything, and the thing following the URL is FBI.
+	r.Get(ciaPath, s.getInstallCIA)
+	r.Get("/install/3ds.qr.svg", s.getInstallQR)
 
 	r.Get("/setup", s.getSetup)
 	r.Post("/setup", s.postSetup)
@@ -255,7 +261,12 @@ func (s *Server) getRoot(w http.ResponseWriter, r *http.Request) {
 		s.getDashboard(w, r.WithContext(context.WithValue(r.Context(), userKey, user)))
 		return
 	}
-	s.render(w, r, "welcome.html", page{Title: "web.welcome.title"})
+	// Asked here rather than in render, so the panel's pages never wait on
+	// GitHub to draw a screen that has nothing to do with it.
+	s.render(w, r, "welcome.html", page{
+		Title:     "web.welcome.title",
+		InstallQR: s.installAvailable(r.Context()),
+	})
 }
 
 func (s *Server) redirectToLogin(w http.ResponseWriter, r *http.Request) {
@@ -336,7 +347,11 @@ type page struct {
 	SignUpOpen bool
 	Nav        nav
 	Downloads  downloads
-	Data       any
+	// InstallQR decides whether the welcome page offers the scan to install code.
+	// A code that cannot resolve to a build is worse than no code: somebody finds
+	// that out holding a console, after going to fetch one.
+	InstallQR bool
+	Data      any
 }
 
 /* Where the builds are.
@@ -351,8 +366,10 @@ type page struct {
  * is the same for every instance. A fork changes a line here.
  */
 const (
-	repoURL   = "https://github.com/mirusu400/DaeMoon"
-	buildsURL = repoURL + "/releases/tag/nightly"
+	repoSlug   = "mirusu400/DaeMoon"
+	repoURL    = "https://github.com/" + repoSlug
+	buildsURL  = repoURL + "/releases/tag/nightly"
+	releaseAPI = "https://api.github.com/repos/" + repoSlug + "/releases/tags/nightly"
 )
 
 type downloads struct {

@@ -554,6 +554,34 @@ a.lrow:hover { background: var(--surf2); }
 a.lrow:hover .mono { color: var(--ds); }
 .lnote { font-size: .82rem; line-height: 1.55; margin: .8rem 0 0; }
 
+/* The 3DS row opens onto the code its camera reads. */
+.lrow-qr { border-bottom: 1px solid var(--bd); }
+.lrow-qr:last-child { border-bottom: 0; }
+.lrow-qr > summary { list-style: none; cursor: pointer; border-bottom: 0; }
+.lrow-qr > summary::-webkit-details-marker { display: none; }
+.lrow-qr > summary:hover { background: var(--surf2); }
+.lrow-qr > summary:hover .mono { color: var(--ds); }
+/* The affordance, since a row that opens looks exactly like a row that links. */
+.lrow-qr > summary .mono::after { content: " ▾"; color: var(--mut); }
+.lrow-qr[open] > summary .mono::after { content: " ▴"; }
+.lqr {
+  display: flex; gap: 1.1rem; flex-wrap: wrap; align-items: flex-start;
+  padding: 0 .95rem 1rem;
+}
+/* White behind it whatever the theme is: a scanner reads dark on light, and a
+   code drawn in the page's own colours is a code that will not scan on a dark
+   theme. */
+.lqr .qr {
+  background: #fff; padding: .6rem; border-radius: var(--r-sm);
+  display: block; flex: 0 0 auto;
+}
+.lqr > div { flex: 1 1 12rem; min-width: 0; }
+.lqr-head { font-weight: 700; margin: 0 0 .35rem; }
+.lqr-how { margin: 0; font-size: .85rem; line-height: 1.55; }
+.lqr-alt { margin: .6rem 0 0; font-size: .85rem; }
+.lqr-alt a { color: var(--mut); text-decoration: underline; }
+.lqr-alt a:hover { color: var(--ds); }
+
 .lwont { list-style: none; margin: 0; padding: 0; }
 .lwont li {
   display: flex; gap: .7rem; align-items: baseline;

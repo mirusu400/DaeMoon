@@ -31,6 +31,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -62,8 +63,13 @@ type Server struct {
 }
 
 func New(st *store.Store, cfg config.Config) (*Server, error) {
+	digests, err := hashAssets()
+	if err != nil {
+		return nil, err
+	}
 	tpl, err := template.New("").Funcs(template.FuncMap{
 		"bytes": humanBytes,
+		"asset": func(name string) string { return assetURL(digests, name) },
 	}).ParseFS(assets, "templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
@@ -71,10 +77,71 @@ func New(st *store.Store, cfg config.Config) (*Server, error) {
 	return &Server{store: st, cfg: cfg, tpl: tpl}, nil
 }
 
+/* Static files are addressed by what is in them.
+ *
+ * A deployment behind a CDN published new HTML against a stylesheet that had been
+ * cached for four hours, and every page came out unstyled. Nothing was wrong with
+ * either file: they were from different builds, and the one URL they share is what
+ * let a cache pair them up that way.
+ *
+ * So the URL carries a digest of the contents. A build that changes a file changes
+ * its URL, an unchanged file keeps the URL it had, and no cache anywhere has to be
+ * asked to forget anything. It also means the answer to "the site looks broken
+ * after a deploy" stops being "purge the cache and wait".
+ *
+ * Computed once at startup from the embedded files, so there is no build step and
+ * nothing on disk to get out of step with the binary.
+ */
+func hashAssets() (map[string]string, error) {
+	out := map[string]string{}
+	err := fs.WalkDir(assets, "static", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, err := assets.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", path, err)
+		}
+		sum := sha256.Sum256(b)
+		out[strings.TrimPrefix(path, "static/")] = hex.EncodeToString(sum[:])[:10]
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hash static assets: %w", err)
+	}
+	return out, nil
+}
+
+// assetURL is `{{asset "style.css"}}`. An unknown name is returned unversioned
+// rather than dropped: a missing digest should cost a cache entry, not a
+// stylesheet.
+func assetURL(digests map[string]string, name string) string {
+	if sum, ok := digests[name]; ok {
+		return "/static/" + name + "?v=" + sum
+	}
+	return "/static/" + name
+}
+
+// staticCache decides how long a static file may be reused.
+//
+// A request that names a digest can be kept forever, because that URL can only
+// ever mean those bytes. One that does not has to be revalidated, since the same
+// URL will mean something else after the next deploy.
+func staticCache(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("v") != "" {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-cache")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *Server) Routes() chi.Router {
 	r := chi.NewRouter()
 
-	r.Handle("/static/*", http.FileServer(http.FS(assets)))
+	r.Handle("/static/*", staticCache(http.FileServer(http.FS(assets))))
 
 	// The root is the one address somebody is given, so it answers for whoever
 	// arrives at it rather than bouncing everybody to a sign in form. See getRoot.

@@ -420,82 +420,164 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
 .gate .box { width: min(24rem, 100%); }
 .gate .brand { justify-content: center; }
 
-/* The welcome page shares the signed out layout with the sign in form and wants
-   several times its width, so the box widens rather than the page growing a third
-   layout. Top aligned, because a page this tall centred vertically puts its first
-   line below the fold on a laptop. */
-.gate-wide { place-items: start center; }
-.gate-wide .box { width: min(58rem, 100%); }
-
 /* The language switch on a page with no sidebar. Quiet, but present: somebody who
    cannot read this page has to be able to find it without reading anything. */
 .gate-lang { margin-top: 1.2rem; text-align: center; }
 .gate-lang select { width: auto; color: var(--mut); }
 
-/* ------------------------------------------------------------- welcome */
+/* ------------------------------------------------------------- landing */
 
 /* The page somebody reaches by typing the address a console was paired against.
- * It answers what this is, what it will not do to a save, and where the builds
- * are, in that order.
+ * It is the one page here that is not the panel, so it has a top bar and a
+ * container rather than a sidebar, and it is the only place in this stylesheet
+ * where type is allowed to get large.
+ *
+ * Everything below still draws from the same tokens as the panel. A landing page
+ * that looked like a different product would be one.
  */
-.hero { text-align: center; padding: 1.6rem 0 2.2rem; }
-.hero-mark { display: block; margin: 0 auto .7rem; width: 88px; height: 88px; }
-.hero-brand { justify-content: center; margin-bottom: 1.4rem; font-size: 1.15rem; }
-.hero h1 {
-  font-size: clamp(1.5rem, 4.5vw, 2.1rem);
-  line-height: 1.25;
-  margin: 0 auto;
-  max-width: 30ch;
-}
-.hero-sub {
-  color: var(--mut);
-  margin: .9rem auto 0;
-  max-width: 52ch;
-  line-height: 1.55;
-}
-.hero-actions {
-  display: flex; gap: .6rem; justify-content: center; flex-wrap: wrap;
-  margin-top: 1.6rem;
-}
+.lwrap { width: min(72rem, 100%); margin: 0 auto; padding: 0 1.2rem; }
 
-/* The one thing on this page that is not optional reading, so it sits above the
-   three things that are, and is the only card here with a colour. */
-.wl-warn { margin-bottom: 2.2rem; }
-.wl-warn-head { font-weight: 700; color: var(--warn); margin: 0 0 .4rem; }
-.wl-warn-body { margin: 0; line-height: 1.55; }
+.lnav {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--bd);
+}
+.lnav-in { display: flex; align-items: center; gap: 1.4rem; padding-top: .7rem; padding-bottom: .7rem; }
+.lnav-brand { margin: 0; gap: .55rem; }
+.lnav-brand img { border-radius: 7px; }
+.lnav-links { display: flex; gap: 1.1rem; font-size: .88rem; }
+.lnav-links a { color: var(--mut); }
+.lnav-links a:hover { color: var(--tx); }
+.lnav-actions { margin-left: auto; display: flex; gap: .5rem; }
 
-.wl-points {
+/* Two columns: what it is on the left, what it does on the right. The figure is
+   not decoration - it is the comparison the whole thing is built around. */
+.lhero {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: .9rem;
-  margin-bottom: 2.4rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 3rem;
+  align-items: center;
+  padding-top: 4.5rem;
+  padding-bottom: 3.5rem;
 }
-.wl-points h2 { font-size: .98rem; margin-bottom: .45rem; }
-.wl-points p { margin: 0; font-size: .88rem; line-height: 1.55; }
+.kicker {
+  font-size: .78rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mut); font-weight: 700; margin: 0 0 1.2rem;
+}
+.lhero h1 {
+  font-size: clamp(2rem, 4.6vw, 3.2rem);
+  line-height: 1.08;
+  margin-bottom: 1.1rem;
+}
+/* The second line, in the 3DS blue. An em because it is emphasis, and not a span
+   with a class, so it still reads as emphasis with no stylesheet at all. */
+.lhero h1 em { font-style: normal; color: var(--ds); }
+.lhero .lede { color: var(--mut); font-size: 1.02rem; max-width: 46ch; line-height: 1.6; margin: 0; }
+.lhero-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1.8rem; }
 
-.wl-sechead { margin-bottom: .8rem; }
-.wl-downloads {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: .9rem;
+.lgate {
+  background: var(--surf);
+  border: 1px solid var(--bd);
+  border-radius: var(--r);
+  overflow: hidden;
 }
-/* A whole card is the target rather than a link inside one: a download is the
-   only thing any of these cards does. */
-.wl-dl {
-  display: grid;
-  gap: .45rem;
-  align-content: start;
-  transition: border-color .15s ease, background .15s ease;
+.lgate-hd {
+  display: flex; align-items: center; gap: .8rem;
+  padding: .6rem .9rem;
+  border-bottom: 1px solid var(--bd);
+  background: var(--surf2);
+  font-size: .7rem; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--mut); font-weight: 700;
 }
-.wl-dl .tg { justify-self: start; }
-.wl-dl:hover { border-color: var(--mut); background: var(--surf2); }
-.wl-dl-name { font-weight: 700; }
-.wl-dl-note { font-size: .84rem; line-height: 1.5; }
+.lgate-hd-r { margin-left: auto; letter-spacing: 0; text-transform: none; }
+.lgate-row { padding: .8rem .9rem; border-bottom: 1px solid var(--bd); }
+.lgate-row:last-child { border-bottom: 0; }
+/* The two sides and the verdict between them. The rules are on this band and not
+   on the whole row, so they stop where the comparison stops rather than running
+   down past the sentence that reads it out. */
+.lgate-cmp { display: grid; grid-template-columns: 1fr 3.4rem 1fr; align-items: center; gap: .8rem; }
+.lgate-cmp .who { font-size: .66rem; }
+.lgate-cmp .val { margin-top: .3rem; }
+.lgate-cmp .rr { text-align: right; }
+.lgate-cmp .rr .who { color: var(--mut); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.lgate-cmp .g {
+  text-align: center; font-weight: 700; font-size: .95rem;
+  align-self: stretch; display: flex; align-items: center; justify-content: center;
+  border-left: 1px solid var(--bd); border-right: 1px solid var(--bd);
+}
+.lgate-row .verdict { margin: .55rem 0 0; font-size: .8rem; }
+.lfig-note { font-size: .72rem; line-height: 1.6; margin: .7rem 0 0; }
 
-.wl-note { font-size: .82rem; line-height: 1.55; margin: .9rem 0 0; }
-.wl-source { margin: 2.2rem 0 0; text-align: center; font-size: .88rem; }
-.wl-source a { color: var(--mut); }
-.wl-source a:hover { color: var(--ds); }
+/* One line, and the only thing on this page somebody must not skip. */
+.lstrip {
+  display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+  border: 1px solid var(--warn);
+  border-radius: var(--r);
+  padding: .8rem 1rem;
+}
+.lstrip p { margin: 0; font-weight: 700; }
+
+.lsec { padding-top: 3.2rem; }
+.lgrid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .9rem; }
+.feat { padding: 1.4rem; }
+.feat .no { display: block; color: var(--mut); font-weight: 700; margin-bottom: .8rem; }
+.feat h2 { font-size: 1rem; margin-bottom: .45rem; }
+.feat p { color: var(--mut); font-size: .9rem; margin: 0; line-height: 1.55; }
+
+/* Four steps in one card rather than four cards: they are one sequence, and the
+   hairlines between them say so more quietly than gaps would. */
+.lsteps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.lstep { padding: 1.2rem; border-right: 1px solid var(--bd); }
+.lstep:last-child { border-right: 0; }
+.stepn { color: var(--ds); font-weight: 700; }
+.lstep h3 { font-size: .95rem; margin: .5rem 0 .35rem; }
+.lstep p { color: var(--mut); font-size: .85rem; line-height: 1.55; margin: 0; }
+
+.lsplit { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 2rem; }
+.lrows { overflow: hidden; }
+.lrow {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 1rem; flex-wrap: wrap;
+  padding: .75rem .95rem;
+  border-bottom: 1px solid var(--bd);
+}
+.lrow:last-child { border-bottom: 0; }
+a.lrow:hover { background: var(--surf2); }
+a.lrow:hover .mono { color: var(--ds); }
+.lnote { font-size: .82rem; line-height: 1.55; margin: .8rem 0 0; }
+
+.lwont { list-style: none; margin: 0; padding: 0; }
+.lwont li {
+  display: flex; gap: .7rem; align-items: baseline;
+  padding: .7rem 0;
+  border-bottom: 1px solid var(--bd);
+  font-size: .9rem; line-height: 1.55;
+}
+.lwont li:last-child { border-bottom: 0; }
+
+.lfoot { border-top: 1px solid var(--bd); margin-top: 3.5rem; color: var(--mut); font-size: .82rem; }
+.lfoot-in { display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; padding-top: 1.6rem; padding-bottom: 2.4rem; }
+.lfoot-name { max-width: 46ch; }
+.lfoot a { color: var(--tx); }
+.lfoot a:hover { color: var(--ds); }
+.lfoot-lang { margin-left: auto; }
+.lfoot-lang select { width: auto; color: var(--mut); }
+
+@media (max-width: 60rem) {
+  .lhero { grid-template-columns: minmax(0, 1fr); gap: 2.2rem; padding-top: 2.8rem; }
+  .lsteps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lstep:nth-child(2) { border-right: 0; }
+  .lstep:nth-child(-n+2) { border-bottom: 1px solid var(--bd); }
+}
+@media (max-width: 46rem) {
+  /* The anchors go first: on a phone the sign in button is what the bar is for. */
+  .lnav-links { display: none; }
+  .lsteps { grid-template-columns: minmax(0, 1fr); }
+  .lstep { border-right: 0; border-bottom: 1px solid var(--bd); }
+  .lstep:last-child { border-bottom: 0; }
+  .lfoot-lang { margin-left: 0; }
+}
 
 ::selection { background: var(--ds); color: var(--bg); }
 :focus-visible { outline: 2px solid var(--ds); outline-offset: 2px; }

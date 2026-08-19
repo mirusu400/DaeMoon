@@ -188,7 +188,7 @@ func (s *Server) getRoot(w http.ResponseWriter, r *http.Request) {
 		s.getDashboard(w, r.WithContext(context.WithValue(r.Context(), userKey, user)))
 		return
 	}
-	s.render(w, r, "welcome.html", page{Title: "web.welcome.title", Wide: true})
+	s.render(w, r, "welcome.html", page{Title: "web.welcome.title"})
 }
 
 func (s *Server) redirectToLogin(w http.ResponseWriter, r *http.Request) {
@@ -267,12 +267,9 @@ type page struct {
 	// SignUpOpen decides whether the login page offers a way to make an account.
 	// A link to a page that would refuse is worse than no link.
 	SignUpOpen bool
-	// Wide widens the signed out layout. A sign in form wants to be narrow and the
-	// welcome page does not, and they share every other part of the page.
-	Wide      bool
-	Nav       nav
-	Downloads downloads
-	Data      any
+	Nav        nav
+	Downloads  downloads
+	Data       any
 }
 
 /* Where the builds are.

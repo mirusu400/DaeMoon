@@ -420,10 +420,82 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
 .gate .box { width: min(24rem, 100%); }
 .gate .brand { justify-content: center; }
 
+/* The welcome page shares the signed out layout with the sign in form and wants
+   several times its width, so the box widens rather than the page growing a third
+   layout. Top aligned, because a page this tall centred vertically puts its first
+   line below the fold on a laptop. */
+.gate-wide { place-items: start center; }
+.gate-wide .box { width: min(58rem, 100%); }
+
 /* The language switch on a page with no sidebar. Quiet, but present: somebody who
    cannot read this page has to be able to find it without reading anything. */
 .gate-lang { margin-top: 1.2rem; text-align: center; }
 .gate-lang select { width: auto; color: var(--mut); }
+
+/* ------------------------------------------------------------- welcome */
+
+/* The page somebody reaches by typing the address a console was paired against.
+ * It answers what this is, what it will not do to a save, and where the builds
+ * are, in that order.
+ */
+.hero { text-align: center; padding: 1.6rem 0 2.2rem; }
+.hero-mark { display: block; margin: 0 auto .7rem; width: 88px; height: 88px; }
+.hero-brand { justify-content: center; margin-bottom: 1.4rem; font-size: 1.15rem; }
+.hero h1 {
+  font-size: clamp(1.5rem, 4.5vw, 2.1rem);
+  line-height: 1.25;
+  margin: 0 auto;
+  max-width: 30ch;
+}
+.hero-sub {
+  color: var(--mut);
+  margin: .9rem auto 0;
+  max-width: 52ch;
+  line-height: 1.55;
+}
+.hero-actions {
+  display: flex; gap: .6rem; justify-content: center; flex-wrap: wrap;
+  margin-top: 1.6rem;
+}
+
+/* The one thing on this page that is not optional reading, so it sits above the
+   three things that are, and is the only card here with a colour. */
+.wl-warn { margin-bottom: 2.2rem; }
+.wl-warn-head { font-weight: 700; color: var(--warn); margin: 0 0 .4rem; }
+.wl-warn-body { margin: 0; line-height: 1.55; }
+
+.wl-points {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: .9rem;
+  margin-bottom: 2.4rem;
+}
+.wl-points h2 { font-size: .98rem; margin-bottom: .45rem; }
+.wl-points p { margin: 0; font-size: .88rem; line-height: 1.55; }
+
+.wl-sechead { margin-bottom: .8rem; }
+.wl-downloads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: .9rem;
+}
+/* A whole card is the target rather than a link inside one: a download is the
+   only thing any of these cards does. */
+.wl-dl {
+  display: grid;
+  gap: .45rem;
+  align-content: start;
+  transition: border-color .15s ease, background .15s ease;
+}
+.wl-dl .tg { justify-self: start; }
+.wl-dl:hover { border-color: var(--mut); background: var(--surf2); }
+.wl-dl-name { font-weight: 700; }
+.wl-dl-note { font-size: .84rem; line-height: 1.5; }
+
+.wl-note { font-size: .82rem; line-height: 1.55; margin: .9rem 0 0; }
+.wl-source { margin: 2.2rem 0 0; text-align: center; font-size: .88rem; }
+.wl-source a { color: var(--mut); }
+.wl-source a:hover { color: var(--ds); }
 
 ::selection { background: var(--ds); color: var(--bg); }
 :focus-visible { outline: 2px solid var(--ds); outline-offset: 2px; }

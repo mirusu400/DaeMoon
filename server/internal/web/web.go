@@ -76,6 +76,10 @@ func (s *Server) Routes() chi.Router {
 
 	r.Handle("/static/*", http.FileServer(http.FS(assets)))
 
+	// The root is the one address somebody is given, so it answers for whoever
+	// arrives at it rather than bouncing everybody to a sign in form. See getRoot.
+	r.Get("/", s.getRoot)
+
 	r.Get("/setup", s.getSetup)
 	r.Post("/setup", s.postSetup)
 	r.Get("/login", s.getLogin)
@@ -91,7 +95,6 @@ func (s *Server) Routes() chi.Router {
 
 	r.Group(func(r chi.Router) {
 		r.Use(s.requireSession)
-		r.Get("/", s.getDashboard)
 		r.Get("/devices", s.getDevices)
 		r.Post("/devices/{id}/revoke", s.postRevokeDevice)
 		r.Get("/pair", s.getPair)
@@ -133,24 +136,59 @@ func userOf(r *http.Request) store.User {
 	return u
 }
 
+// sessionUser resolves the session cookie, and reports whether there was one that
+// still works. ok is false both for "not signed in" and for "signed in with a
+// session that has expired or been revoked", because a page has the same thing to
+// do about either.
+func (s *Server) sessionUser(r *http.Request) (store.User, bool) {
+	cookie, err := r.Cookie(sessionCookie)
+	if err != nil || cookie.Value == "" {
+		return store.User{}, false
+	}
+	user, err := s.store.SessionUser(r.Context(), hashToken(cookie.Value))
+	if err != nil {
+		return store.User{}, false
+	}
+	return user, true
+}
+
 func (s *Server) requireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(sessionCookie)
-		if err != nil || cookie.Value == "" {
-			s.redirectToLogin(w, r)
-			return
-		}
-		user, err := s.store.SessionUser(r.Context(), hashToken(cookie.Value))
-		if err != nil {
-			// Expired or revoked. Clear the cookie so the browser stops sending a
-			// value that will never work again.
-			s.clearSession(w)
+		user, ok := s.sessionUser(r)
+		if !ok {
+			// Clear whatever was sent, so a browser holding an expired value stops
+			// sending one that will never work again.
+			if c, err := r.Cookie(sessionCookie); err == nil && c.Value != "" {
+				s.clearSession(w)
+			}
 			s.redirectToLogin(w, r)
 			return
 		}
 		ctx := context.WithValue(r.Context(), userKey, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// getRoot answers for whoever arrives at the one address somebody is handed.
+//
+// Three different people reach it and they want three different things: an
+// instance with no account on it yet needs setting up, somebody signed in wants
+// their saves, and everybody else is reading about this for the first time and
+// needs to know what it is and where the console builds are.
+//
+// The third case is why this is not a redirect to the sign in form. The address a
+// console is paired against is the address a person types into a browser, and a
+// sign in form answers none of the questions they arrived with.
+func (s *Server) getRoot(w http.ResponseWriter, r *http.Request) {
+	if n, err := s.store.CountUsers(r.Context()); err == nil && n == 0 {
+		http.Redirect(w, r, "/setup", http.StatusSeeOther)
+		return
+	}
+	if user, ok := s.sessionUser(r); ok {
+		s.getDashboard(w, r.WithContext(context.WithValue(r.Context(), userKey, user)))
+		return
+	}
+	s.render(w, r, "welcome.html", page{Title: "web.welcome.title", Wide: true})
 }
 
 func (s *Server) redirectToLogin(w http.ResponseWriter, r *http.Request) {
@@ -229,8 +267,35 @@ type page struct {
 	// SignUpOpen decides whether the login page offers a way to make an account.
 	// A link to a page that would refuse is worse than no link.
 	SignUpOpen bool
-	Nav        nav
-	Data       any
+	// Wide widens the signed out layout. A sign in form wants to be narrow and the
+	// welcome page does not, and they share every other part of the page.
+	Wide      bool
+	Nav       nav
+	Downloads downloads
+	Data      any
+}
+
+/* Where the builds are.
+ *
+ * The release page rather than a file. The assets are named after the commit they
+ * were built from, so there is no stable file name to link to - and adding one
+ * would put a `daemoon.cia` on somebody's card that cannot say which build it is,
+ * which is the thing that naming was chosen to avoid.
+ *
+ * Constants rather than configuration. A self hosted instance runs somebody's own
+ * server; it does not fork the software, and the one address the builds come from
+ * is the same for every instance. A fork changes a line here.
+ */
+const (
+	repoURL   = "https://github.com/mirusu400/DaeMoon"
+	buildsURL = repoURL + "/releases/tag/nightly"
+)
+
+type downloads struct {
+	ThreeDS string
+	Switch  string
+	Server  string
+	Source  string
 }
 
 // T resolves a key in the page's language. Templates call it as {{$.T "key"}},
@@ -250,6 +315,9 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 	p.Lang = i18n.Of(r)
 	p.Langs = langChoices(p.Lang)
 	p.SignUpOpen = s.store.OpenRegistration(r.Context())
+	p.Downloads = downloads{
+		ThreeDS: buildsURL, Switch: buildsURL, Server: buildsURL, Source: repoURL,
+	}
 
 	// A signed out page has no sidebar and nothing to count.
 	if p.User.ID != "" {

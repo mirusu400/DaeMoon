@@ -1,0 +1,64 @@
+{{template "head" .}}
+
+<div class="hero">
+  {{/* The real icon rather than the lettered square the sidebar uses. This is the
+       one page where there is room for it, and it is the same picture somebody is
+       looking at on their console. */}}
+  <img class="hero-mark" src="/static/icon-192.png" width="88" height="88" alt="">
+  <div class="brand hero-brand">DaeMoon</div>
+  <h1>{{.T "web.welcome.lede"}}</h1>
+  <p class="hero-sub">{{.T "web.welcome.sub"}}</p>
+  <div class="hero-actions">
+    <a class="btn btn-key" href="/login">{{.T "web.login.title"}}</a>
+    {{if .SignUpOpen}}<a class="btn btn-ghost" href="/register">{{.T "web.register.link"}}</a>{{end}}
+  </div>
+</div>
+
+<div class="card warn pad wl-warn">
+  <p class="wl-warn-head">{{.T "web.welcome.warn_head"}}</p>
+  <p class="t-mut wl-warn-body">{{.T "web.welcome.warn"}}</p>
+</div>
+
+<div class="wl-points">
+  <div class="card pad">
+    <h2>{{.T "web.welcome.f1.k"}}</h2>
+    <p class="t-mut">{{.T "web.welcome.f1.v"}}</p>
+  </div>
+  <div class="card pad">
+    <h2>{{.T "web.welcome.f2.k"}}</h2>
+    <p class="t-mut">{{.T "web.welcome.f2.v"}}</p>
+  </div>
+  <div class="card pad">
+    <h2>{{.T "web.welcome.f3.k"}}</h2>
+    <p class="t-mut">{{.T "web.welcome.f3.v"}}</p>
+  </div>
+</div>
+
+<p class="sechead wl-sechead">{{.T "web.welcome.downloads"}}</p>
+<div class="wl-downloads">
+  {{/* The tag is the file format and the name is what runs it. Both are needed:
+       the format is what somebody scrolling a release page has to recognise, and
+       neither of them is a sentence, so neither is translated. */}}
+  <a class="card pad wl-dl" href="{{.Downloads.ThreeDS}}" rel="noopener">
+    <span class="tg tg-3ds">CIA</span>
+    <span class="wl-dl-name">{{.T "web.welcome.dl_3ds"}}</span>
+    <span class="t-mut wl-dl-note">{{.T "web.welcome.dl_3ds_note"}}</span>
+  </a>
+  <a class="card pad wl-dl" href="{{.Downloads.Switch}}" rel="noopener">
+    <span class="tg tg-nx">NRO</span>
+    <span class="wl-dl-name">{{.T "web.welcome.dl_nx"}}</span>
+    <span class="t-mut wl-dl-note">{{.T "web.welcome.dl_nx_note"}}</span>
+  </a>
+  <a class="card pad wl-dl" href="{{.Downloads.Server}}" rel="noopener">
+    <span class="tg tg-mut">daemoond</span>
+    <span class="wl-dl-name">{{.T "web.welcome.dl_server"}}</span>
+    <span class="t-mut wl-dl-note">{{.T "web.welcome.dl_server_note"}}</span>
+  </a>
+</div>
+<p class="t-mut wl-note">{{.T "web.welcome.naming"}}</p>
+
+<p class="wl-source">
+  <a href="{{.Downloads.Source}}" rel="noopener">{{.T "web.welcome.source"}}</a>
+</p>
+
+{{template "foot" .}}

@@ -8,7 +8,7 @@ ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 .PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check stack-check \
         core-isolation spec-check server 3ds nx run-server clean \
-        docker-images docker-3ds docker-cia docker-nx docker-test docker-shell \
+        docker-images docker-3ds docker-cia docker-nx docker-test docker-shell image-check \
         cia-verify emu-selftest emu-autosync 3ds-install 3ds-selftest
 
 all: help
@@ -51,6 +51,20 @@ lang-check: gen-check
 
 # core/ must never include a platform header. Breaking that collapses the whole
 # design, so it fails the build rather than waiting for a review.
+# The runtime stage is scratch, which has no root certificates, and Go carries
+# none of its own. That was invisible for as long as nothing here made an
+# outbound request: the API is talked *to*, and SQLite is a file. The first one
+# that did - resolving the current build behind the install QR - failed with
+# `x509: certificate signed by unknown authority` on a deployed instance while
+# every test passed, because a desktop has a trust store and scratch does not.
+image-check:
+	@if ! grep -q 'ca-certificates.crt' $(ROOT)/docker/server.Dockerfile ; then \
+		echo "docker/server.Dockerfile: the runtime stage has no CA bundle, so every"; \
+		echo "outbound https request from the container will fail to verify"; \
+		exit 1; \
+	fi
+	@echo "image: ok"
+
 core-isolation:
 	@if grep -rnE '#[[:space:]]*include[[:space:]]*[<"](3ds|switch)\.h[>"]' $(ROOT)/core/ ; then \
 		echo "core/ includes a platform header - see the coding rules in CLAUDE.md"; \
@@ -94,7 +108,7 @@ test: core-test server-test tools-test
 stack-check:
 	@sh $(ROOT)/tools/stack-check.sh $(ROOT)
 
-check: gen-check core-isolation stack-check spec-check test e2e
+check: gen-check core-isolation image-check stack-check spec-check test e2e
 	@echo "all checks passed"
 
 server:

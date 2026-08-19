@@ -59,6 +59,15 @@ RUN mkdir -m 755 /out/data
 
 FROM scratch
 
+# The root certificates, because scratch has none and Go brings none of its own.
+#
+# Nothing here reached out to anything for a long time, so an image with no CA
+# bundle looked complete: the API is talked *to*, and SQLite is a file. The first
+# outbound request - resolving the current build for the install QR - failed with
+# `x509: certificate signed by unknown authority` and nothing else in the service
+# noticed, which is exactly how long a missing trust store can hide.
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
 COPY --from=build /out/passwd /etc/passwd
 COPY --from=build /out/daemoond /daemoond
 COPY --from=build --chown=65532:65532 /out/tmp /tmp

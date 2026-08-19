@@ -131,8 +131,52 @@ def check(path):
         print(f"  {note}")
     for note in model_notes(cgfx, data_off):
         print(f"  {note}")
+    for note in shape_notes(cgfx, data_off):
+        print(f"  {note}")
     for note in audio_notes:
         print(f"  {note}")
+
+
+def shape_notes(cgfx, data_off):
+    """Whether the model has any triangles to draw.
+
+    Four banners drew nothing, and this is why. Every shape in them declared
+    zero index streams: correct vertices, correct UVs, a correct texture bound
+    by correct materials, and nothing telling the GPU which vertices form
+    triangles. Nothing in the container is wrong in that state, so nothing
+    rejected it, and the console reports it as an empty top screen.
+
+    A shape stores how many index streams it has at +0xa4. One per shape is what
+    a model that draws carries.
+    """
+    field = data_off + 8
+    count, rel = struct.unpack_from("<Ii", cgfx, field)
+    if not count:
+        return []
+    entry = field + 4 + rel + 0x0C + 0x10
+    model = entry + 0x0C + struct.unpack_from("<i", cgfx, entry + 0x0C)[0]
+    if cgfx[model + 4:model + 8] != b"CMDL":
+        return []
+
+    shapes = struct.unpack_from("<I", cgfx, model + 0xC4)[0]
+    if not shapes:
+        raise ValueError("the model has no shapes")
+    array = model + 0xC8 + struct.unpack_from("<i", cgfx, model + 0xC8)[0]
+
+    streams = []
+    for i in range(shapes):
+        at = array + i * 4
+        shape = at + struct.unpack_from("<i", cgfx, at)[0]
+        if cgfx[shape + 4:shape + 8] != b"SOBJ":
+            raise ValueError(f"shape {i} is not a SOBJ")
+        streams.append(struct.unpack_from("<I", cgfx, shape + 0xA4)[0])
+
+    if not all(streams):
+        raise ValueError(
+            f"{streams.count(0)} of {len(streams)} shapes have no index stream, "
+            "so there are no triangles to draw and the HOME Menu shows an empty "
+            f"top screen. Streams per shape: {streams}")
+    return [f"shapes: {len(streams)}, index streams {streams}"]
 
 
 # What a banner's audio runs at. bannertool resamples to this whatever it is
@@ -141,24 +185,23 @@ BANNER_RATE = 32000
 
 
 def check_audio(cwav):
-    """The field that cost four hardware rounds.
+    """What the banner's audio runs at.
 
-    Four banners in a row drew nothing. Their CGFX was byte for byte what
-    bannertool produces from the same model, and the only difference left in the
-    whole file was the audio: 44100 Hz where a banner's is 32000. The HOME Menu
-    drew no banner at all and reported nothing, so the sample rate of a sound
-    nobody was listening for took out the picture.
+    This was briefly believed to be why four banners drew nothing, on the
+    evidence that it was the last field left differing from a banner that draws.
+    It was not: the file that finally rendered carries 44100 as well. The real
+    answer was that the shapes had no index streams - see shape_notes - and this
+    is kept as a note because being the last difference left is not the same as
+    being the cause, which is the mistake it records.
     """
     info = cwav.find(b"INFO")
     if info < 0:
         raise ValueError("the banner audio has no INFO block")
     rate = struct.unpack_from("<I", cwav, info + 0x0C)[0]
     if rate != BANNER_RATE:
-        raise ValueError(
-            f"the banner audio is {rate} Hz; a banner's is {BANNER_RATE}. "
-            "Four banners drew nothing with this as the only difference left. "
-            "Build the banner from a CGFX with bannertool rather than taking a "
-            "finished .bnr, and the audio comes out right.")
+        return [f"note: the audio is {rate} Hz where bannertool writes "
+                f"{BANNER_RATE}. A banner at 44100 has been seen to draw, so "
+                "this is not the reason one does not."]
     return [f"audio: {rate} Hz"]
 
 

@@ -1,18 +1,30 @@
 # What a DaeMoon 3D banner has to contain
 
-> **Resolved.** It was the audio, not the model. Four banners drew nothing, and
-> the CGFX in the last of them is byte for byte what bannertool produces from
-> the same model - the geometry and the material work was not wasted, but it was
-> never what was broken. Each `.bnr` carried its own CWAV at **44100 Hz**, where
-> a banner's audio is **32000**. The HOME Menu drew no banner at all and
-> reported nothing, so the sample rate of a sound nobody was listening for took
-> out the picture.
+> **Resolved: the shapes had no index streams.**
 >
-> The build no longer accepts a finished `.bnr` from anywhere. Drop the model in
-> as `platform/3ds/assets/banner.cgfx` and bannertool assembles the banner with
-> our own audio. `tools/check-banner.py` fails on any other sample rate.
+> Four banners drew nothing. Each round found something real in the CGFX and
+> fixed it, and each round the console stayed blank, because none of them was
+> the reason: every shape declared **zero index streams**. Correct vertices,
+> correct UVs, a correct texture bound by correct materials, and nothing saying
+> which vertices form triangles. Nothing in the format is wrong in that state,
+> so nothing rejected it, and a console reports it as an empty top screen.
 >
-> What follows is the comparison that got there, kept for the next time
+> Two corrections to what this file used to say:
+>
+> - **The audio was not it.** 44100 Hz was the last field left differing from a
+>   banner that draws, and I called it the cause. The file that finally rendered
+>   carries 44100 as well. Being the last difference left is not the same as
+>   being the cause.
+> - **An emulator can test this.** I wrote that it could not, because the banner
+>   is the HOME Menu's to draw and emulators launch a title instead. Azahar with
+>   a HOME Menu will do it, and that is how the working model was confirmed
+>   before it went near hardware.
+>
+> `tools/check-banner.py` now fails on a shape with no index stream, and says
+> what it found. That is the check that would have ended this on the first
+> round.
+>
+What follows is the comparison that got there, kept for the next time
 > something in this format is silently wrong.
 
 Three `.bnr` files have been produced for this project and none of them drew on

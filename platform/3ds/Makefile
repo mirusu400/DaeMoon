@@ -156,10 +156,20 @@ $(BUILD)/savedata.stamp: FORCE
 
 FORCE:
 
+# A prebuilt banner (3D model + audio, made with bannertool makebanner -cgfx / a
+# CBMD authoring tool) takes precedence over the flat png+wav one. Drop it at
+# assets/banner.bnr; removing it reverts to generating a banner from banner.png
+# and audio.wav.
+BANNER_BNR := $(wildcard $(TOPDIR)/assets/banner.bnr)
+
 $(OUTPUT).cia: $(OUTPUT).elf $(OUTPUT).smdh $(RSF) $(BUILD)/savedata.stamp \
-              $(TOPDIR)/assets/banner.png $(TOPDIR)/assets/audio.wav
+              $(if $(BANNER_BNR),$(BANNER_BNR),$(TOPDIR)/assets/banner.png $(TOPDIR)/assets/audio.wav)
+ifneq ($(BANNER_BNR),)
+	@cp $(BANNER_BNR) $(OUTPUT).bnr
+else
 	@bannertool makebanner -i $(TOPDIR)/assets/banner.png -a $(TOPDIR)/assets/audio.wav \
 		-o $(OUTPUT).bnr >/dev/null
+endif
 	@makerom -f cia -o $@ -elf $(OUTPUT).elf -rsf $(RSF) \
 		-DSAVEDATA_SIZE=$(SAVEDATA_SIZE) \
 		-icon $(OUTPUT).smdh -banner $(OUTPUT).bnr -exefslogo -target t \

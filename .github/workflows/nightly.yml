@@ -134,7 +134,59 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  3ds:
+  # Redeploys the self hosted instance, and only when this push actually touched
+  # the backend - a push that only changed platform/3ds or docs would otherwise
+  # restart a server running identical code.
+  #
+  # SSH from the (GitHub hosted) runner rather than a self hosted runner living on
+  # the box itself: this repository is public, so a self hosted runner would let
+  # any fork's pull request run arbitrary code with that runner's access. Pulling
+  # the image this workflow just published and restarting compose over SSH needs
+  # no code execution on the runner's side at all.
+  deploy:
+    name: deploy
+    needs: image
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: does this push touch the backend
+        id: changed
+        run: |
+          set -eu
+          before='${{ github.event.before }}'
+          if [ -z "$before" ] || ! git cat-file -e "$before" 2>/dev/null; then
+            # No usable previous commit to diff against (force push, first push
+            # of a new branch) - deploy rather than guess.
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$before" "$GITHUB_SHA" \
+               | grep -qE '^(server/|shared/|docker/server\.Dockerfile|compose\.yml)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: deploy over ssh
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          set -eu
+          install -m 600 /dev/null key.pem
+          printf '%s' "$SSH_KEY" > key.pem
+          ssh -o StrictHostKeyChecking=accept-new -i key.pem "ubuntu@$HOST" '
+            set -eu
+            cd /opt/daemoon
+            sudo docker compose pull daemoond
+            sudo docker compose up -d --no-deps daemoond
+            sudo docker image prune -f
+          '
+          rm -f key.pem
+
+  # A job id may not start with a digit, so this is `_3ds`, not `3ds`.
+  _3ds:
     name: 3ds cia
     needs: check
     runs-on: ubuntu-latest
@@ -175,7 +227,7 @@ jobs:
 
   publish:
     name: publish
-    needs: [server, image, 3ds, nx]
+    needs: [server, image, _3ds, nx]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

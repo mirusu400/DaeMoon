@@ -18,7 +18,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  3ds:
+  # A job id may not start with a digit, so this is `_3ds`, not `3ds`.
+  _3ds:
     name: 3ds (devkitARM)
     runs-on: ubuntu-latest
     steps:

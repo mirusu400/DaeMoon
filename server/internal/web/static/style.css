@@ -95,7 +95,13 @@
 
 * { box-sizing: border-box; }
 
-html, body { height: 100%; }
+/* The viewport is a height for a percentage to be measured against; the body is
+   not. Giving body a fixed 100% cut its box off at one screen, and a box that
+   stops at one screen is a box a sticky bar stops sticking inside - which is why
+   the landing page's bar used to leave at the first scroll. The two things that
+   wanted a full screen ask the viewport for one directly, below. */
+html { height: 100%; }
+body { min-height: 100%; }
 
 body {
   margin: 0;
@@ -130,7 +136,7 @@ a:hover { color: var(--ds); }
 
 /* ----------------------------------------------------------------- shell */
 
-.shell { display: flex; min-height: 100%; align-items: stretch; }
+.shell { display: flex; min-height: 100vh; min-height: 100svh; align-items: stretch; }
 
 .sidebar {
   width: 15rem;
@@ -423,7 +429,7 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
 /* --------------------------------------------------------------- centred */
 
 /* Login and setup have no sidebar: there is nothing to navigate to yet. */
-.gate { min-height: 100%; display: grid; place-items: center; padding: 2rem 1.2rem; }
+.gate { min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 2rem 1.2rem; }
 .gate .box { width: min(24rem, 100%); }
 .gate .brand { justify-content: center; }
 
@@ -435,70 +441,361 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
 /* ------------------------------------------------------------- landing */
 
 /* The page somebody reaches by typing the address a console was paired against.
+ *
  * It is the one page here that is not the panel, so it has a top bar and a
  * container rather than a sidebar, and it is the only place in this stylesheet
  * where type is allowed to get large.
  *
- * Everything below still draws from the same tokens as the panel. A landing page
- * that looked like a different product would be one.
+ * It is read a screen at a time. Every section is a panel the height of the
+ * viewport, the scroll settles onto one rather than stopping between two, and a
+ * panel's parts arrive as it does. The arrival is a class the script adds and a
+ * transition written here.
+ *
+ * That script is an enhancement, and the `.js` guard is what keeps it one: only
+ * a document that has run it hides anything, so a browser with no script is
+ * served this page with everything already in place rather than a stack of empty
+ * screens waiting for a reveal that will never come.
+ *
+ * Three rules decide how it looks, and they are worth stating because the
+ * obvious dark-page instincts break all three:
+ *
+ *   Depth is lightness, not shadow. A card sits above the page because it is a
+ *   step lighter, --bg to --surf to --surf2. There is no drop shadow and no
+ *   blurred glow anywhere below.
+ *
+ *   Decoration is geometry. What fills the space behind a panel is a circle far
+ *   larger than the screen, hung off the edge so only its arc is seen, and a
+ *   scatter of outlined rings. Hard edges, flat fills, no texture and no wash.
+ *
+ *   One accent. --ds carries the whole page; --warn appears on the one section
+ *   that is a list of refusals, and the platform colours appear only where they
+ *   name a platform. A second decorative colour would make the first one mean
+ *   nothing.
+ *
+ * Everything still draws from the same tokens as the panel. A landing page that
+ * looked like a different product would be one.
  */
-.lwrap { width: min(72rem, 100%); margin: 0 auto; padding: 0 1.2rem; }
+
+:root {
+  --navh: 3.6rem;
+  /* Quick off the mark, long tail. Deceleration reads as weight; a linear fade
+     reads as a page that has not finished loading. */
+  --ease: cubic-bezier(.16, .84, .28, 1);
+}
+
+.lwrap { width: min(76rem, 100%); margin: 0 auto; padding: 0 1.4rem; }
+
+/* ---------------------------------------------------------- the panels */
+
+/* No scroll-padding here, deliberately. It is the usual fix for a sticky bar
+   covering the top of whatever an anchor jumped to, but every panel already
+   carries that room as its own padding - and as a snap container's inset it
+   would land each panel a bar's height short of filling the screen, leaving a
+   sliver of the panel before it showing above it. The panels want the whole
+   viewport; the bar sits over their padding. */
+/* Mandatory, and only where a panel fits on the screen.
+ *
+ * Proximity was the careful choice and it was the wrong one: it settles a scroll
+ * that has already stopped near a boundary, which leaves the reader to do the
+ * aiming and land the section themselves. A page built as one screen per section
+ * should take one gesture per section, and that is what mandatory plus
+ * `scroll-snap-stop: always` below actually does - the flick goes to the next
+ * panel and stops there rather than sailing through two of them.
+ *
+ * The size guard is what makes it safe to be this firm. Below it there is no
+ * snapping at all, because forcing a screen at a time onto a viewport too short
+ * to hold one only means the bottom of every panel is cut off. And a panel that
+ * grows past the screen anyway - a language that runs long, a large text size -
+ * stays readable regardless: a snap area taller than the viewport lets the
+ * viewport rest anywhere inside it, so the overflow scrolls normally. */
+@media (min-width: 64rem) and (min-height: 44rem) {
+  html { scroll-snap-type: y mandatory; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+.lpanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2.6rem;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding-top: calc(var(--navh) + 3rem);
+  padding-bottom: 3.6rem;
+  scroll-snap-align: start;
+  /* One gesture, one panel. Without this a fast flick passes several snap points
+     and lands wherever momentum ran out, which is the same page the reader had to
+     aim by hand. */
+  scroll-snap-stop: always;
+  /* The shapes behind a panel are wider than the panel. clip rather than hidden,
+     so nothing here becomes a scroll container and breaks the snapping above. */
+  overflow: clip;
+  --accent: var(--ds);
+}
+/* Alternating ground, which is the whole of the page's rhythm. A band is a step
+   up the same ladder a card climbs, so a card standing on one takes the next
+   step rather than disappearing into it. */
+.lpanel-band { background: var(--surf); }
+.lpanel-band .card { background: var(--surf2); }
+/* The one section that is a list of refusals carries the colour the rest of the
+   panel uses for a warning. */
+.lpanel-warn { --accent: var(--warn); }
+
+/* The bar sits above the first panel rather than over it, so that panel is a
+   screen less the bar, and it is the bar - not the panel - that holds the room. */
+.lpanel-hero {
+  min-height: calc(100vh - var(--navh));
+  min-height: calc(100svh - var(--navh));
+  padding-top: 2.4rem;
+  scroll-margin-top: var(--navh);
+}
+/* The footer is the stop after the last panel rather than a strip sharing its
+   screen. It has to be: a snap point is only reachable if the document is long
+   enough to scroll to it, and a last panel that gave up part of its height to the
+   footer put its own snap point past the end of the page - so the scroll would
+   settle back onto the panel before it and the last section could never be
+   landed on. A whole screen for the panel, then a short one for the footer. */
+.lpanel-last { min-height: 100vh; min-height: 100svh; }
+.lfoot { scroll-snap-align: end; }
+
+/* ------------------------------------------------------------- the shapes */
+
+/* A circle several times the size of the screen, hung off one edge so that what
+   is actually seen is a single long arc sweeping behind the words. It is a flat
+   fill of the next shade along, which is what keeps it a shape rather than a
+   glow - a blurred one would be a wash, and a wash is what every other dark
+   landing page does.
+   `--float` is the drift the script writes on scroll. With no script it is zero
+   and the arc simply sits still. */
+.ldisc {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  background: var(--surf);
+  pointer-events: none;
+  transform: translate3d(0, var(--float, 0px), 0);
+}
+.ldisc-2 { background: var(--surf2); }
+.ldisc-hero  { width: min(120rem, 175vw); height: min(96rem, 150vh); top: -30rem; right: -72rem; }
+.ldisc-left  { width: min(104rem, 170vw); height: min(86rem, 140vh); bottom: -40rem; left: -64rem; }
+.ldisc-right { width: min(104rem, 170vw); height: min(86rem, 140vh); top: -38rem; right: -60rem; }
+.ldisc-low   { width: min(130rem, 200vw); height: min(70rem, 110vh); bottom: -46rem; left: 50%; margin-left: -65rem; }
+
+/* Rings, in outline, in the one accent. The same shape as the arc behind them
+   at a hundredth of the size, which is the entire trick: a page whose decoration
+   is one motif at two scales reads as designed rather than as decorated. */
+.lrings {
+  position: absolute;
+  z-index: 0;
+  color: var(--ds);
+  opacity: .16;
+  pointer-events: none;
+  transform: translate3d(0, var(--float, 0px), 0);
+}
+.lrings-hero { width: min(31rem, 56vw); top: 10%; right: -7%; }
+/* `rotate` and not a transform, because the parallax already owns the transform
+   on this element and the two would overwrite each other. Slow enough that it is
+   only ever noticed on a second look at the same screen. */
+@media (prefers-reduced-motion: no-preference) {
+  .lrings { animation: lspin 120s linear infinite; }
+}
+@keyframes lspin { to { rotate: 360deg; } }
+[data-theme="light"] .lrings { opacity: .12; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .lrings { opacity: .12; }
+}
+
+/* Everything readable sits above both of those. */
+.lpanel > .lwrap, .lpanel > .lcue { position: relative; z-index: 1; }
+
+/* ---------------------------------------------------------- the reveal */
+
+/* Hidden only once the script has said it is there to reveal it. */
+.js [data-anim] {
+  opacity: 0;
+  transform: translate3d(var(--ax, 0), var(--ay, 1.5rem), 0);
+  transition:
+    opacity .8s var(--ease) var(--d, 0ms),
+    transform .8s var(--ease) var(--d, 0ms);
+}
+.js [data-anim="right"] { --ax: 2.4rem; --ay: 0; }
+.js [data-anim="left"]  { --ax: -2.4rem; --ay: 0; }
+/* A marker rather than a movement: the element stays where it is and only its
+   arrival is worth knowing about, because what moves is drawn by a rule below. */
+.js [data-anim="line"] { opacity: 1; transform: none; }
+.js [data-anim].is-in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-anim] { opacity: 1; transform: none; transition: none; }
+}
+
+/* -------------------------------------------------------------- the bar */
 
 .lnav {
-  position: sticky; top: 0; z-index: 20;
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
-  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
   border-bottom: 1px solid var(--bd);
+  transition: background .25s ease, border-color .25s ease;
 }
-.lnav-in { display: flex; align-items: center; gap: 1.4rem; padding-top: .7rem; padding-bottom: .7rem; }
+/* With a script the bar starts as nothing over the first screen and becomes a
+   bar once there is something behind it to separate itself from. Without one it
+   keeps the solid version above, because there is nothing to tell it when. */
+.js .lnav { background: transparent; border-bottom-color: transparent; }
+.js .lnav.is-past {
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
+  border-bottom-color: var(--bd);
+}
+/* A stated height rather than one that falls out of the contents: --navh is what
+   the panels hold room for, so it has to be true and not close. */
+.lnav-in { display: flex; align-items: center; gap: 1.4rem; min-height: var(--navh); }
 .lnav-brand { margin: 0; gap: .55rem; }
 .lnav-brand img { border-radius: 7px; }
-.lnav-links { display: flex; gap: 1.1rem; font-size: .88rem; }
-.lnav-links a { color: var(--mut); }
+.lnav-links { display: flex; gap: 1.3rem; font-size: .88rem; }
+.lnav-links a { color: var(--mut); transition: color .2s ease; }
 .lnav-links a:hover { color: var(--tx); }
 .lnav-actions { margin-left: auto; display: flex; gap: .5rem; }
+
+/* ------------------------------------------------------------- the rail */
+
+/* Which screen this is, out of how many. Built by the script and gone with it: a
+   rail of dots that cannot be clicked is furniture. */
+.lrail {
+  position: fixed;
+  right: 1.3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 15;
+  display: grid;
+  gap: .55rem;
+}
+.lrail-dot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .55rem;
+  height: 1.5rem;
+  color: var(--mut);
+}
+.lrail-dot::after {
+  content: "";
+  width: .45rem;
+  height: .45rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  transition: background .3s ease, border-color .3s ease, transform .3s var(--ease);
+}
+.lrail-dot:hover::after { background: currentColor; }
+.lrail-dot.on::after {
+  background: var(--ds);
+  border-color: var(--ds);
+  transform: scale(1.5);
+}
+.lrail-n {
+  font-family: ui-monospace, SFMono-Regular, Menlo, "DejaVu Sans Mono", monospace;
+  font-size: .6rem;
+  letter-spacing: .06em;
+  opacity: 0;
+  transform: translateX(.4rem);
+  transition: opacity .25s ease, transform .25s var(--ease);
+}
+.lrail-dot.on .lrail-n, .lrail-dot:hover .lrail-n { opacity: 1; transform: none; }
+
+/* --------------------------------------------------------- the headings */
+
+.lhead { margin-bottom: 2.6rem; }
+/* The number and a rule that runs off the end of it. Every panel opens the same
+   way, which is most of what makes five of them read as one set. */
+.lnum {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  margin: 0 0 1rem;
+  color: var(--accent);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .2em;
+}
+.lnum::after {
+  content: "";
+  height: 1px;
+  flex: 1 1 auto;
+  max-width: 6rem;
+  background: var(--accent);
+  opacity: .4;
+}
+.ldisplay {
+  font-size: clamp(2rem, 4.4vw, 3.1rem);
+  line-height: 1.06;
+  letter-spacing: -.035em;
+  max-width: 20ch;
+}
+/* The full stop on a section heading, as a shape rather than as a character. A
+   period typed here would be a user-facing string living in a stylesheet, and
+   there are languages that do not end a heading with one; a disc is punctuation
+   nobody has to translate. It is only on these four - the line the hero ends on
+   already has a full stop of its own, in the language table where it belongs. */
+.ldisplay::after {
+  content: "";
+  display: inline-block;
+  width: .28em;
+  height: .28em;
+  margin-left: .12em;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: baseline;
+}
+
+.kicker {
+  font-size: .78rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mut); font-weight: 700; margin: 0 0 1.4rem;
+}
+.lede { color: var(--mut); font-size: 1.04rem; max-width: 46ch; line-height: 1.7; margin: 0; }
+
+/* -------------------------------------------------------------- the hero */
 
 /* Two columns: what it is on the left, what it does on the right. The figure is
    not decoration - it is the comparison the whole thing is built around. */
 .lhero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 3rem;
+  gap: 3.4rem;
   align-items: center;
-  padding-top: 4.5rem;
-  padding-bottom: 3.5rem;
-}
-.kicker {
-  font-size: .78rem; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--mut); font-weight: 700; margin: 0 0 1.2rem;
 }
 .lhero h1 {
-  font-size: clamp(2rem, 4.6vw, 3.2rem);
-  line-height: 1.08;
-  margin-bottom: 1.1rem;
+  font-size: clamp(2.4rem, 5.4vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -.045em;
+  margin-bottom: 1.4rem;
 }
-/* The second line, in the 3DS blue. An em because it is emphasis, and not a span
-   with a class, so it still reads as emphasis with no stylesheet at all. */
+.lline { display: block; }
+/* The second line in the 3DS blue. An em because it is emphasis, so it still
+   reads as emphasis with no stylesheet at all. */
 .lhero h1 em { font-style: normal; color: var(--ds); }
-.lhero .lede { color: var(--mut); font-size: 1.02rem; max-width: 46ch; line-height: 1.6; margin: 0; }
-.lhero-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1.8rem; }
+/* The three ways out of the first screen, at a size that says so. This is the
+   only place on the page where a control is bigger than the one in the bar. */
+.lhero-actions { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 2.2rem; }
+.btn-xl { padding: .95rem 2rem; font-size: 1.02rem; font-weight: 700; }
 
 .lgate {
-  background: var(--surf);
+  background: var(--surf2);
   border: 1px solid var(--bd);
   border-radius: var(--r);
   overflow: hidden;
 }
 .lgate-hd {
   display: flex; align-items: center; gap: .8rem;
-  padding: .6rem .9rem;
+  padding: .7rem 1rem;
   border-bottom: 1px solid var(--bd);
-  background: var(--surf2);
   font-size: .7rem; letter-spacing: .09em; text-transform: uppercase;
   color: var(--mut); font-weight: 700;
 }
 .lgate-hd-r { margin-left: auto; letter-spacing: 0; text-transform: none; }
-.lgate-row { padding: .8rem .9rem; border-bottom: 1px solid var(--bd); }
+.lgate-row { padding: .9rem 1rem; border-bottom: 1px solid var(--bd); }
 .lgate-row:last-child { border-bottom: 0; }
 /* The two sides and the verdict between them. The rules are on this band and not
    on the whole row, so they stop where the comparison stops rather than running
@@ -513,60 +810,156 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
   align-self: stretch; display: flex; align-items: center; justify-content: center;
   border-left: 1px solid var(--bd); border-right: 1px solid var(--bd);
 }
-.lgate-row .verdict { margin: .55rem 0 0; font-size: .8rem; }
-.lfig-note { font-size: .72rem; line-height: 1.6; margin: .7rem 0 0; }
+/* The one row that is mid-sync. It is the only thing on this page that keeps
+   moving after it has arrived, which is why it is one row and not three. */
+@media (prefers-reduced-motion: no-preference) {
+  .lgate-row.is-live .g { animation: lsend 2.6s var(--ease) infinite; }
+}
+@keyframes lsend {
+  0%, 62%, 100% { transform: translateX(0); opacity: 1; }
+  30%           { transform: translateX(.35rem); opacity: .5; }
+}
+.lgate-row .verdict { margin: .6rem 0 0; font-size: .8rem; }
+.lfig-note { font-size: .72rem; line-height: 1.6; margin: .9rem 0 0; }
 
 /* One line, and the only thing on this page somebody must not skip. */
 .lstrip {
-  display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+  display: flex; align-items: center; gap: .9rem; flex-wrap: wrap;
   border: 1px solid var(--warn);
   border-radius: var(--r);
-  padding: .8rem 1rem;
+  padding: .9rem 1.1rem;
 }
 .lstrip p { margin: 0; font-weight: 700; }
 
-.lsec { padding-top: 3.2rem; }
-.lgrid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .9rem; }
-.feat { padding: 1.4rem; }
-.feat .no { display: block; color: var(--mut); font-weight: 700; margin-bottom: .8rem; }
-.feat h2 { font-size: 1rem; margin-bottom: .45rem; }
-.feat p { color: var(--mut); font-size: .9rem; margin: 0; line-height: 1.55; }
-
-/* Four steps in one card rather than four cards: they are one sequence, and the
-   hairlines between them say so more quietly than gaps would. */
-.lsteps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.lstep { padding: 1.2rem; border-right: 1px solid var(--bd); }
-.lstep:last-child { border-right: 0; }
-.stepn { color: var(--ds); font-weight: 700; }
-.lstep h3 { font-size: .95rem; margin: .5rem 0 .35rem; }
-.lstep p { color: var(--mut); font-size: .85rem; line-height: 1.55; margin: 0; }
-
-.lsplit { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 2rem; }
-.lrows { overflow: hidden; }
-.lrow {
-  display: flex; justify-content: space-between; align-items: baseline;
-  gap: 1rem; flex-wrap: wrap;
-  padding: .75rem .95rem;
-  border-bottom: 1px solid var(--bd);
+/* The arrow under the first screen, and the only thing here that moves without
+   being scrolled at. A link, so that clicking it does what it draws. */
+.lcue {
+  position: absolute; left: 50%; bottom: 1.4rem;
+  transform: translateX(-50%);
+  width: 2.2rem; height: 2.2rem;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--mut);
 }
-.lrow:last-child { border-bottom: 0; }
-a.lrow:hover { background: var(--surf2); }
-a.lrow:hover .mono { color: var(--ds); }
-.lnote { font-size: .82rem; line-height: 1.55; margin: .8rem 0 0; }
+.lcue:hover { color: var(--ds); }
+.lcue span {
+  width: .6rem; height: .6rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  opacity: .6;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lcue span { animation: lcue-bob 2s ease-in-out infinite; }
+}
+@keyframes lcue-bob {
+  0%, 100% { transform: rotate(45deg) translate(-2px, -2px); opacity: .5; }
+  50%      { transform: rotate(45deg) translate(2px, 2px);   opacity: 1; }
+}
+
+/* ------------------------------------------------------------ what it does */
+
+.lgrid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+.feat {
+  position: relative;
+  padding: 1.8rem 1.5rem 1.6rem;
+  overflow: hidden;
+  transition: transform .45s var(--ease), border-color .45s var(--ease);
+}
+/* The count, set large and left almost invisible. It is an index, not a heading,
+   and at this weight it reads as one without competing with the title. */
+.feat .no {
+  position: absolute; top: .3rem; right: 1rem;
+  font-size: 3.6rem; font-weight: 800; letter-spacing: -.04em;
+  color: var(--tx); opacity: .06;
+}
+.feat h3 { font-size: 1.06rem; margin-bottom: .55rem; }
+.feat p { color: var(--mut); font-size: .9rem; margin: 0; line-height: 1.65; }
+.feat:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--bd));
+}
+
+/* --------------------------------------------------------- the sync order */
+
+/* Four steps on one rail rather than four cards standing apart. They are one
+   sequence, and the line says so more quietly than an arrow would. */
+.lrun {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.6rem;
+}
+.lrun::before {
+  content: "";
+  position: absolute;
+  top: .55rem;
+  left: .55rem;
+  /* Ends on the last node, not at the edge of the grid. A quarter of the width
+     is the last column, less three quarters of one gap, less half a node. */
+  right: calc(25% - 1.75rem);
+  height: 1px;
+  background: var(--accent);
+  opacity: .35;
+  transform-origin: left;
+}
+/* Drawn in as the panel arrives, in the order the sync actually happens in. */
+.js .lrun::before { transform: scaleX(0); transition: transform 1.4s var(--ease) .15s; }
+.js .lrun.is-in::before { transform: scaleX(1); }
+
+.lrun-step { position: relative; padding-top: 2.4rem; }
+.lrun-step::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  width: 1.1rem; height: 1.1rem;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: var(--bg);
+}
+.lpanel-band .lrun-step::before { background: var(--surf); }
+.stepn { color: var(--accent); font-weight: 700; }
+.lrun-step h3 { font-size: 1rem; margin: .5rem 0 .4rem; }
+.lrun-step p { color: var(--mut); font-size: .86rem; line-height: 1.65; margin: 0; }
+
+/* -------------------------------------------------------------- install */
+
+.lsplit { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 1.4rem; align-items: start; }
+.lgets { display: grid; gap: .8rem; }
+.lget {
+  display: block;
+  overflow: hidden;
+  transition: transform .45s var(--ease), border-color .45s var(--ease);
+}
+.lget-in {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: .55rem .9rem;
+  padding: 1.1rem 1.25rem;
+}
+/* The one line under a row that says what the file actually is. It spans the
+   whole row rather than sitting in either column, so the tag and the filename
+   above it keep their own ends. */
+.lget-note { grid-column: 1 / -1; font-size: .82rem; line-height: 1.6; }
+.lget-file { justify-self: end; text-align: right; }
+a.lget:hover, .lget-qr:not([open]):hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--ds) 50%, var(--bd));
+}
+a.lget:hover .lget-file { color: var(--ds); }
 
 /* The 3DS row opens onto the code its camera reads. */
-.lrow-qr { border-bottom: 1px solid var(--bd); }
-.lrow-qr:last-child { border-bottom: 0; }
-.lrow-qr > summary { list-style: none; cursor: pointer; border-bottom: 0; }
-.lrow-qr > summary::-webkit-details-marker { display: none; }
-.lrow-qr > summary:hover { background: var(--surf2); }
-.lrow-qr > summary:hover .mono { color: var(--ds); }
+.lget-qr > summary { list-style: none; cursor: pointer; }
+.lget-qr > summary::-webkit-details-marker { display: none; }
 /* The affordance, since a row that opens looks exactly like a row that links. */
-.lrow-qr > summary .mono::after { content: " ▾"; color: var(--mut); }
-.lrow-qr[open] > summary .mono::after { content: " ▴"; }
+.lget-qr > summary .lget-file::after { content: " ▾"; color: var(--mut); }
+.lget-qr[open] > summary .lget-file::after { content: " ▴"; }
 .lqr {
-  display: flex; gap: 1.1rem; flex-wrap: wrap; align-items: flex-start;
-  padding: 0 .95rem 1rem;
+  display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: flex-start;
+  padding: 0 1.25rem 1.25rem;
 }
 /* White behind it whatever the theme is: a scanner reads dark on light, and a
    code drawn in the page's own colours is a code that will not scan on a dark
@@ -577,21 +970,30 @@ a.lrow:hover .mono { color: var(--ds); }
 }
 .lqr > div { flex: 1 1 12rem; min-width: 0; }
 .lqr-head { font-weight: 700; margin: 0 0 .35rem; }
-.lqr-how { margin: 0; font-size: .85rem; line-height: 1.55; }
+.lqr-how { margin: 0; font-size: .85rem; line-height: 1.6; }
 .lqr-alt { margin: .6rem 0 0; font-size: .85rem; }
 .lqr-alt a { color: var(--mut); text-decoration: underline; }
 .lqr-alt a:hover { color: var(--ds); }
 
-.lwont { list-style: none; margin: 0; padding: 0; }
-.lwont li {
-  display: flex; gap: .7rem; align-items: baseline;
-  padding: .7rem 0;
-  border-bottom: 1px solid var(--bd);
-  font-size: .9rem; line-height: 1.55;
-}
-.lwont li:last-child { border-bottom: 0; }
+.lnaming { padding: 1.4rem 1.45rem; }
+.lnaming p { margin: 0; font-size: .85rem; line-height: 1.7; }
 
-.lfoot { border-top: 1px solid var(--bd); margin-top: 3.5rem; color: var(--mut); font-size: .82rem; }
+/* ------------------------------------------------------- what it will not */
+
+.lwont { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr)); gap: .9rem; }
+.lwont li {
+  display: flex; gap: .9rem; align-items: flex-start;
+  padding: 1.3rem 1.35rem;
+  color: var(--mut);
+  font-size: .89rem; line-height: 1.65;
+  transition: border-color .45s var(--ease);
+}
+.lwont li:hover { border-color: color-mix(in srgb, var(--warn) 50%, var(--bd)); }
+.lwont .x { color: var(--warn); font-weight: 700; flex: 0 0 auto; }
+
+/* --------------------------------------------------------------- footer */
+
+.lfoot { border-top: 1px solid var(--bd); color: var(--mut); font-size: .82rem; }
 .lfoot-in { display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; padding-top: 1.6rem; padding-bottom: 2.4rem; }
 .lfoot a { color: var(--mut); }
 .lfoot a:hover { color: var(--tx); }
@@ -600,18 +1002,40 @@ a.lrow:hover .mono { color: var(--ds); }
 .lfoot-lang { margin-left: auto; }
 .lfoot-lang select { width: auto; color: var(--mut); }
 
-@media (max-width: 60rem) {
-  .lhero { grid-template-columns: minmax(0, 1fr); gap: 2.2rem; padding-top: 2.8rem; }
-  .lsteps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lstep:nth-child(2) { border-right: 0; }
-  .lstep:nth-child(-n+2) { border-bottom: 1px solid var(--bd); }
+/* --------------------------------------------------------------- narrow */
+
+@media (max-width: 64rem) {
+  /* The rail is a luxury of a wide screen; on a narrow one it sits on the text. */
+  .lrail { display: none; }
+  .lrun { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 2.2rem; }
+  /* Two rows now, so one line across the top would point at nothing. */
+  .lrun::before { display: none; }
+  .lsplit { grid-template-columns: minmax(0, 1fr); }
 }
+
+@media (max-width: 60rem) {
+  .lhero { grid-template-columns: minmax(0, 1fr); gap: 2.6rem; }
+  .lpanel { padding-top: calc(var(--navh) + 2rem); padding-bottom: 2.8rem; gap: 2.2rem; }
+  /* Stacked, the first screen is taller than a screen. Asking for a whole one
+     anyway only adds empty space under what already did not fit, and the arrow
+     it was pointing at is off the bottom either way. */
+  .lpanel-hero, .lpanel-last { min-height: 0; }
+  .lpanel-hero { padding-top: 1.8rem; }
+  .lcue { display: none; }
+  .lrings-hero { display: none; }
+  .lhead { margin-bottom: 2rem; }
+}
+
 @media (max-width: 46rem) {
   /* The anchors go first: on a phone the sign in button is what the bar is for. */
   .lnav-links { display: none; }
-  .lsteps { grid-template-columns: minmax(0, 1fr); }
-  .lstep { border-right: 0; border-bottom: 1px solid var(--bd); }
-  .lstep:last-child { border-bottom: 0; }
+  /* Three buttons across a phone are three cramped buttons. One per line, each
+     the width of the column, which is also the easiest thing to hit. */
+  .lhero-actions { display: grid; gap: .6rem; }
+  .lhero-actions .btn { text-align: center; }
+  .lrun { grid-template-columns: minmax(0, 1fr); row-gap: 1.8rem; }
+  .lget-in { grid-template-columns: minmax(0, 1fr); }
+  .lget-file { justify-self: start; text-align: left; }
   .lfoot-lang { margin-left: 0; }
 }
 

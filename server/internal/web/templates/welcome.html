@@ -1,11 +1,23 @@
 {{/* The landing page, and the only page here that is not the panel. It uses the
      document head and nothing else from layout.html: there is no sidebar to draw
-     and no narrow gate to sit in. */}}
+     and no narrow gate to sit in.
+
+     It is read a screen at a time. Every section is a panel the height of the
+     viewport, built the way the first one is - a number, a display line, a
+     sentence, and one figure that shows the thing rather than describing it -
+     and its parts arrive as it does.
+
+     Two rules hold underneath all of that. Nothing here is a string: every word
+     comes out of shared/lang. And nothing here needs the script: `data-anim` is
+     hidden only under `html.js`, which the inline line below sets before any of
+     this parses, so a browser with no JavaScript is served the same page with
+     everything already in place. */}}
 {{template "doc" .}}
+<script>document.documentElement.className += " js";</script>
 
 <nav class="lnav">
   <div class="lwrap lnav-in">
-    <a class="brand lnav-brand" href="/">
+    <a class="brand lnav-brand" href="#top">
       <img src="{{asset "icon-192.png"}}" width="30" height="30" alt="">
       <span>DaeMoon</span>
     </a>
@@ -13,6 +25,7 @@
       <a href="#what">{{.T "web.welcome.nav.what"}}</a>
       <a href="#order">{{.T "web.welcome.nav.order"}}</a>
       <a href="#install">{{.T "web.welcome.nav.install"}}</a>
+      <a href="#wont">{{.T "web.welcome.wont"}}</a>
     </div>
     <div class="lnav-actions">
       {{if .SignUpOpen}}<a class="btn btn-ghost btn-sm" href="/register">{{.T "web.register.link"}}</a>{{end}}
@@ -21,176 +34,261 @@
   </div>
 </nav>
 
-<header class="lwrap lhero">
-  <div class="lhero-copy">
-    <p class="kicker">{{.T "web.welcome.kicker"}}</p>
-    <h1>{{.T "web.welcome.lede"}}<br><em>{{.T "web.welcome.h1_accent"}}</em></h1>
-    <p class="lede">{{.T "web.welcome.sub"}}</p>
-    <div class="lhero-actions">
-      <a class="btn btn-key" href="{{.Downloads.ThreeDS}}" rel="noopener">{{.T "web.welcome.cta"}}</a>
-      <a class="btn btn-ghost" href="#what">{{.T "web.welcome.nav.what"}}</a>
+{{/* ------------------------------------------------------------------ 01 */}}
+<section class="lpanel lpanel-hero" id="top">
+  {{/* The shapes behind the words: one circle far larger than the screen, hung
+       off the right edge so that what is seen is a single arc, and a scatter of
+       the same shape small and in outline. Both drift against the scroll when
+       there is a script to drift them, and sit still when there is not. */}}
+  <div class="ldisc ldisc-hero" data-float=".05"></div>
+  <svg class="lrings lrings-hero" viewBox="0 0 360 360" fill="none" aria-hidden="true" data-float=".1">
+    <circle cx="74" cy="96" r="46" stroke="currentColor" stroke-width="7"/>
+    <circle cx="252" cy="52" r="24" stroke="currentColor" stroke-width="7"/>
+    <circle cx="296" cy="214" r="62" stroke="currentColor" stroke-width="7"/>
+    <circle cx="122" cy="292" r="32" stroke="currentColor" stroke-width="7"/>
+    <circle cx="186" cy="152" r="7" fill="currentColor"/>
+    <circle cx="38" cy="222" r="5" fill="currentColor"/>
+    <circle cx="336" cy="112" r="6" fill="currentColor"/>
+  </svg>
+
+  <div class="lwrap lhero">
+    <div class="lhero-copy">
+      <p class="kicker" data-anim="up">{{.T "web.welcome.kicker"}}</p>
+      <h1 data-anim="up">
+        <span class="lline">{{.T "web.welcome.lede"}}</span>
+        <em class="lline">{{.T "web.welcome.h1_accent"}}</em>
+      </h1>
+      <p class="lede" data-anim="up">{{.T "web.welcome.sub"}}</p>
+      {{/* The three things somebody arriving here can actually do. Download goes
+           to the install section rather than straight at a file: which build is
+           wanted depends on which console is in the room, and that section is
+           where all three are, with the code a 3DS camera can read.
+           Creating an account is only offered when this server is taking them -
+           the bar above makes the same check, and a button drawn is not
+           permission either way. */}}
+      <div class="lhero-actions" data-anim="up">
+        <a class="btn btn-key btn-xl" href="#install">{{.T "web.welcome.cta"}}</a>
+        <a class="btn btn-ghost btn-xl" href="/login">{{.T "web.login.title"}}</a>
+        {{if .SignUpOpen}}<a class="btn btn-ghost btn-xl" href="/register">{{.T "web.register.link"}}</a>{{end}}
+      </div>
+    </div>
+
+    {{/* What the thing actually does, as three rows of it doing it. The versions
+         are the server's own numbering, which is also the answer to why no clock
+         appears anywhere on this card. */}}
+    <div class="lhero-figure" data-anim="right" data-float=".03">
+      <div class="lgate" data-stagger="120">
+        <div class="lgate-hd">
+          <span>{{.T "web.welcome.gate.head"}}</span>
+          <span class="mono lgate-hd-r">parent → latest</span>
+        </div>
+        <div class="lgate-row" data-anim="up">
+          <div class="lgate-cmp">
+            <div>
+              <div class="who tg tg-3ds">3DS</div>
+              <div class="val mono">v41 · 512 KB</div>
+            </div>
+            <div class="g t-mut mono">==</div>
+            <div class="rr">
+              <div class="who">{{.T "web.welcome.gate.server"}}</div>
+              <div class="val mono">v41 · 512 KB</div>
+            </div>
+          </div>
+          <p class="verdict t-mut">{{.T "web.welcome.gate.same"}}</p>
+        </div>
+        <div class="lgate-row is-live" data-anim="up">
+          <div class="lgate-cmp">
+            <div>
+              <div class="who tg tg-3ds">3DS</div>
+              <div class="val mono">v42 · 84 KB</div>
+            </div>
+            <div class="g t-ds mono">--&gt;</div>
+            <div class="rr">
+              <div class="who">{{.T "web.welcome.gate.server"}}</div>
+              <div class="val mono">v41 · 84 KB</div>
+            </div>
+          </div>
+          <p class="verdict t-ds">{{.T "web.welcome.gate.up"}}</p>
+        </div>
+        <div class="lgate-row" data-anim="up">
+          <div class="lgate-cmp">
+            <div>
+              <div class="who tg tg-nds">NDS</div>
+              <div class="val mono">v7 · 256 KB</div>
+            </div>
+            <div class="g t-warn mono">!=</div>
+            <div class="rr">
+              <div class="who">{{.T "web.welcome.gate.server"}}</div>
+              <div class="val mono">v8 · 258 KB</div>
+            </div>
+          </div>
+          <p class="verdict t-warn">{{.T "web.welcome.gate.clash"}}</p>
+        </div>
+      </div>
+      <p class="mono t-mut lfig-note">{{.T "web.welcome.gate.note"}}</p>
     </div>
   </div>
 
-  {{/* What the thing actually does, as three rows of it doing it. The versions are
-       the server's own numbering, which is also the answer to why no clock appears
-       anywhere on this card. */}}
-  <div class="lhero-figure">
-    <div class="lgate">
-      <div class="lgate-hd">
-        <span>{{.T "web.welcome.gate.head"}}</span>
-        <span class="mono lgate-hd-r">parent → latest</span>
-      </div>
-      <div class="lgate-row">
-        <div class="lgate-cmp">
-          <div>
-            <div class="who tg tg-3ds">3DS</div>
-            <div class="val mono">v41 · 512 KB</div>
-          </div>
-          <div class="g t-mut mono">==</div>
-          <div class="rr">
-            <div class="who">{{.T "web.welcome.gate.server"}}</div>
-            <div class="val mono">v41 · 512 KB</div>
-          </div>
-        </div>
-        <p class="verdict t-mut">{{.T "web.welcome.gate.same"}}</p>
-      </div>
-      <div class="lgate-row">
-        <div class="lgate-cmp">
-          <div>
-            <div class="who tg tg-3ds">3DS</div>
-            <div class="val mono">v42 · 84 KB</div>
-          </div>
-          <div class="g t-ds mono">--&gt;</div>
-          <div class="rr">
-            <div class="who">{{.T "web.welcome.gate.server"}}</div>
-            <div class="val mono">v41 · 84 KB</div>
-          </div>
-        </div>
-        <p class="verdict t-ds">{{.T "web.welcome.gate.up"}}</p>
-      </div>
-      <div class="lgate-row">
-        <div class="lgate-cmp">
-          <div>
-            <div class="who tg tg-nds">NDS</div>
-            <div class="val mono">v7 · 256 KB</div>
-          </div>
-          <div class="g t-warn mono">!=</div>
-          <div class="rr">
-            <div class="who">{{.T "web.welcome.gate.server"}}</div>
-            <div class="val mono">v8 · 258 KB</div>
-          </div>
-        </div>
-        <p class="verdict t-warn">{{.T "web.welcome.gate.clash"}}</p>
-      </div>
+  {{/* The one thing on this page somebody must not skip, so it stays on the
+       first screen rather than waiting for a scroll that may not happen. */}}
+  <div class="lwrap">
+    <div class="lstrip" data-anim="up">
+      <span class="tg tg-warn">{{.T "web.welcome.warn_tag"}}</span>
+      <p>{{.T "web.welcome.warn_head"}}</p>
     </div>
-    <p class="mono t-mut lfig-note">{{.T "web.welcome.gate.note"}}</p>
   </div>
-</header>
 
-<div class="lwrap">
-  <div class="lstrip">
-    <span class="tg tg-warn">{{.T "web.welcome.warn_tag"}}</span>
-    <p>{{.T "web.welcome.warn_head"}}</p>
-  </div>
-</div>
+  {{/* Decoration, and a link only so that clicking it does what it draws. */}}
+  <a class="lcue" href="#what" tabindex="-1" aria-hidden="true"><span></span></a>
+</section>
 
-<section class="lwrap lsec" id="what">
-  <p class="sechead">{{.T "web.welcome.nav.what"}}</p>
-  <div class="lgrid3">
-    <div class="card feat">
-      <span class="no mono">01</span>
-      <h2>{{.T "web.welcome.f1.k"}}</h2>
-      <p>{{.T "web.welcome.f1.v"}}</p>
-    </div>
-    <div class="card feat">
-      <span class="no mono">02</span>
-      <h2>{{.T "web.welcome.f2.k"}}</h2>
-      <p>{{.T "web.welcome.f2.v"}}</p>
-    </div>
-    <div class="card feat">
-      <span class="no mono">03</span>
-      <h2>{{.T "web.welcome.f3.k"}}</h2>
-      <p>{{.T "web.welcome.f3.v"}}</p>
+{{/* ------------------------------------------------------------------ 02 */}}
+<section class="lpanel lpanel-band" id="what">
+  <div class="ldisc ldisc-2 ldisc-left" data-float="-.05"></div>
+
+  <div class="lwrap">
+    <header class="lhead" data-anim="up">
+      <p class="lnum mono">02</p>
+      <h2 class="ldisplay">{{.T "web.welcome.nav.what"}}</h2>
+    </header>
+
+    <div class="lgrid3" data-stagger="90">
+      <div class="card feat" data-anim="up">
+        <span class="no mono">01</span>
+        <h3>{{.T "web.welcome.f1.k"}}</h3>
+        <p>{{.T "web.welcome.f1.v"}}</p>
+      </div>
+      <div class="card feat" data-anim="up">
+        <span class="no mono">02</span>
+        <h3>{{.T "web.welcome.f2.k"}}</h3>
+        <p>{{.T "web.welcome.f2.v"}}</p>
+      </div>
+      <div class="card feat" data-anim="up">
+        <span class="no mono">03</span>
+        <h3>{{.T "web.welcome.f3.k"}}</h3>
+        <p>{{.T "web.welcome.f3.v"}}</p>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="lwrap lsec" id="order">
-  <p class="sechead">{{.T "web.welcome.order.head"}}</p>
-  <div class="card lsteps">
-    <div class="lstep">
-      <span class="stepn mono">01</span>
-      <h3>{{.T "web.welcome.s1.k"}}</h3>
-      <p>{{.T "web.welcome.s1.v"}}</p>
-    </div>
-    <div class="lstep">
-      <span class="stepn mono">02</span>
-      <h3>{{.T "web.welcome.s2.k"}}</h3>
-      <p>{{.T "web.welcome.s2.v"}}</p>
-    </div>
-    <div class="lstep">
-      <span class="stepn mono">03</span>
-      <h3>{{.T "web.welcome.s3.k"}}</h3>
-      <p>{{.T "web.welcome.s3.v"}}</p>
-    </div>
-    <div class="lstep">
-      <span class="stepn mono">04</span>
-      <h3>{{.T "web.welcome.s4.k"}}</h3>
-      <p>{{.T "web.welcome.s4.v"}}</p>
+{{/* ------------------------------------------------------------------ 03 */}}
+<section class="lpanel" id="order">
+  <div class="ldisc ldisc-right" data-float=".05"></div>
+
+  <div class="lwrap">
+    <header class="lhead" data-anim="up">
+      <p class="lnum mono">03</p>
+      <h2 class="ldisplay">{{.T "web.welcome.order.head"}}</h2>
+    </header>
+
+    {{/* Four steps on one rail rather than four cards on their own. They are one
+         sequence, and the line between them says so; it draws itself in as the
+         panel arrives, in the order the sync actually happens in. */}}
+    <ol class="lrun" data-anim="line" data-stagger="140">
+      <li class="lrun-step" data-anim="up">
+        <span class="stepn mono">01</span>
+        <h3>{{.T "web.welcome.s1.k"}}</h3>
+        <p>{{.T "web.welcome.s1.v"}}</p>
+      </li>
+      <li class="lrun-step" data-anim="up">
+        <span class="stepn mono">02</span>
+        <h3>{{.T "web.welcome.s2.k"}}</h3>
+        <p>{{.T "web.welcome.s2.v"}}</p>
+      </li>
+      <li class="lrun-step" data-anim="up">
+        <span class="stepn mono">03</span>
+        <h3>{{.T "web.welcome.s3.k"}}</h3>
+        <p>{{.T "web.welcome.s3.v"}}</p>
+      </li>
+      <li class="lrun-step" data-anim="up">
+        <span class="stepn mono">04</span>
+        <h3>{{.T "web.welcome.s4.k"}}</h3>
+        <p>{{.T "web.welcome.s4.v"}}</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+{{/* ------------------------------------------------------------------ 04 */}}
+<section class="lpanel lpanel-band" id="install">
+  <div class="ldisc ldisc-2 ldisc-right" data-float="-.05"></div>
+
+  <div class="lwrap">
+    <header class="lhead" data-anim="up">
+      <p class="lnum mono">04</p>
+      <h2 class="ldisplay">{{.T "web.welcome.nav.install"}}</h2>
+    </header>
+
+    <div class="lsplit">
+      <div class="lgets" data-stagger="90">
+        {{if .InstallQR}}
+        {{/* The 3DS row opens rather than leaves: a console with a camera does
+             not need somebody to carry a file to it. details, so this one works
+             with no script, like every other control here. */}}
+        <details class="card lget lget-qr" data-anim="up">
+          <summary class="lget-in">
+            <span class="tg tg-3ds">{{.T "web.welcome.dl_3ds"}}</span>
+            <span class="lget-file mono">daemoon-3ds-*.cia · FBI</span>
+            <span class="lget-note t-mut">{{.T "web.welcome.dl_3ds_note"}}</span>
+          </summary>
+          <div class="lqr">
+            <img class="qr" src="/install/3ds.qr.svg" width="180" height="180" alt="">
+            <div>
+              <p class="lqr-head">{{.T "web.welcome.qr.head"}}</p>
+              <p class="t-mut lqr-how">{{.T "web.welcome.qr.how"}}</p>
+              <p class="lqr-alt"><a href="{{.Downloads.ThreeDS}}" rel="noopener">{{.T "web.welcome.qr.manual"}}</a></p>
+            </div>
+          </div>
+        </details>
+        {{else}}
+        <a class="card lget" href="{{.Downloads.ThreeDS}}" rel="noopener" data-anim="up">
+          <span class="lget-in">
+            <span class="tg tg-3ds">{{.T "web.welcome.dl_3ds"}}</span>
+            <span class="lget-file mono">daemoon-3ds-*.cia · FBI</span>
+            <span class="lget-note t-mut">{{.T "web.welcome.dl_3ds_note"}}</span>
+          </span>
+        </a>
+        {{end}}
+
+        <a class="card lget" href="{{.Downloads.Switch}}" rel="noopener" data-anim="up">
+          <span class="lget-in">
+            <span class="tg tg-nx">{{.T "web.welcome.dl_nx"}}</span>
+            <span class="lget-file mono">daemoon-switch-*.nro · /switch/</span>
+            <span class="lget-note t-mut">{{.T "web.welcome.dl_nx_note"}}</span>
+          </span>
+        </a>
+
+        <a class="card lget" href="{{.Downloads.Server}}" rel="noopener" data-anim="up">
+          <span class="lget-in">
+            <span class="tg tg-mut">{{.T "web.welcome.dl_server"}}</span>
+            <span class="lget-file mono">daemoond · linux / macos / windows</span>
+          </span>
+        </a>
+      </div>
+
+      <aside class="lnaming card" data-anim="left" data-float=".02">
+        <p class="t-mut">{{.T "web.welcome.naming"}}</p>
+      </aside>
     </div>
   </div>
 </section>
 
-<section class="lwrap lsec lsplit" id="install">
-  <div>
-    <p class="sechead">{{.T "web.welcome.nav.install"}}</p>
-    <div class="card lrows">
-      {{if .InstallQR}}
-      {{/* The 3DS row opens rather than leaves: a console with a camera does not
-           need somebody to carry a file to it. details, so this works with no
-           JavaScript, like every other control here. */}}
-      <details class="lrow-qr">
-        <summary class="lrow">
-          <span class="t-mut">{{.T "web.welcome.dl_3ds"}}</span>
-          <span class="mono">daemoon-3ds-*.cia · FBI</span>
-        </summary>
-        <div class="lqr">
-          <img class="qr" src="/install/3ds.qr.svg" width="180" height="180" alt="">
-          <div>
-            <p class="lqr-head">{{.T "web.welcome.qr.head"}}</p>
-            <p class="t-mut lqr-how">{{.T "web.welcome.qr.how"}}</p>
-            <p class="lqr-alt"><a href="{{.Downloads.ThreeDS}}" rel="noopener">{{.T "web.welcome.qr.manual"}}</a></p>
-          </div>
-        </div>
-      </details>
-      {{else}}
-      <a class="lrow" href="{{.Downloads.ThreeDS}}" rel="noopener">
-        <span class="t-mut">{{.T "web.welcome.dl_3ds"}}</span>
-        <span class="mono">daemoon-3ds-*.cia · FBI</span>
-      </a>
-      {{end}}
-      <a class="lrow" href="{{.Downloads.Switch}}" rel="noopener">
-        <span class="t-mut">{{.T "web.welcome.dl_nx"}}</span>
-        <span class="mono">daemoon-switch-*.nro · /switch/</span>
-      </a>
-      <a class="lrow" href="{{.Downloads.Server}}" rel="noopener">
-        <span class="t-mut">{{.T "web.welcome.dl_server"}}</span>
-        <span class="mono">daemoond · linux / macos / windows</span>
-      </a>
-    </div>
-    <p class="t-mut lnote">{{.T "web.welcome.dl_3ds_note"}}</p>
-    <p class="t-mut lnote">{{.T "web.welcome.dl_nx_note"}}</p>
-    <p class="t-mut lnote">{{.T "web.welcome.naming"}}</p>
-  </div>
+{{/* ------------------------------------------------------------------ 05 */}}
+<section class="lpanel lpanel-last lpanel-warn" id="wont">
+  <div class="ldisc ldisc-low" data-float=".05"></div>
 
-  <div>
-    <p class="sechead">{{.T "web.welcome.wont"}}</p>
-    <ul class="lwont">
-      <li><span class="t-warn" aria-hidden="true">✕</span><span>{{.T "web.welcome.warn"}}</span></li>
-      <li><span class="t-warn" aria-hidden="true">✕</span><span>{{.T "web.welcome.no2"}}</span></li>
-      <li><span class="t-warn" aria-hidden="true">✕</span><span>{{.T "web.welcome.no3"}}</span></li>
-      <li><span class="t-warn" aria-hidden="true">✕</span><span>{{.T "web.welcome.no4"}}</span></li>
+  <div class="lwrap">
+    <header class="lhead" data-anim="up">
+      <p class="lnum mono">05</p>
+      <h2 class="ldisplay">{{.T "web.welcome.wont"}}</h2>
+    </header>
+
+    <ul class="lwont" data-stagger="100">
+      <li class="card" data-anim="up"><span class="x" aria-hidden="true">✕</span><span>{{.T "web.welcome.warn"}}</span></li>
+      <li class="card" data-anim="up"><span class="x" aria-hidden="true">✕</span><span>{{.T "web.welcome.no2"}}</span></li>
+      <li class="card" data-anim="up"><span class="x" aria-hidden="true">✕</span><span>{{.T "web.welcome.no3"}}</span></li>
+      <li class="card" data-anim="up"><span class="x" aria-hidden="true">✕</span><span>{{.T "web.welcome.no4"}}</span></li>
     </ul>
   </div>
 </section>
@@ -214,4 +312,5 @@
   </div>
 </footer>
 
+<script src="{{asset "motion.js"}}" defer></script>
 </body></html>

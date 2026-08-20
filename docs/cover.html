@@ -1,0 +1,173 @@
+<!doctype html>
+<!-- The source of docs/cover.png, the image at the top of the README and the one
+     GitHub shows when a link to this repository is pasted somewhere.
+
+     It is HTML rather than an SVG committed straight into the README for one
+     reason: the typeface. An SVG served by GitHub is rendered by whatever fonts
+     the reader happens to have, and this wordmark set in a fallback is a
+     different wordmark. Rendering it here with the same Pretendard the panel
+     ships, then committing the pixels, means everyone sees the same image.
+
+     Regenerate after editing:
+
+       make cover
+
+     Every colour below is a token out of server/internal/web/static/style.css.
+     A cover that did not look like the thing it covers would be worth less than
+     no cover at all. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face {
+    font-family: "Pretendard Variable";
+    font-weight: 45 920;
+    src: url("../server/internal/web/static/fonts/PretendardVariable.woff2") format("woff2");
+  }
+
+  :root {
+    --bg: #17181b;
+    --surf: #1e2024;
+    --surf2: #25282e;
+    --bd: #33373f;
+    --tx: #edeef0;
+    --mut: #8f959f;
+    --ds: #4db8f0;
+    --sw: #f0736f;
+    --nds: #b48ae8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { width: 1280px; height: 640px; }
+  body {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--tx);
+    font-family: "Pretendard Variable", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The same two shapes the landing page is built on: one circle several times
+     the size of the frame, hung off the right so only its arc is seen, and the
+     same shape small and in outline in front of it. */
+  .disc {
+    position: absolute;
+    top: -420px;
+    right: -1420px;
+    width: 2000px;
+    height: 1640px;
+    border-radius: 50%;
+    background: var(--surf);
+  }
+  .rings {
+    position: absolute;
+    top: 62px;
+    right: -18px;
+    width: 440px;
+    color: var(--ds);
+    opacity: .2;
+  }
+
+  .in {
+    position: relative;
+    height: 100%;
+    padding: 92px 96px 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  /* The panel's own mark: 大, the first character of 대문. */
+  .mark {
+    width: 62px; height: 62px;
+    border-radius: 17px;
+    background: var(--tx);
+    color: var(--bg);
+    display: grid;
+    place-items: center;
+    font-size: 30px;
+    font-weight: 800;
+    margin-bottom: 38px;
+  }
+
+  h1 {
+    font-size: 112px;
+    font-weight: 800;
+    letter-spacing: -.05em;
+    line-height: 1;
+  }
+  /* The full stop as a shape, the way every heading on the landing page ends. */
+  h1::after {
+    content: "";
+    display: inline-block;
+    width: .13em; height: .13em;
+    margin-left: .06em;
+    border-radius: 50%;
+    background: var(--ds);
+  }
+
+  .sub {
+    margin-top: 24px;
+    font-size: 27px;
+    line-height: 1.45;
+    color: var(--mut);
+    max-width: 620px;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+  }
+
+  .tags { display: flex; gap: 10px; margin-top: 40px; }
+  .tg {
+    border: 1px solid currentColor;
+    border-radius: 9px;
+    padding: 6px 14px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .07em;
+  }
+  .tg-3ds { color: var(--ds); }
+  .tg-nx  { color: var(--sw); }
+  .tg-nds { color: var(--nds); }
+
+  .foot {
+    position: absolute;
+    left: 96px;
+    bottom: 78px;
+    font-family: ui-monospace, "DejaVu Sans Mono", monospace;
+    font-size: 17px;
+    letter-spacing: -.01em;
+    color: var(--mut);
+  }
+</style>
+</head>
+<body>
+  <div class="disc"></div>
+
+  <svg class="rings" viewBox="0 0 360 360" fill="none">
+    <circle cx="74" cy="96" r="46" stroke="currentColor" stroke-width="7"/>
+    <circle cx="252" cy="52" r="24" stroke="currentColor" stroke-width="7"/>
+    <circle cx="296" cy="214" r="62" stroke="currentColor" stroke-width="7"/>
+    <circle cx="122" cy="292" r="32" stroke="currentColor" stroke-width="7"/>
+    <circle cx="186" cy="152" r="7" fill="currentColor"/>
+    <circle cx="38" cy="222" r="5" fill="currentColor"/>
+    <circle cx="336" cy="112" r="6" fill="currentColor"/>
+  </svg>
+
+  <div class="in">
+    <div class="mark">大</div>
+    <h1>DaeMoon</h1>
+    <p class="sub">Save data sync for 3DS, Switch
+and nds&#8209;bootstrap.</p>
+    <div class="tags">
+      <span class="tg tg-3ds">3DS</span>
+      <span class="tg tg-nx">SWITCH</span>
+      <span class="tg tg-nds">NDS</span>
+    </div>
+  </div>
+
+  <div class="foot">self&#8209;hosted&nbsp;&nbsp;·&nbsp;&nbsp;one binary, one file&nbsp;&nbsp;·&nbsp;&nbsp;every version kept</div>
+</body>
+</html>

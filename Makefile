@@ -6,10 +6,13 @@
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
+# Only `make cover` uses this, and only when the README image is being redrawn.
+BROWSER ?= google-chrome
+
 .PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check stack-check \
         core-isolation spec-check ca-check ca-bundle server 3ds nx run-server clean \
         docker-images docker-3ds docker-cia docker-nx docker-test docker-shell image-check \
-        cia-verify emu-selftest emu-autosync 3ds-install 3ds-selftest
+        cia-verify emu-selftest emu-autosync 3ds-install 3ds-selftest cover
 
 all: help
 
@@ -46,6 +49,22 @@ gen-check:
 # generator: it refuses to emit a table when a key is missing from any language, is
 # empty, or uses a different placeholder set than English.
 lang-check: gen-check
+
+# docs/cover.png, the image at the top of the README, rendered from
+# docs/cover.html so that the wordmark is set in the same Pretendard the panel
+# ships rather than in whatever font the reader happens to have. Rare enough to
+# be hand run and committed: this is not part of any build.
+cover:
+	@command -v $(BROWSER) >/dev/null || { \
+	  echo "no $(BROWSER) on PATH - set BROWSER=<chrome or chromium binary>"; exit 1; }
+	@rm -rf $(ROOT)/build/cover-profile
+	@$(BROWSER) --headless --disable-gpu --no-sandbox --hide-scrollbars \
+	  --user-data-dir=$(ROOT)/build/cover-profile \
+	  --window-size=1280,640 --force-device-scale-factor=2 \
+	  --allow-file-access-from-files \
+	  --screenshot=$(ROOT)/docs/cover.png "file://$(ROOT)/docs/cover.html" >/dev/null 2>&1
+	@rm -rf $(ROOT)/build/cover-profile
+	@echo "docs/cover.png"
 
 # ------------------------------------------------------------------ the rules
 

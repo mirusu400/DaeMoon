@@ -1,20 +1,38 @@
-# DaeMoon
+<p align="center">
+  <img src="docs/cover.png" width="820"
+       alt="DaeMoon - save data sync for 3DS, Switch and nds-bootstrap">
+</p>
 
 Save data sync for 3DS, Switch and nds-bootstrap, backed by a self-hostable server.
+
+<!-- Screenshots: put the files in docs/screenshots/ under these names, then
+     delete this line and the two around the block to show it.
+
+## What it looks like
+
+<p align="center">
+  <img src="docs/screenshots/panel.png" width="49%" alt="The web panel, listing synced saves">
+  <img src="docs/screenshots/3ds.png" width="49%" alt="A sync running on the 3DS">
+</p>
+
+-->
 
 The name is Korean for "main gate" (대문). The resemblance to "daemon" is wordplay:
 there is no background daemon here and there cannot be one, because syncing while a
 game holds a save archive corrupts it.
 
-**Status: Phase 1, pending hardware.** The shared core, the desktop backend, the
-server and the internationalization pipeline are done and tested. The 3DS backend
-is written, the CIA builds and carries the right permissions, and the backend
-conformance suite passes both on a desktop against a libctru stub and as a real
-ARM binary inside an emulator.
+**Status: written through the Switch client, pending hardware.** The shared core,
+the desktop backend, the server, the web panel and the internationalization
+pipeline are done and tested. The 3DS client is a CIA that builds carrying the
+right permissions, and its backend conformance suite passes both on a desktop
+against a libctru stub and as a real ARM binary inside an emulator. The autoboot
+sync runs the same way, against a real server. The Switch client is an NRO that
+lists a chosen account's saves, backs one up and syncs one.
 
 What remains is the part only a console can answer: whether those permissions
-actually reach another title's save archive, and what the secure value does to a
-restored save. The procedure is `docs/phase1-hardware.md`.
+actually reach another title's save archive, what the secure value does to a
+restored save, whether Luma autoboots this title, and whether leaving it lands
+back on HOME. The procedure is `docs/phase1-hardware.md`.
 
 ## What works today
 
@@ -23,9 +41,12 @@ restored save. The procedure is `docs/phase1-hardware.md`.
 - `platform/posix/`: a directory presented as a save archive, plus a plain HTTP
   backend, so the whole sync path runs on a build machine.
 - `server/`: Go, SQLite, one static binary and one database file.
+- the web panel it serves: a landing page, pairing by QR or device code, and the
+  saves, consoles and people behind a login. Eight languages, three themes, and
+  every control in it still works with JavaScript off.
 - `tools/cli/`: `daemoonctl`, a desktop client that links the same core a console
   build links.
-- 54,000 core checks and the Go suite, both green, with the address and undefined
+- 57,000 core checks and the Go suite, both green, with the address and undefined
   behaviour sanitizers on for the C side, plus fuzzing on both sides' parsers.
 - Reproducible builds for all three targets in containers, including the 3DS CIA.
 
@@ -76,10 +97,13 @@ make server
 Working on the 3DS itself goes over wifi rather than by moving the SD card - see
 `docs/3ds-workflow.md`.
 
-Both console targets already compile and link the whole shared core. Their entry
-points do nothing yet, which is the point: it means `core/` is free of platform
-assumptions in a way three compilers agree on, rather than in a way a grep
-believes.
+Both console targets link the whole shared core, which is the point of `core/`
+being free of platform assumptions in a way three compilers agree on rather than
+in a way a grep believes.
+
+The image at the top is `docs/cover.html`, rendered by `make cover`. It is
+committed rather than generated on demand, because the wordmark has to be set in
+the typeface the panel ships and not in whatever the reader happens to have.
 
 ## Layout
 
@@ -89,7 +113,7 @@ platform/     3ds (libctru), nx (libnx), posix (desktop, test and development)
 server/       Go, SQLite, one binary
 shared/       the contracts: errors, language files, the OpenAPI spec, fixtures
 tools/        code generation, the spec check, the core tests, daemoonctl
-vendor/       miniz and jsmn, copied in
+vendor/       miniz, jsmn, quirc and the root certificates, copied in
 docs/         the format, the i18n pipeline, and the open font question
 ```
 

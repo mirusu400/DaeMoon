@@ -30,6 +30,82 @@
 
 static int g_ready;
 
+/* CURLOPT_CAINFO_BLOB is 7.77, and mbedtls learned it in 7.81. The 3DS port is
+ * 8.4 and takes that path; the Switch port is 7.69 and cannot, so there the
+ * bundle is spilled to a file the app owns and CAINFO points at that.
+ *
+ * Both are the same bundle from the same array in the same binary. What differs
+ * is only whether curl will take it directly. */
+#if LIBCURL_VERSION_NUM >= 0x075100
+#define DAEMOON_CURL_HAS_CAINFO_BLOB 1
+#else
+#define DAEMOON_CURL_HAS_CAINFO_BLOB 0
+#endif
+
+#if !DAEMOON_CURL_HAS_CAINFO_BLOB
+/* Written once per run, and only when what is on the card is not already the
+ * bundle in this build - so an app update that changes the roots replaces it
+ * rather than trusting whatever the previous version left behind. */
+static const char *ca_spill(const daemoon_net_curl_ctx_t *ctx)
+{
+    static int done;
+    FILE *fp;
+    long existing = -1;
+
+    if (ctx->ca_cache_path == NULL || ctx->ca_cache_path[0] == '\0') {
+        return NULL;
+    }
+    if (done) {
+        return ctx->ca_cache_path;
+    }
+
+    fp = fopen(ctx->ca_cache_path, "rb");
+    if (fp != NULL) {
+        if (fseek(fp, 0, SEEK_END) == 0) {
+            existing = ftell(fp);
+        }
+        fclose(fp);
+    }
+    if (existing == (long)ctx->ca_blob_len) {
+        done = 1;
+        return ctx->ca_cache_path;
+    }
+
+    /* Temp path then rename, because a half written CA bundle is a console that
+     * fails verification against a server that is fine. */
+    {
+        char tmp[256];
+        int n = snprintf(tmp, sizeof(tmp), "%s.tmp", ctx->ca_cache_path);
+
+        if (n <= 0 || (size_t)n >= sizeof(tmp)) {
+            return NULL;
+        }
+        fp = fopen(tmp, "wb");
+        if (fp == NULL) {
+            daemoon_newlib_trace("net/ca", "cannot write bundle to the card");
+            return NULL;
+        }
+        if (fwrite(ctx->ca_blob, 1, ctx->ca_blob_len, fp) != ctx->ca_blob_len) {
+            fclose(fp);
+            remove(tmp);
+            return NULL;
+        }
+        if (fclose(fp) != 0) {
+            remove(tmp);
+            return NULL;
+        }
+        remove(ctx->ca_cache_path);
+        if (rename(tmp, ctx->ca_cache_path) != 0) {
+            remove(tmp);
+            return NULL;
+        }
+    }
+
+    done = 1;
+    return ctx->ca_cache_path;
+}
+#endif
+
 daemoon_result_t daemoon_net_curl_init(void)
 {
     if (g_ready) {
@@ -292,11 +368,44 @@ static daemoon_result_t net_request(void *vctx, const daemoon_http_req_t *req,
                      (long)(req->timeout_ms > 0 ? req->timeout_ms : 30000));
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 15000L);
 
-    /* The console has no CA store worth the name, so one is carried on the SD
-     * card. Verification stays on: a save is the sort of thing that should not be
-     * handed to whoever answers the connection. */
+    /* The console has no CA store worth the name, so the build carries one.
+     *
+     * CURLOPT_CAINFO_BLOB rather than a file, because there is no file: the bundle
+     * is a byte array linked into the binary (vendor/cacert, wired in by each
+     * platform's Makefile). A path would mean the SD card, and asking every person
+     * who installs this to drop a .pem next to it is not a distributable answer -
+     * it is the answer that works when the only console is your own.
+     *
+     * A path still wins if config.txt sets one, which is how a private CA is
+     * reached. Verification stays on either way: a save is the sort of thing that
+     * should not be handed to whoever answers the connection. */
     if (ctx != NULL && ctx->ca_bundle != NULL && ctx->ca_bundle[0] != '\0') {
         curl_easy_setopt(curl, CURLOPT_CAINFO, ctx->ca_bundle);
+    } else if (ctx != NULL && ctx->ca_blob != NULL && ctx->ca_blob_len > 0) {
+#if DAEMOON_CURL_HAS_CAINFO_BLOB
+        struct curl_blob blob;
+
+        blob.data = (void *)(size_t)ctx->ca_blob;
+        blob.len = ctx->ca_blob_len;
+        blob.flags = CURL_BLOB_NOCOPY;
+
+        /* Checked, unlike most setopt calls here. The failure mode if a build ever
+         * lands without this option is a console that cannot reach any https server
+         * and says tls_error, which reads exactly like a bad certificate. */
+        if (curl_easy_setopt(curl, CURLOPT_CAINFO_BLOB, &blob) != CURLE_OK) {
+            daemoon_newlib_trace("net/ca", "built-in bundle rejected by this curl");
+        }
+#else
+        const char *spilled = ca_spill(ctx);
+
+        if (spilled != NULL) {
+            curl_easy_setopt(curl, CURLOPT_CAINFO, spilled);
+        } else {
+            daemoon_newlib_trace("net/ca", "built-in bundle could not be used");
+        }
+#endif
+    } else {
+        daemoon_newlib_trace("net/ca", "no bundle: https will fail verification");
     }
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);

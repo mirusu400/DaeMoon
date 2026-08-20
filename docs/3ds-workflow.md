@@ -57,10 +57,10 @@ Phase 2 onwards needs two settings a console has no keyboard for, so they come o
 the SD card at `sdmc:/DaeMoon/config.txt`:
 
 ```
-server = http://192.168.1.13:8080
+server = https://daemoon.example.com
 token  = <from daemoonctl pair, or the pairing flow in Phase 4>
 label  = 거실 3DS
-ca_bundle = sdmc:/DaeMoon/cacert.pem
+ca_bundle = sdmc:/DaeMoon/cacert.pem     # only for a private CA; see below
 ```
 
 Lines of `key=value`, everything else ignored. Deliberately not JSON: this gets
@@ -100,11 +100,22 @@ of which says which one it was:
 `net/failed` in `sdmc:/DaeMoon/trace.txt` carries curl's own sentence about the
 failure, which is what tells those two apart. `tls_error` on its own does not.
 
-`ca_bundle` is only needed for https. The console's own certificate store is from
-2011 and fails against ordinary modern servers, which is why this build links
-3ds-curl and 3ds-mbedtls rather than using httpc:C - but a bundle still has to come
-from somewhere, and on a self hosted setup that is usually the operator's own CA.
-Verification is never turned off.
+`ca_bundle` is for a private CA and nothing else. The public roots are compiled
+into the build (`vendor/cacert`), so a server with an ordinary certificate - Let's
+Encrypt, Cloudflare, anything a browser accepts - needs no bundle on the card at
+all. Verification is never turned off.
+
+That was not always true, and the way it failed is worth knowing because it looks
+identical to a broken certificate: with no bundle anywhere, curl had nothing to
+verify against and every https server came back as `tls_error`. The console was
+right and the certificate was fine. If a bundle on the card is the only way https
+works, then the software works for whoever built it and for nobody who installs
+it, which is why the roots moved into the binary.
+
+The list is `vendor/cacert/roots.txt` and is a subset - see `vendor/README.md` for
+why the whole Mozilla bundle is not compiled in. A server whose CA is not on that
+list still works: point `ca_bundle` at a `.pem` on the card and it takes priority.
+`vendor/cacert/mkbundle.sh` regenerates the built in one.
 
 From Phase 2 on the app can also write this file itself: **Settings** on the
 bottom screen, with the software keyboard. The rules call that keyboard painful

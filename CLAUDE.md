@@ -82,7 +82,7 @@ DaeMoon/
 │   ├── lang/{en,ko,ja,zh-Hans,zh-Hant,es,fr,de}.json
 │   └── fixtures/               test data read by both C and Go tests
 ├── tools/test/                 core unit tests, linked against posix backend
-├── vendor/{miniz,jsmn,quirc}/  copied in, not submodules
+├── vendor/{miniz,jsmn,quirc,cacert}/  copied in, not submodules
 └── docs/
 ```
 
@@ -151,7 +151,7 @@ These are not negotiable for any reason.
 ### 3DS
 - `.3dsx` lacks permission to reach other titles' save archives. **CIA plus exheader FS permissions are mandatory.** Test as a CIA from day one.
 - **Secure value**: some titles (Pokemon among them) verify saves against a console stored secure value. Restoring a save from another console makes the game treat it as corrupt and delete it. Handle via `FSUSER_SetSaveDataSecureValue` and friends. Verify on hardware in Phase 1, since Phase 7 sharing depends on the outcome.
-- **TLS**: `httpc:C` ships old cipher suites and a stale root CA store, and fails against modern servers regularly. Prefer static `3ds-curl` plus `3ds-mbedtls`. Fallback is `HTTPC_AddTrustedRootCA()`.
+- **TLS**: `httpc:C` ships old cipher suites and a stale root CA store, and fails against modern servers regularly. Prefer static `3ds-curl` plus `3ds-mbedtls`. Fallback is `HTTPC_AddTrustedRootCA()`. A TLS stack with nothing to trust is half an answer: the roots ship inside the binary (`vendor/cacert`, bin2s plus `CURLOPT_CAINFO_BLOB`), because a build that needs a `.pem` placed on the card first works only for the person who built it. `ca_bundle` on the card overrides them, for a private CA.
 - Heap is small. Stream and chunk saves rather than loading them whole.
 
 ### Switch

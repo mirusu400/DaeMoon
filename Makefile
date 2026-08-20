@@ -7,7 +7,7 @@
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 .PHONY: help all test check core-test server-test tools-test e2e gen gen-check lang-check stack-check \
-        core-isolation spec-check server 3ds nx run-server clean \
+        core-isolation spec-check ca-check ca-bundle server 3ds nx run-server clean \
         docker-images docker-3ds docker-cia docker-nx docker-test docker-shell image-check \
         cia-verify emu-selftest emu-autosync 3ds-install 3ds-selftest
 
@@ -79,6 +79,24 @@ core-isolation:
 	fi
 	@echo "core isolation: ok"
 
+# The consoles have no CA store of their own, so what they trust is this file and
+# nothing else. Truncated or empty, the failure is every https server coming back as
+# tls_error - which reads as a bad certificate on the server, and is not.
+#
+# The directory holds one file because both console Makefiles glob it into DATA.
+ca-check:
+	@n=$$(ls $(ROOT)/vendor/cacert/data | wc -l); 	if [ "$$n" -ne 1 ]; then 		echo "vendor/cacert/data holds $$n files; the console builds glob it and expect one"; 		exit 1; 	fi
+	@certs=$$(grep -c -- '-----BEGIN CERTIFICATE-----' $(ROOT)/vendor/cacert/data/cacert.bin); 	if [ "$$certs" -lt 10 ]; then 		echo "vendor/cacert/data/cacert.bin holds $$certs certificates - regenerate it"; 		exit 1; 	fi; 	openssl crl2pkcs7 -nocrl -certfile $(ROOT)/vendor/cacert/data/cacert.bin -out /dev/null
+	@# Every root named in roots.txt has to be in the bundle, or a server somebody
+	@# uses stopped being reachable and the list still says it is.
+	@sed 's/#.*//' $(ROOT)/vendor/cacert/roots.txt | while read -r label; do 		[ -z "$$label" ] && continue; 		grep -qxF "$$label" $(ROOT)/vendor/cacert/data/cacert.bin || { 			echo "roots.txt names $$label, which is not in the bundle"; exit 1; }; 	done
+	@echo "ca bundle: ok"
+
+# Regenerating is a person's decision. It reaches the network, and a build that
+# decides what it trusts by downloading something is a build nobody can reproduce.
+ca-bundle:
+	@sh $(ROOT)/vendor/cacert/mkbundle.sh
+
 # shared/openapi.yaml is authoritative. A handler without an entry there fails here.
 spec-check:
 	@cd $(ROOT)/tools && go run ./speccheck -root $(ROOT)
@@ -108,7 +126,7 @@ test: core-test server-test tools-test
 stack-check:
 	@sh $(ROOT)/tools/stack-check.sh $(ROOT)
 
-check: gen-check core-isolation image-check stack-check spec-check test e2e
+check: gen-check core-isolation image-check ca-check stack-check spec-check test e2e
 	@echo "all checks passed"
 
 server:

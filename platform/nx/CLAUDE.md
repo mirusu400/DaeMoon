@@ -54,6 +54,15 @@ Each platform keeps the parts that are genuinely its own: `sockets.c` (soc:U aga
 `socketInitializeDefault`), `free_space.c`, and `trace.c` deciding where the trace
 file goes.
 
+One thing genuinely differs and it is not the code: **the Switch curl port is 7.69**,
+against 8.4 on the 3DS. The root bundle is compiled into both binaries the same way
+(`vendor/cacert`, bin2s), but `CURLOPT_CAINFO_BLOB` arrived in 7.77 and mbedTLS
+learned it in 7.81, so this build cannot hand curl the array directly. `net_curl.c`
+writes it to `/switch/DaeMoon/cacert.pem` on first use and points `CURLOPT_CAINFO`
+there instead - the app writes that file, never a person. Check
+`LIBCURL_VERSION_NUM`, not the platform: if the port is updated the blob path starts
+being taken and the file stops being written, with nothing to change here.
+
 ## What is left for hardware
 
 Everything that matters. `make core-test` covers the half with no libnx in it - title

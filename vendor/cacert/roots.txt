@@ -1,0 +1,69 @@
+# Root certificates baked into the console builds.
+#
+# One label per line, matched exactly against the labels Mozilla's bundle uses
+# (the line above the ==== rule in cacert.pem). Blank lines and # comments are
+# ignored. mkbundle.sh fails if a label here is not in the upstream bundle,
+# because a root that quietly vanished is a build that quietly stops trusting a
+# server somebody uses.
+#
+# Why a list and not the whole bundle: curl creates a fresh easy handle per
+# request and mbedTLS parses the entire CA file for each one. All 121 roots is
+# ~185 KB of PEM to base64 decode and ASN.1 parse on a 268 MHz ARM11, on every
+# single request of a sync that makes one per title. This list is the CAs a
+# self hosted server is actually likely to use, and it is a third of the size.
+#
+# Anything not here is still reachable: `ca_bundle` in config.txt points at a
+# file on the card and takes priority over this. That is also the answer for a
+# private CA, which by definition cannot be in a list shipped to everybody.
+
+# Let's Encrypt. The default answer for a self hosted server with a domain.
+ISRG Root X1
+ISRG Root X2
+
+# Google Trust Services. Also what Cloudflare's free certificates chain to.
+GTS Root R1
+GTS Root R3
+GTS Root R4
+
+# GlobalSign, including the roots GTS cross signs against.
+GlobalSign Root CA - R3
+GlobalSign Root CA - R6
+GlobalSign Root R46
+GlobalSign Root E46
+GlobalSign ECC Root CA - R4
+GlobalSign ECC Root CA - R5
+
+# DigiCert.
+DigiCert Global Root G2
+DigiCert Global Root G3
+DigiCert Trusted Root G4
+DigiCert TLS ECC P384 Root G5
+DigiCert TLS RSA4096 Root G5
+
+# Sectigo, which is what ZeroSSL and most cheap certificates chain to.
+USERTrust RSA Certification Authority
+USERTrust ECC Certification Authority
+Sectigo Public Server Authentication Root R46
+Sectigo Public Server Authentication Root E46
+
+# Amazon, for a server behind ACM or CloudFront.
+Amazon Root CA 1
+Amazon Root CA 2
+Amazon Root CA 3
+Amazon Root CA 4
+Starfield Services Root Certificate Authority - G2
+
+# The other ACME issuers a person can get a free certificate from.
+Buypass Class 2 Root CA
+Buypass Class 3 Root CA
+Certainly Root R1
+Certainly Root E1
+Actalis Authentication Root CA
+SSL.com TLS RSA Root CA 2022
+SSL.com TLS ECC Root CA 2022
+Certum Trusted Root CA
+Certum EC-384 CA
+
+# Microsoft, for a server fronted by Azure.
+Microsoft RSA Root Certificate Authority 2017
+Microsoft ECC Root Certificate Authority 2017

@@ -630,6 +630,15 @@ path needs.
 modern servers regularly. Link `3ds-curl` plus `3ds-mbedtls` statically for the net
 backend. `HTTPC_AddTrustedRootCA()` is the fallback, not the plan.
 
+**The roots come with the build.** `vendor/cacert/data/cacert.bin` is turned into an
+object by bin2s (`DATA` in the Makefile) and handed to curl as `CURLOPT_CAINFO_BLOB`.
+Linking a TLS stack and then shipping it with nothing to trust is only half an
+answer: it worked on the console of whoever wrote it, because that console had a
+`.pem` on its card, and it returned `tls_error` against a perfectly ordinary Let's
+Encrypt server on every other one. Do not remove the bundle and do not turn
+verification off; `ca_bundle` in `config.txt` overrides it for a private CA, which is
+the case a shipped list cannot cover.
+
 ## Memory
 
 The heap is small. The core interfaces are already streaming and take a caller

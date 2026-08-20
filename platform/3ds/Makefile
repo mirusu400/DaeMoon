@@ -10,6 +10,12 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error DEVKITARM is not set. Use `make docker-3ds`, or source the devkitPro environment.)
 endif
 
+# The built in suffix rules go first, before anything defines a rule of its own.
+# Left on, make chains them: it decides cacert.bin could be built from cacert.bin.o
+# and reports a circular dependency it then drops. Harmless and alarming, and the
+# devkitPro templates clear them for exactly this reason.
+.SUFFIXES:
+
 TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
 
@@ -39,6 +45,15 @@ SOURCES  := source source/ui ../common \
             ../../core/src ../../core/src/util \
             ../../vendor/miniz ../../vendor/quirc
 INCLUDES := source ../common ../../core/include ../../vendor ../../vendor/quirc
+
+# The public root certificates, linked in as a byte array rather than read off the
+# card. A build that needs a .pem placed next to it before https works is a build
+# that works for whoever assembled it and for nobody who installs it.
+#
+# The directory holds that one file because this globs it. Regenerate with
+# vendor/cacert/mkbundle.sh; the build never reaches the network to decide what it
+# trusts.
+DATA     := ../../vendor/cacert/data
 
 ARCH := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 
@@ -76,8 +91,13 @@ else
     export LD := $(CXX)
 endif
 
-export OFILES := $(addsuffix .o,$(BINFILES)) \
-                 $(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+export BINFILES := $(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+
+export OFILES_BIN := $(addsuffix .o,$(BINFILES))
+export OFILES_SRC := $(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+export HFILES_BIN := $(addsuffix .h,$(subst .,_,$(BINFILES)))
+
+export OFILES := $(OFILES_BIN) $(OFILES_SRC)
 
 export INCLUDE := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
                   $(foreach dir,$(LIBDIRS),-I$(dir)/include) \
@@ -140,6 +160,15 @@ endif
 
 $(OUTPUT).3dsx : $(OUTPUT).elf $(OUTPUT).smdh
 $(OUTPUT).elf  : $(OFILES)
+
+# bin2s. devkitARM supplies the recipe and leaves the rule to the project, so the
+# CA bundle needs this to become an object at all. Anything compiled from source
+# waits on the generated header, because main.c includes it.
+$(OFILES_SRC) : $(HFILES_BIN)
+
+%.bin.o %_bin.h : %.bin
+	$(SILENTMSG) $(notdir $<)
+	$(bin2o)
 
 cia: $(OUTPUT).cia
 

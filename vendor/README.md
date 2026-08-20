@@ -12,6 +12,7 @@ record it in this file under the entry.
 | `jsmn/` | https://github.com/zserge/jsmn | master @ 2023-06 (`jsmn.h` single header) | MIT | `core/src/manifest.c`, `core/src/api.c` |
 | `miniz/` | https://github.com/richgel999/miniz | 3.0.2 (release amalgamation) | MIT | `core/src/archive.c` |
 | `quirc/` | https://github.com/dlbeer/quirc | 1.2 (`lib/` only) | ISC | Phase 4, 3DS QR pairing; and `make check`, which decodes what the server encodes |
+| `cacert/` | https://curl.se/ca/cacert.pem | 2026-08-13 upstream, filtered by `roots.txt` | MPL 2.0 (Mozilla CA list) | `platform/common/net_curl.c`, via bin2s in both console Makefiles |
 
 Notes:
 
@@ -33,3 +34,17 @@ Notes:
   encodes. The two sides of the pairing flow are written in different languages by
   different code, so having one check the other is worth more than either testing
   itself.
+- `cacert/` is not source. It is the root certificates the consoles trust, compiled
+  into the binary as a byte array so that https works on a console somebody
+  installed rather than only on one whose owner put a `.pem` on the card by hand.
+  `ca_bundle` in `config.txt` still overrides it, which is how a private CA is
+  reached; a private CA cannot be in a list shipped to everybody.
+- It is a subset, not the whole Mozilla bundle. curl creates a fresh easy handle per
+  request and mbedTLS parses the entire CA file for each one, so all 121 roots would
+  be ~185 KB of PEM re-parsed on a 268 MHz ARM11 on every request of a sync that
+  makes one per title. `roots.txt` names the 36 a self hosted server is actually
+  likely to use and `mkbundle.sh` regenerates `data/cacert.bin` from it, failing if
+  a named root has left upstream. `ALL_ROOTS=1` takes everything if that trade ever
+  stops being worth it.
+- Regenerating is a person's decision, not a build step. A build that reaches the
+  network to decide what it trusts is a build nobody can reproduce.

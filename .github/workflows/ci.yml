@@ -32,6 +32,10 @@ jobs:
       # wrong: a 50 KiB frame is invisible here and a data abort on a console.
       - name: no oversized stack frames
         run: make stack-check
+      # What the consoles trust is one file in the tree. Empty or truncated, every
+      # https server comes back as tls_error, which reads as the server's fault.
+      - name: the built in CA bundle is intact
+        run: make ca-check
       - name: handlers match shared/openapi.yaml
         run: make spec-check
       - name: tools

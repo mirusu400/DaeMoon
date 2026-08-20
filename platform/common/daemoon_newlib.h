@@ -62,9 +62,25 @@ void daemoon_newlib_trace(const char *step, const char *detail);
 /* libcurl over the devkitPro curl and mbedtls ports, shared by both consoles. The
  * request loop is identical on either; only bringing sockets up is not. */
 typedef struct {
-    /* A CA bundle on the card. Verification is never turned off: a save is not
-     * something to hand to whoever answers the connection. */
+    /* A CA bundle on the card, and the one compiled into the build.
+     *
+     * Verification is never turned off: a save is not something to hand to whoever
+     * answers the connection. What that used to mean in practice was that https
+     * did not work at all unless somebody put a file on the SD card by hand, which
+     * is fine for one console and is not a thing that can be shipped. So a bundle
+     * of public roots is built in (vendor/cacert), and the card is the override
+     * rather than the only source.
+     *
+     * ca_bundle wins when set, because the reason to set it is a private CA that
+     * by definition cannot be in a bundle shipped to everybody. */
     const char *ca_bundle;
+    const void *ca_blob;
+    size_t      ca_blob_len;
+    /* Where to spill the built in bundle when the curl being linked predates
+     * CURLOPT_CAINFO_BLOB, which the Switch port does by a wide margin (7.69).
+     * Written by the app, not by a person, and rewritten whenever it does not
+     * match the bundle in the binary. */
+    const char *ca_cache_path;
     /* The last curl code, for a diagnostic that says more than "network error". */
     int last_curl_code;
 } daemoon_net_curl_ctx_t;

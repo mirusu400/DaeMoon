@@ -18,6 +18,9 @@
 #define DAEMOON_NX_WORK_DIR    "/switch/DaeMoon"
 #define DAEMOON_NX_CONFIG_PATH DAEMOON_NX_WORK_DIR "/config.txt"
 #define DAEMOON_NX_TRACE_PATH  DAEMOON_NX_WORK_DIR "/trace.txt"
+/* Written by the app, not by a person: the root bundle compiled into the binary,
+ * spilled here because this platform's curl is too old to take it directly. */
+#define DAEMOON_NX_CA_CACHE_PATH DAEMOON_NX_WORK_DIR "/cacert.pem"
 
 /* The name the save is mounted under while it is open.
  *

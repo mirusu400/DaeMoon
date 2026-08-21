@@ -6,6 +6,9 @@
   "btn.no": "否",
   "btn.ok": "確定",
   "btn.cancel": "取消",
+  "btn.back": "返回",
+  "btn.exit": "結束",
+  "btn.open": "開啟",
 
   "sync.action_none": "已是最新",
   "sync.action_upload": "上傳",
@@ -105,6 +108,7 @@
   "hint.choose": "A 選擇   B 返回   上下 移動",
   "hint.edit": "A 編輯   B 返回   上下 移動",
   "hint.continue": "A 繼續",
+  "hint.exit_app": "將結束此應用程式",
   "err.no_server": "未設定伺服器。請在設定中填寫位址與權杖。",
   "err.title_list": "無法讀取遊戲清單。",
   "op.backup": "備份",
@@ -324,8 +328,8 @@
   "autosync.cancelled": "在任何操作開始前已停止。",
   "autosync.nothing": "沒有需要同步的內容。",
   "nx.account": "帳戶",
+  "nx.reload": "重新讀取清單",
   "nx.no_account": "沒有選擇帳戶，所以沒有可查看的存檔。本機的存檔屬於某一個帳戶。",
-  "nx.hint": "A 備份   Y 同步   X 重新讀取   L+X 自我測試   上下 移動   + 結束",
   "settings.survey": "收集除錯資訊",
   "settings.survey_hint": "開啟每一個存檔並把結果寫入 survey.txt。唯讀，並且忽略名稱快取，所以名稱或圖示不對時按這個。"
 }

@@ -16,6 +16,7 @@ Save data sync for 3DS, Switch, and nds-bootstrap, backed by a self-hostable web
 | 3DS client | libctru (devkitARM) | CIA build required for save permissions |
 | Switch client | libnx (devkitA64) | NRO build |
 | Client UI | C++17 allowed | Platform layer only. Core stays pure C. |
+| Switch UI | **borealis** (xfangfang) | The console's shared fonts, per glyph fallback, and a GL context. `platform/nx` builds with CMake because of it. |
 | Server | **Go 1.22+** | Single static binary, which matters because self-hosting is a primary goal |
 | Database | **SQLite** (`modernc.org/sqlite`) | Pure Go driver, cross compiles without cgo |
 | Blob storage | **SQLite (chunked rows)** | See "Blob storage" below |
@@ -23,7 +24,13 @@ Save data sync for 3DS, Switch, and nds-bootstrap, backed by a self-hostable web
 | JSON (client) | `jsmn` | Token based, zero allocation. 3DS heap is tight, so cJSON is not acceptable. |
 | Zip (client) | `miniz` | Single file, no build system friction |
 
-**Reject new dependencies by default.** The server must run as one binary plus one database file. If a library seems necessary, state the reason before adding it.
+Dependencies are still a decision rather than a default, and the server's shape is
+the constraint that has not moved: one static binary plus one database file. A client
+side library is judged on what it does that this project would otherwise have to
+write - `vendor/borealis` is here because drawing eight scripts with the console's own
+fonts is months of work that already exists and has run on a lot of consoles.
+
+
 
 ---
 
@@ -82,7 +89,7 @@ DaeMoon/
 │   ├── lang/{en,ko,ja,zh-Hans,zh-Hant,es,fr,de}.json
 │   └── fixtures/               test data read by both C and Go tests
 ├── tools/test/                 core unit tests, linked against posix backend
-├── vendor/{miniz,jsmn,quirc,cacert}/  copied in, not submodules
+├── vendor/{miniz,jsmn,quirc,cacert,borealis}/  copied in, not submodules
 └── docs/
 ```
 

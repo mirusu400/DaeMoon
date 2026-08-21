@@ -6,6 +6,7 @@
 //	shared/lang/*.json  -> core/include/daemoon/str_ids.h
 //	                       core/src/lang_table.c
 //	                       server/internal/i18n/strings_gen.go
+//	                       platform/nx/romfs/i18n/<locale>/hints.json
 //
 // Runtime JSON parsing for UI strings would waste 3DS heap, so the language tables
 // are compiled in as C arrays.
@@ -88,6 +89,9 @@ func run(root string, checkMode bool) error {
 		filepath.Join(root, "core", "src", "lang_table.c"):                  genLangTableC(consoleKeys, langs),
 		filepath.Join(root, "server", "internal", "apierr", "codes_gen.go"): genCodesGo(errs),
 		filepath.Join(root, "server", "internal", "i18n", "strings_gen.go"): genPanelGo(webKeys, langs),
+	}
+	for path, content := range genBorealisHints(root, langs) {
+		out[path] = content
 	}
 
 	var stale []string
@@ -250,6 +254,76 @@ func keysOf(m map[string]string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// borealisHints are the six strings the Switch interface's framework draws itself:
+// the word on the A hint, the one on B, and the sentence it shows before quitting.
+// Everything else on that screen comes from this project's own tables, and these
+// would have been the exception - six English words in the middle of a Korean
+// interface, because borealis ships translations for four languages and this project
+// carries eight.
+//
+// So they are generated from the same files as everything else. The key on the left
+// is borealis's, the key on the right is ours, and adding a language means adding a
+// language once.
+var borealisHints = map[string]string{
+	"ok":        "btn.ok",
+	"cancel":    "btn.cancel",
+	"back":      "btn.back",
+	"exit":      "btn.exit",
+	"open":      "btn.open",
+	"exit_hint": "hint.exit_app",
+}
+
+// borealisLocale maps this project's language code to the directory name borealis
+// looks for. Only English differs: borealis wants a region on it.
+func borealisLocale(code string) string {
+	if code == "en" {
+		return "en-US"
+	}
+	return code
+}
+
+// genBorealisHints writes one hints.json per language into the Switch build's romfs.
+//
+// Committed rather than assembled at build time, for the same reason lang_table.c
+// is: a generated file in the tree is one `make gen-check` can notice going stale,
+// and a build step that writes into a resource directory is one nobody reviews.
+func genBorealisHints(root string, langs map[string]map[string]string) map[string][]byte {
+	out := map[string][]byte{}
+
+	for _, code := range langOrder {
+		table := langs[code]
+		fields := make([]string, 0, len(borealisHints))
+
+		for _, brls := range sortedKeys(borealisHints) {
+			value, ok := table[borealisHints[brls]]
+			if !ok {
+				value = langs["en"][borealisHints[brls]]
+			}
+			field, _ := json.Marshal(value)
+			fields = append(fields, fmt.Sprintf("  %q: %s", brls, field))
+		}
+
+		var b bytes.Buffer
+		b.WriteString("{\n")
+		b.WriteString(strings.Join(fields, ",\n"))
+		b.WriteString("\n}\n")
+
+		path := filepath.Join(root, "platform", "nx", "romfs", "i18n",
+			borealisLocale(code), "hints.json")
+		out[path] = b.Bytes()
+	}
+	return out
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // webPrefix marks a key as the panel's rather than a console's.

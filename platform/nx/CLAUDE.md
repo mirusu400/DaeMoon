@@ -12,9 +12,60 @@ It builds, and it implements the whole of `daemoon_save_backend_t`. An NRO that 
 the saves for a chosen account, backs one up to the card, syncs one against a server,
 and can run the conformance suite against a dummy title.
 
-The interface is a **text console**, on purpose. What Phase 6 has to establish is that
-a save can be mounted, read, written and committed here; a textured grid would prove
-exactly as much as a list does, and it is months the 3DS build has already spent once.
+## The interface is borealis
+
+It was a text console, and that was the right call while the open question was whether
+a save can be mounted, read, written and committed here: a list of lines proved that
+as well as a grid of icons would. The console answered that question - 277 checks, 0
+failures - and the console screen then became the thing in the way.
+
+Two of its limits were not cosmetic:
+
+- **It draws ASCII and stops.** A Korean console showed rubbish, so this build walked
+  the whole string table looking for a byte above 0x7f and fell back to English when
+  it found one. Every screen in English on a Korean console is a workaround, not a
+  fallback. borealis draws with the console's own shared fonts through
+  `plGetSharedFontByType` and falls back per glyph across Korean, both Chinese and the
+  Nintendo extended set, which is exactly what `docs/fonts.md` recorded this platform
+  as waiting for. The probe is gone; there is nothing left for it to catch.
+- **There is nowhere to put an icon.** A person recognises a game by its picture
+  before they read its name. `icons.c` reads it out of the same `ns` record the name
+  comes from.
+
+`vendor/borealis` is xfangfang's fork, which is the maintained one and the one
+wiliwili ships. `vendor/README.md` records what was removed from it and why.
+
+**This target builds with CMake and every other target builds with a Makefile.**
+borealis carries a large set of compile options and include paths that follow from
+which graphics backend it was built with, and copying that list into a devkitPro
+Makefile would be two places holding one truth - the mistake the root `CLAUDE.md`
+records about the Go version. `platform/nx/Makefile` is a two line wrapper so that
+`make docker-nx` and CI did not have to learn a second way to build a console.
+
+### What the screen is
+
+`source/ui/` and nothing else. The rule the rest of the project rests on did not move:
+nothing in there decides anything about save data, every sentence is still a
+`daemoon_str_id_t` resolved through the tables, and every destructive action still
+goes through `ui->confirm`.
+
+- **A grid of tiles**, five across, icon and name, with the panel beside it showing
+  what is known about whichever one the cursor is on.
+- **The self test is a labelled button in that panel**, not a button combination. It
+  was X with a shoulder held, which was undocumented until a legend was written for
+  it and was still one press away from a real save on a list of them. Reaching it now
+  means moving off the grid, onto a button that says it destroys the save, and then
+  answering twice.
+- **Operations run on a worker thread.** Core's UI backend is blocking by design -
+  `confirm()` returns the answer - and borealis is one main loop that cannot be
+  re-entered to ask a question. So the operation waits on the worker while the dialog
+  lives on the main thread, which is also what keeps the screen drawing while a save
+  is packed. One at a time, and never a queue: two at once is two writers to one save
+  archive. See `source/ui/ops.cpp`.
+- **borealis's own six hint strings** come out of `shared/lang` too, through
+  `make gen` into `platform/nx/romfs/i18n/`. borealis ships four languages and this
+  project carries eight, and six English words in the middle of a Korean screen is the
+  kind of gap that never gets closed later.
 
 **The platform difference turned out to be short.** `fsdevMountSaveData` makes a save
 into an ordinary mounted filesystem, so listing and clearing it is a stdio tree walk
@@ -50,9 +101,14 @@ rather than with `curl_easy_getinfo` afterwards, because callbacks run first and
 successful upload's body would otherwise go to the error sink. Two copies of that file
 would have been two chances to lose it.
 
-Each platform keeps the parts that are genuinely its own: `sockets.c` (soc:U against
-`socketInitializeDefault`), `free_space.c`, and `trace.c` deciding where the trace
-file goes.
+Each platform keeps the parts that are genuinely its own: `sockets.c`, `free_space.c`,
+and `trace.c` deciding where the trace file goes.
+
+`sockets.c` is now two empty functions and that is deliberate. borealis supplies this
+platform's entry point, and its `userAppInit` brings the socket driver up before main
+with a larger configuration than the default. Initialising it again fails, and that
+failure used to travel up through `daemoon_net_curl_init` as "no network" on a console
+whose network was fine. Whoever opens a thing closes it.
 
 One thing genuinely differs and it is not the code: **the Switch curl port is 7.69**,
 against 8.4 on the 3DS. The root bundle is compiled into both binaries the same way
@@ -72,11 +128,12 @@ carries the detail, including the three faults found getting there: a `NULL` pas
 `pselShowUserSelector`, a missing font fallback on a console whose language this screen
 cannot draw, and a fresh `PadState` reading held buttons as pressed.
 
-The suite is **X with a shoulder or a trigger held**, and it asks twice. Either
-shoulder and either trigger, because L against ZL is not a distinction anybody makes
-while reading a legend and the wrong one silently reloaded the list instead. It is in
-the on screen legend now (`nx.hint`); it used to be reachable and undocumented, which
-is the same as absent.
+The suite was **X with a shoulder or a trigger held** at the time, and getting to it
+was its own lesson: L against ZL is not a distinction anybody makes while reading a
+legend, and pressing the wrong one silently reloaded the list - which looks exactly
+like a combination that does not work. It is a labelled button now, for that reason
+and because a hidden combination on a list of real saves was never the right place
+for it.
 
 `make core-test` covers the half with no libnx in it - title id formatting, the config
 parser, the tree walk and the clear - and still says nothing about the FS service. That
@@ -93,7 +150,8 @@ handed to another.
   save data, which needs a title id this build does not have.
 - **No pairing flow.** There is no camera, so the device code path is the one that
   applies, and it is not written. `config.txt` is edited by hand for now.
-- **No fonts beyond the console's.** The shared font work below is still ahead.
+- **No settings screen.** The 3DS build has one; here `config.txt` is still edited by
+  hand. Everything it would need is in place now that there is a UI to put it in.
 
 ## Non negotiable
 
@@ -128,11 +186,14 @@ somewhere deep in a sync where a save is already half written.
 
 ## Fonts
 
-`plInitialize()` and `plGetSharedFontByType()`. The shared fonts are split by type
-(`Standard`, `ChineseSimplified`, `ChineseTraditional`, `KO`, `NintendoExtended`),
-so rendering CJK means loading the matching type and falling back per glyph. Handle
-the fallback chain explicitly; a missing glyph should not render as a box in the
-middle of a confirmation the user has to answer.
+**Done, by borealis.** `switch_font.cpp` in it does what this section used to ask for:
+`plGetSharedFontByType` for `Standard`, `ChineseSimplified`, `ExtChineseSimplified`,
+`ChineseTraditional`, `KO` and `NintendoExt`, added to one font stash so nanovg falls
+back per glyph. Nothing here loads a font and nothing here bundles one.
+
+The consequence worth remembering is that this is the console's own font, which is
+also the font its game names are written in - so a name and a menu are never in
+different scripts, which is the trap `docs/fonts.md` describes for the 3DS.
 
 ## No camera
 

@@ -47,9 +47,12 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Sync every title with the server", /* batch.sync */
         "Covers both libraries, the installed titles and the DS saves. Uploads what only this console changed and downloads what only the server changed. What happens when both changed is the next question.", /* batch.sync_hint */
         "All titles", /* batch.title */
+        "Back", /* btn.back */
         "Cancel", /* btn.cancel */
+        "Exit", /* btn.exit */
         "No", /* btn.no */
         "OK", /* btn.ok */
+        "Open", /* btn.open */
         "Yes", /* btn.yes */
         "The save could not be committed. Do not launch the game until this is resolved.", /* commit.failed */
         "Back up the save for {0} to the SD card?", /* confirm.backup */
@@ -98,6 +101,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "A select   B back   up/down move", /* hint.choose */
         "A continue", /* hint.continue */
         "A edit   B back   up/down move", /* hint.edit */
+        "You will exit this app", /* hint.exit_app */
         "A back up   Y restore   X survey   L/R library   START exit", /* hint.grid */
         "English", /* lang.name */
         "3DS titles", /* lib.3ds */
@@ -113,8 +117,8 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Survey every title to the SD card", /* menu.survey */
         "Sync with the server", /* menu.sync */
         "Account", /* nx.account */
-        "A back up   Y sync   X reload   L+X self test   up/down move   + exit", /* nx.hint */
         "No account was chosen, so there is no save to look at. A save on this console belongs to one account.", /* nx.no_account */
+        "Reload the list", /* nx.reload */
         "Backup", /* op.backup */
         "Restore", /* op.restore */
         "Secure value", /* op.secure_value */
@@ -224,9 +228,12 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "모든 타이틀을 서버와 동기화", /* batch.sync */
         "두 목록을 모두 돕니다. 설치된 타이틀과 DS 세이브 양쪽. 이 본체만 바뀐 것은 올리고, 서버만 바뀐 것은 받습니다. 양쪽 다 바뀐 경우는 다음에 묻습니다.", /* batch.sync_hint */
         "일괄 작업", /* batch.title */
+        "뒤로", /* btn.back */
         "취소", /* btn.cancel */
+        "종료", /* btn.exit */
         "아니오", /* btn.no */
         "확인", /* btn.ok */
+        "열기", /* btn.open */
         "예", /* btn.yes */
         "세이브를 확정하지 못했습니다. 해결하기 전에는 게임을 실행하지 마세요.", /* commit.failed */
         "{0}의 세이브를 SD 카드에 백업할까요?", /* confirm.backup */
@@ -275,6 +282,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "A 선택   B 뒤로   위/아래 이동", /* hint.choose */
         "A 계속", /* hint.continue */
         "A 편집   B 뒤로   위/아래 이동", /* hint.edit */
+        "앱을 종료합니다", /* hint.exit_app */
         "A 백업   Y 복원   X 조사   L/R 라이브러리   START 종료", /* hint.grid */
         "한국어", /* lang.name */
         "3DS 타이틀", /* lib.3ds */
@@ -290,8 +298,8 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "모든 타이틀 조사해 SD 카드에 기록", /* menu.survey */
         "서버와 동기화", /* menu.sync */
         "계정", /* nx.account */
-        "A 백업   Y 동기화   X 새로 읽기   L+X 자체 검사   위/아래 이동   + 종료", /* nx.hint */
         "계정을 고르지 않아 볼 세이브가 없습니다. 이 본체의 세이브는 계정 하나에 속합니다.", /* nx.no_account */
+        "목록 새로 읽기", /* nx.reload */
         "백업", /* op.backup */
         "복원", /* op.restore */
         "보안 값", /* op.secure_value */
@@ -401,9 +409,12 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "すべてのタイトルをサーバーと同期", /* batch.sync */
         "両方の一覧、インストール済みタイトルと DS セーブを対象にします。この本体だけが変わったものは送り、サーバーだけが変わったものは受け取ります。両方が変わった場合は次に尋ねます。", /* batch.sync_hint */
         "一括処理", /* batch.title */
+        "戻る", /* btn.back */
         "キャンセル", /* btn.cancel */
+        "終了", /* btn.exit */
         "いいえ", /* btn.no */
         "OK", /* btn.ok */
+        "開く", /* btn.open */
         "はい", /* btn.yes */
         "セーブを確定できませんでした。解決するまでゲームを起動しないでください。", /* commit.failed */
         "{0} のセーブデータを SD カードにバックアップしますか？", /* confirm.backup */
@@ -452,6 +463,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "A 決定   B もどる   上下 移動", /* hint.choose */
         "A つづける", /* hint.continue */
         "A 編集   B もどる   上下 移動", /* hint.edit */
+        "アプリを終了します", /* hint.exit_app */
         "A バックアップ   Y 復元   X 調査   L/R ライブラリ   START 終了", /* hint.grid */
         "日本語", /* lang.name */
         "3DS タイトル", /* lib.3ds */
@@ -467,8 +479,8 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "すべてのタイトルを調べて SD カードに記録", /* menu.survey */
         "サーバーと同期", /* menu.sync */
         "アカウント", /* nx.account */
-        "A バックアップ   Y 同期   X 再読み込み   L+X セルフテスト   上下 移動   + 終了", /* nx.hint */
         "アカウントが選ばれていないため、見るセーブがありません。この本体のセーブはアカウントごとのものです。", /* nx.no_account */
+        "リストを再読み込み", /* nx.reload */
         "バックアップ", /* op.backup */
         "復元", /* op.restore */
         "セキュア値", /* op.secure_value */
@@ -578,9 +590,12 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "把所有游戏与服务器同步", /* batch.sync */
         "覆盖两个列表：已安装的游戏和 DS 存档。只有本机变过的上传，只有服务器变过的下载。两边都变过时怎么办，下一步再问。", /* batch.sync_hint */
         "批量操作", /* batch.title */
+        "返回", /* btn.back */
         "取消", /* btn.cancel */
+        "退出", /* btn.exit */
         "否", /* btn.no */
         "确定", /* btn.ok */
+        "打开", /* btn.open */
         "是", /* btn.yes */
         "存档未能提交。问题解决前请不要启动游戏。", /* commit.failed */
         "把 {0} 的存档备份到 SD 卡？", /* confirm.backup */
@@ -629,6 +644,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "A 选择   B 返回   上下 移动", /* hint.choose */
         "A 继续", /* hint.continue */
         "A 编辑   B 返回   上下 移动", /* hint.edit */
+        "将退出此应用", /* hint.exit_app */
         "A 备份   Y 恢复   X 调查   L/R 库   START 退出", /* hint.grid */
         "简体中文", /* lang.name */
         "3DS 游戏", /* lib.3ds */
@@ -644,8 +660,8 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "调查所有游戏并写入 SD 卡", /* menu.survey */
         "与服务器同步", /* menu.sync */
         "账户", /* nx.account */
-        "A 备份   Y 同步   X 重新读取   L+X 自检   上下 移动   + 退出", /* nx.hint */
         "没有选择账户，所以没有可查看的存档。本机的存档属于某一个账户。", /* nx.no_account */
+        "重新读取列表", /* nx.reload */
         "备份", /* op.backup */
         "恢复", /* op.restore */
         "安全值", /* op.secure_value */
@@ -755,9 +771,12 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "把所有遊戲與伺服器同步", /* batch.sync */
         "涵蓋兩個清單：已安裝的遊戲和 DS 存檔。只有本機變過的上傳，只有伺服器變過的下載。兩邊都變過時怎麼辦，下一步再問。", /* batch.sync_hint */
         "批次操作", /* batch.title */
+        "返回", /* btn.back */
         "取消", /* btn.cancel */
+        "結束", /* btn.exit */
         "否", /* btn.no */
         "確定", /* btn.ok */
+        "開啟", /* btn.open */
         "是", /* btn.yes */
         "存檔未能提交。問題解決前請勿啟動遊戲。", /* commit.failed */
         "把 {0} 的存檔備份到 SD 卡？", /* confirm.backup */
@@ -806,6 +825,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "A 選擇   B 返回   上下 移動", /* hint.choose */
         "A 繼續", /* hint.continue */
         "A 編輯   B 返回   上下 移動", /* hint.edit */
+        "將結束此應用程式", /* hint.exit_app */
         "A 備份   Y 還原   X 調查   L/R 庫   START 離開", /* hint.grid */
         "繁體中文", /* lang.name */
         "3DS 遊戲", /* lib.3ds */
@@ -821,8 +841,8 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "調查所有遊戲並寫入 SD 卡", /* menu.survey */
         "與伺服器同步", /* menu.sync */
         "帳戶", /* nx.account */
-        "A 備份   Y 同步   X 重新讀取   L+X 自我測試   上下 移動   + 結束", /* nx.hint */
         "沒有選擇帳戶，所以沒有可查看的存檔。本機的存檔屬於某一個帳戶。", /* nx.no_account */
+        "重新讀取清單", /* nx.reload */
         "備份", /* op.backup */
         "還原", /* op.restore */
         "安全值", /* op.secure_value */
@@ -932,9 +952,12 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Sincronizar todos los juegos con el servidor", /* batch.sync */
         "Cubre ambas bibliotecas, los juegos instalados y las partidas de DS. Sube lo que solo cambió en esta consola y baja lo que solo cambió en el servidor. Qué pasa cuando cambiaron los dos es la siguiente pregunta.", /* batch.sync_hint */
         "Todos los juegos", /* batch.title */
+        "Atrás", /* btn.back */
         "Cancelar", /* btn.cancel */
+        "Salir", /* btn.exit */
         "No", /* btn.no */
         "Aceptar", /* btn.ok */
+        "Abrir", /* btn.open */
         "Sí", /* btn.yes */
         "No se ha podido confirmar la partida. No inicies el juego hasta resolverlo.", /* commit.failed */
         "¿Hacer una copia de seguridad de la partida de {0} en la tarjeta SD?", /* confirm.backup */
@@ -983,6 +1006,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "A elegir   B atrás   arriba/abajo mover", /* hint.choose */
         "A continuar", /* hint.continue */
         "A editar   B atrás   arriba/abajo mover", /* hint.edit */
+        "Saldrás de esta aplicación", /* hint.exit_app */
         "A copiar   Y restaurar   X analizar   L/R biblioteca   START salir", /* hint.grid */
         "Español", /* lang.name */
         "Juegos de 3DS", /* lib.3ds */
@@ -998,8 +1022,8 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Analizar todos los juegos y escribirlo en la tarjeta SD", /* menu.survey */
         "Sincronizar con el servidor", /* menu.sync */
         "Cuenta", /* nx.account */
-        "A copiar   Y sincronizar   X recargar   L+X autocomprobación   arriba/abajo mover   + salir", /* nx.hint */
         "No se ha elegido ninguna cuenta, así que no hay partidas que mirar. Una partida en esta consola pertenece a una sola cuenta.", /* nx.no_account */
+        "Volver a leer la lista", /* nx.reload */
         "Copia de seguridad", /* op.backup */
         "Restauración", /* op.restore */
         "Valor seguro", /* op.secure_value */
@@ -1109,9 +1133,12 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Synchroniser tous les jeux avec le serveur", /* batch.sync */
         "Couvre les deux bibliothèques, les jeux installés et les sauvegardes DS. Envoie ce que seule cette console a changé et récupère ce que seul le serveur a changé. Ce qui se passe quand les deux ont changé est la question suivante.", /* batch.sync_hint */
         "Tous les jeux", /* batch.title */
+        "Retour", /* btn.back */
         "Annuler", /* btn.cancel */
+        "Quitter", /* btn.exit */
         "Non", /* btn.no */
         "OK", /* btn.ok */
+        "Ouvrir", /* btn.open */
         "Oui", /* btn.yes */
         "La sauvegarde n'a pas pu être validée. Ne lancez pas le jeu avant d'avoir résolu ce problème.", /* commit.failed */
         "Sauvegarder la partie de {0} sur la carte SD ?", /* confirm.backup */
@@ -1160,6 +1187,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "A choisir   B retour   haut/bas déplacer", /* hint.choose */
         "A continuer", /* hint.continue */
         "A modifier   B retour   haut/bas déplacer", /* hint.edit */
+        "Vous allez quitter cette application", /* hint.exit_app */
         "A sauvegarder   Y restaurer   X analyser   L/R bibliothèque   START quitter", /* hint.grid */
         "Français", /* lang.name */
         "Jeux 3DS", /* lib.3ds */
@@ -1175,8 +1203,8 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Analyser tous les jeux et écrire sur la carte SD", /* menu.survey */
         "Synchroniser avec le serveur", /* menu.sync */
         "Compte", /* nx.account */
-        "A sauvegarder   Y synchroniser   X recharger   L+X autotest   haut/bas déplacer   + quitter", /* nx.hint */
         "Aucun compte n'a été choisi, il n'y a donc aucune sauvegarde à voir. Une sauvegarde sur cette console appartient à un seul compte.", /* nx.no_account */
+        "Relire la liste", /* nx.reload */
         "Sauvegarde", /* op.backup */
         "Restauration", /* op.restore */
         "Valeur sécurisée", /* op.secure_value */
@@ -1286,9 +1314,12 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Alle Titel mit dem Server abgleichen", /* batch.sync */
         "Deckt beide Bibliotheken ab, die installierten Titel und die DS-Spielstände. Lädt hoch, was nur diese Konsole geändert hat, und herunter, was nur der Server geändert hat. Was passiert, wenn beide geändert haben, ist die nächste Frage.", /* batch.sync_hint */
         "Alle Titel", /* batch.title */
+        "Zurück", /* btn.back */
         "Abbrechen", /* btn.cancel */
+        "Beenden", /* btn.exit */
         "Nein", /* btn.no */
         "OK", /* btn.ok */
+        "Öffnen", /* btn.open */
         "Ja", /* btn.yes */
         "Der Spielstand konnte nicht festgeschrieben werden. Starte das Spiel erst, wenn das behoben ist.", /* commit.failed */
         "Den Spielstand von {0} auf die SD-Karte sichern?", /* confirm.backup */
@@ -1337,6 +1368,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "A wählen   B zurück   hoch/runter bewegen", /* hint.choose */
         "A weiter", /* hint.continue */
         "A bearbeiten   B zurück   hoch/runter bewegen", /* hint.edit */
+        "Die App wird beendet", /* hint.exit_app */
         "A sichern   Y wiederherstellen   X erfassen   L/R Bibliothek   START beenden", /* hint.grid */
         "Deutsch", /* lang.name */
         "3DS-Titel", /* lib.3ds */
@@ -1352,8 +1384,8 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Alle Titel erfassen und auf die SD-Karte schreiben", /* menu.survey */
         "Mit dem Server abgleichen", /* menu.sync */
         "Konto", /* nx.account */
-        "A sichern   Y abgleichen   X neu laden   L+X Selbsttest   hoch/runter bewegen   + beenden", /* nx.hint */
         "Es wurde kein Konto gewählt, also gibt es keinen Spielstand zu sehen. Ein Spielstand auf dieser Konsole gehört zu genau einem Konto.", /* nx.no_account */
+        "Liste neu laden", /* nx.reload */
         "Sicherung", /* op.backup */
         "Wiederherstellung", /* op.restore */
         "Sicherheitswert", /* op.secure_value */

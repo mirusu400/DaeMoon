@@ -6,6 +6,9 @@
   "btn.no": "No",
   "btn.ok": "Aceptar",
   "btn.cancel": "Cancelar",
+  "btn.back": "Atrás",
+  "btn.exit": "Salir",
+  "btn.open": "Abrir",
 
   "sync.action_none": "Al día",
   "sync.action_upload": "Subir",
@@ -105,6 +108,7 @@
   "hint.choose": "A elegir   B atrás   arriba/abajo mover",
   "hint.edit": "A editar   B atrás   arriba/abajo mover",
   "hint.continue": "A continuar",
+  "hint.exit_app": "Saldrás de esta aplicación",
   "err.no_server": "No hay servidor configurado. Abre Ajustes e introduce la dirección y el token.",
   "err.title_list": "No se ha podido leer la lista de juegos.",
   "op.backup": "Copia de seguridad",
@@ -324,8 +328,8 @@
   "autosync.cancelled": "Detenido antes de ejecutar nada.",
   "autosync.nothing": "Nada que sincronizar.",
   "nx.account": "Cuenta",
+  "nx.reload": "Volver a leer la lista",
   "nx.no_account": "No se ha elegido ninguna cuenta, así que no hay partidas que mirar. Una partida en esta consola pertenece a una sola cuenta.",
-  "nx.hint": "A copiar   Y sincronizar   X recargar   L+X autocomprobación   arriba/abajo mover   + salir",
   "settings.survey": "Recoger información de depuración",
   "settings.survey_hint": "Abre todos los archivos de partida y escribe lo que encuentra en survey.txt. Solo lectura, e ignora la caché de nombres, así que es el botón que pulsar cuando un nombre o un icono se ve mal."
 }

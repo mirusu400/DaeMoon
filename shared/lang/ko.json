@@ -6,6 +6,9 @@
   "btn.no": "아니오",
   "btn.ok": "확인",
   "btn.cancel": "취소",
+  "btn.back": "뒤로",
+  "btn.exit": "종료",
+  "btn.open": "열기",
 
   "sync.action_none": "최신 상태",
   "sync.action_upload": "업로드",
@@ -105,6 +108,7 @@
   "hint.choose": "A 선택   B 뒤로   위/아래 이동",
   "hint.edit": "A 편집   B 뒤로   위/아래 이동",
   "hint.continue": "A 계속",
+  "hint.exit_app": "앱을 종료합니다",
   "err.no_server": "서버가 설정되지 않았습니다. 설정에서 주소와 토큰을 입력하세요.",
   "err.title_list": "타이틀 목록을 읽지 못했습니다.",
   "op.backup": "백업",
@@ -323,8 +327,8 @@
   "autosync.cancelled": "아무것도 실행하기 전에 멈췄습니다.",
   "autosync.nothing": "동기화할 것이 없습니다.",
   "nx.account": "계정",
+  "nx.reload": "목록 새로 읽기",
   "nx.no_account": "계정을 고르지 않아 볼 세이브가 없습니다. 이 본체의 세이브는 계정 하나에 속합니다.",
-  "nx.hint": "A 백업   Y 동기화   X 새로 읽기   L+X 자체 검사   위/아래 이동   + 종료",
   "settings.survey": "디버그 정보 수집",
   "settings.survey_hint": "모든 세이브 아카이브를 열어 결과를 survey.txt에 기록합니다. 읽기만 하고 이름 캐시를 무시하므로, 이름이나 아이콘이 이상할 때 누르는 버튼입니다."
 }

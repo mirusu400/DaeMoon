@@ -1,18 +1,23 @@
-/* Sockets on the Switch: bsd:u through libnx's defaults.
+/* Sockets on the Switch: already up before main runs.
  *
- * The one part of the network backend that is not shared. No aligned buffer to hand
- * over and no size to choose, which is the whole of the difference from the 3DS.
+ * This used to be `socketInitializeDefault()`, which is what the 3DS side does two
+ * lines away in `platform/common/net_curl.c`. It cannot be that any more: borealis
+ * supplies this platform's entry point (`switch_wrapper.c`), and its `userAppInit`
+ * brings the socket driver up before main is entered - with a larger configuration
+ * than the default, because the interface it draws wants sessions of its own.
+ *
+ * Initialising it a second time does not add anything; it fails, and the failure
+ * would travel up through daemoon_net_curl_init as "no network" on a console whose
+ * network is fine. So this reports what is true - sockets are up - and the exit is
+ * left to the wrapper that opened them. Whoever opens a thing closes it.
  */
 #include "daemoon_newlib.h"
 
-#include <switch.h>
-
 daemoon_result_t daemoon_net_sockets_init(void)
 {
-    return R_SUCCEEDED(socketInitializeDefault()) ? DAEMOON_OK : DAEMOON_ERR_NETWORK_ERROR;
+    return DAEMOON_OK;
 }
 
 void daemoon_net_sockets_exit(void)
 {
-    socketExit();
 }

@@ -6,6 +6,9 @@
   "btn.no": "Non",
   "btn.ok": "OK",
   "btn.cancel": "Annuler",
+  "btn.back": "Retour",
+  "btn.exit": "Quitter",
+  "btn.open": "Ouvrir",
 
   "sync.action_none": "À jour",
   "sync.action_upload": "Envoyer",
@@ -105,6 +108,7 @@
   "hint.choose": "A choisir   B retour   haut/bas déplacer",
   "hint.edit": "A modifier   B retour   haut/bas déplacer",
   "hint.continue": "A continuer",
+  "hint.exit_app": "Vous allez quitter cette application",
   "err.no_server": "Aucun serveur configuré. Ouvre les Réglages et saisis l'adresse et le jeton.",
   "err.title_list": "Impossible de lire la liste des jeux.",
   "op.backup": "Sauvegarde",
@@ -324,8 +328,8 @@
   "autosync.cancelled": "Arrêté avant que quoi que ce soit ne tourne.",
   "autosync.nothing": "Rien à synchroniser.",
   "nx.account": "Compte",
+  "nx.reload": "Relire la liste",
   "nx.no_account": "Aucun compte n'a été choisi, il n'y a donc aucune sauvegarde à voir. Une sauvegarde sur cette console appartient à un seul compte.",
-  "nx.hint": "A sauvegarder   Y synchroniser   X recharger   L+X autotest   haut/bas déplacer   + quitter",
   "settings.survey": "Recueillir des informations de débogage",
   "settings.survey_hint": "Ouvre chaque archive de sauvegarde et écrit ce qu'elle trouve dans survey.txt. En lecture seule, et ignore le cache des noms - c'est donc le bouton à presser quand un nom ou une icône semble faux."
 }

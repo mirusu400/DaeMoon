@@ -12,6 +12,12 @@
 
 #include "daemoon_newlib.h"
 
+/* The interface is C++ now - borealis is a C++ framework - and the backends below
+ * are still C. This is the seam. */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* The SD card, which on this platform is the root of the default device. Backups,
  * staging and per title sync state, the same layout the 3DS build uses so a card
  * moved between the two reads the same. */
@@ -58,6 +64,27 @@ typedef struct {
 
 extern const daemoon_save_backend_t daemoon_nx_save_backend;
 
+/* --------------------------------------------------------------------- icons */
+
+/* A title's icon, out of the same ns record its name comes from: a JPEG, exactly as
+ * the console stores it, decoded by whoever draws it.
+ *
+ * Returned as an allocated copy because the record it is read out of is around
+ * 144 KiB and the icon is a fraction of that - holding the whole thing to keep a
+ * thumbnail would be sixty of those alive at once. Free it with free().
+ *
+ * A title with no icon is normal rather than an error: a save can outlive the game
+ * that wrote it, and an archive left behind by a deleted title has nothing to read.
+ * The caller draws a plain tile in that case, which keeps the grid aligned where a
+ * gap would not. */
+daemoon_result_t daemoon_nx_icon_load(unsigned long long app_id, unsigned char **out,
+                                      size_t *out_len);
+
+/* The selected account's profile picture, the same way. Also a JPEG, also freed by
+ * the caller. */
+daemoon_result_t daemoon_nx_account_image(const daemoon_nx_account_t *account,
+                                          unsigned char **out, size_t *out_len);
+
 /* ----------------------------------------------------------------- net, misc */
 
 typedef struct {
@@ -102,5 +129,9 @@ void             daemoon_nx_config_defaults(daemoon_nx_config_t *cfg);
 daemoon_result_t daemoon_nx_config_load(const char *path, daemoon_nx_config_t *cfg);
 daemoon_result_t daemoon_nx_config_save(const char *path, const daemoon_nx_config_t *cfg);
 int              daemoon_nx_config_can_sync(const daemoon_nx_config_t *cfg);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DAEMOON_NX_H */

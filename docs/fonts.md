@@ -80,15 +80,31 @@ Restriction removed, names now show in Korean, confirmed on hardware.
 
 **A NULL from a loader is not an answer about what can be drawn.** Ask the font.
 
-## Switch: mostly answered
+## Switch: answered, and the wrong answer shipped first
 
-`plInitialize()` and `plGetSharedFontByType()`. The shared fonts are split by type
-(`Standard`, `ChineseSimplified`, `ChineseTraditional`, `KO`, `NintendoExtended`),
-so rendering CJK means loading the matching type and falling back per glyph. The
-fallback chain has to be explicit; a missing glyph rendering as a box in the middle
-of a confirmation the user has to answer is not acceptable.
+**Now: the console's own shared fonts, all of them, falling back per glyph.**
+borealis's `switch_font.cpp` asks `plGetSharedFontByType` for `Standard`,
+`ChineseSimplified`, `ExtChineseSimplified`, `ChineseTraditional`, `KO` and
+`NintendoExt`, and adds every one it gets to a single font stash, so nanovg picks
+whichever has the glyph. Nothing in this project loads a font on this platform and
+nothing bundles one - the same decision as the 3DS, reached without any code of ours.
 
-Phase 6 inherits the rule above: probe the font, do not infer from a loader.
+The interesting part is what was there before it. The Switch build drew on libnx's
+text console, which has a font of its own that covers ASCII and stops. A Korean
+console showed rubbish, so the build did the only thing that screen allowed: it
+walked the whole string table looking for a byte above `0x7f` and fell back to
+English when it found one, writing `font/fallback` to `trace.txt` on the way past.
+
+That was an honest fallback and a bad outcome. Every screen in English on a Korean
+console is not a language that could not be drawn; it is a screen that could not draw
+a language. The 3DS section above records the same shape of mistake from the other
+side - a NULL from a loader read as "no Hangul available" - and both come down to the
+same thing: **the question is what the thing drawing can draw, and the answer has to
+come from asking it rather than from what surrounds it.**
+
+The probe is gone with the console it existed for. There is nothing left for it to
+catch: this screen draws the console's own font, which is also the font the console
+writes its game names in, so a name and a menu are never in different scripts.
 
 ## What has to be recorded here
 
@@ -96,4 +112,4 @@ Phase 6 inherits the rule above: probe the font, do not infer from a loader.
   nothing bundled.
 - ~~How a missing glyph is detected at runtime.~~ `daemoon_gfx_can_draw`.
 - ~~What the user sees when their language cannot be rendered.~~ English, and a
-  line in `trace.txt` saying so.
+  line in `trace.txt` saying so. 3DS only; on the Switch the case no longer arises.

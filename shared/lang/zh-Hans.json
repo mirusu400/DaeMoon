@@ -6,6 +6,9 @@
   "btn.no": "否",
   "btn.ok": "确定",
   "btn.cancel": "取消",
+  "btn.back": "返回",
+  "btn.exit": "退出",
+  "btn.open": "打开",
 
   "sync.action_none": "已是最新",
   "sync.action_upload": "上传",
@@ -105,6 +108,7 @@
   "hint.choose": "A 选择   B 返回   上下 移动",
   "hint.edit": "A 编辑   B 返回   上下 移动",
   "hint.continue": "A 继续",
+  "hint.exit_app": "将退出此应用",
   "err.no_server": "未设置服务器。请在设置中填写地址和令牌。",
   "err.title_list": "无法读取游戏列表。",
   "op.backup": "备份",
@@ -324,8 +328,8 @@
   "autosync.cancelled": "在任何操作开始前已停止。",
   "autosync.nothing": "没有需要同步的内容。",
   "nx.account": "账户",
+  "nx.reload": "重新读取列表",
   "nx.no_account": "没有选择账户，所以没有可查看的存档。本机的存档属于某一个账户。",
-  "nx.hint": "A 备份   Y 同步   X 重新读取   L+X 自检   上下 移动   + 退出",
   "settings.survey": "收集调试信息",
   "settings.survey_hint": "打开每一个存档并把结果写入 survey.txt。只读，并且忽略名称缓存，所以名称或图标不对时按这个。"
 }

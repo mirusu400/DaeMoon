@@ -13,6 +13,7 @@ record it in this file under the entry.
 | `miniz/` | https://github.com/richgel999/miniz | 3.0.2 (release amalgamation) | MIT | `core/src/archive.c` |
 | `quirc/` | https://github.com/dlbeer/quirc | 1.2 (`lib/` only) | ISC | Phase 4, 3DS QR pairing; and `make check`, which decodes what the server encodes |
 | `cacert/` | https://curl.se/ca/cacert.pem | 2026-08-13 upstream, filtered by `roots.txt` | MPL 2.0 (Mozilla CA list) | `platform/common/net_curl.c`, via bin2s in both console Makefiles |
+| `borealis/` | https://github.com/xfangfang/borealis | `5f08b28`, 2026-04-25 | Apache 2.0 | the Switch interface, `platform/nx/` |
 
 Notes:
 
@@ -34,6 +35,28 @@ Notes:
   encodes. The two sides of the pairing flow are written in different languages by
   different code, so having one check the other is worth more than either testing
   itself.
+- `borealis` is the exception to everything else in this table: it is a UI framework
+  rather than a single file, it is C++ rather than C, and it is the only vendored
+  thing here with a build system of its own. It is here because the Switch interface
+  needed two things a text console cannot do - draw a script that is not ASCII, and
+  show a game's icon - and writing both against the shared fonts and a GL context is
+  months of work that this library has already done and had run on a lot of consoles.
+  It is xfangfang's fork rather than natinusala's original because that is the one
+  that is maintained and the one wiliwili ships.
+- It is the copy the Switch build needs and no more. Removed from the upstream tree:
+  `demo/`, the Android, PS4, PSVita and WinRT projects, the empty `glfw` and `SDL`
+  submodules (this build links the devkitPro glfw port), `libromfs` (resources come
+  out of the NRO's own romfs), and the tests, docs and packaging of the vendored
+  `fmt` and `yoga`. What is left of `resources/` is the icon font and the touch
+  cursor; the shipped `i18n/` is not used, because
+  `platform/nx/romfs/i18n` is generated from `shared/lang` by `make gen` so that
+  borealis's own six hint strings are translated in the same place as everything
+  else.
+- Its build is `platform/nx/CMakeLists.txt`, which is why the Switch target is CMake
+  and every other target is a Makefile. That is not a preference: borealis carries a
+  large set of compile options and include paths that follow from which graphics
+  backend it was built with, and a second copy of that list in a Makefile would be
+  two places to keep one truth.
 - `cacert/` is not source. It is the root certificates the consoles trust, compiled
   into the binary as a byte array so that https works on a console somebody
   installed rather than only on one whose owner put a `.pem` on the card by hand.

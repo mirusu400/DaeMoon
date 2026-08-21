@@ -6,6 +6,9 @@
   "btn.no": "いいえ",
   "btn.ok": "OK",
   "btn.cancel": "キャンセル",
+  "btn.back": "戻る",
+  "btn.exit": "終了",
+  "btn.open": "開く",
 
   "sync.action_none": "最新",
   "sync.action_upload": "アップロード",
@@ -105,6 +108,7 @@
   "hint.choose": "A 決定   B もどる   上下 移動",
   "hint.edit": "A 編集   B もどる   上下 移動",
   "hint.continue": "A つづける",
+  "hint.exit_app": "アプリを終了します",
   "err.no_server": "サーバーが設定されていません。設定でアドレスとトークンを入力してください。",
   "err.title_list": "タイトル一覧を読み込めませんでした。",
   "op.backup": "バックアップ",
@@ -324,8 +328,8 @@
   "autosync.cancelled": "何も実行する前に中止しました。",
   "autosync.nothing": "同期するものがありません。",
   "nx.account": "アカウント",
+  "nx.reload": "リストを再読み込み",
   "nx.no_account": "アカウントが選ばれていないため、見るセーブがありません。この本体のセーブはアカウントごとのものです。",
-  "nx.hint": "A バックアップ   Y 同期   X 再読み込み   L+X セルフテスト   上下 移動   + 終了",
   "settings.survey": "デバッグ情報を集める",
   "settings.survey_hint": "すべてのセーブアーカイブを開き、結果を survey.txt に書き出します。読み取りのみで、名前のキャッシュを無視するので、名前やアイコンがおかしいときに押すボタンです。"
 }

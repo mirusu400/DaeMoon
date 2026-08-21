@@ -13,6 +13,10 @@
 
 #include <daemoon/backend.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* SD card storage over newlib stdio, which is what both toolchains give. ctx is
  * unused and may be NULL. */
 extern const daemoon_fs_backend_t daemoon_fs_newlib_backend;
@@ -94,5 +98,9 @@ void             daemoon_net_curl_exit(void);
  * on the 3DS, socketInitializeDefault on the Switch. Each platform supplies these. */
 daemoon_result_t daemoon_net_sockets_init(void);
 void             daemoon_net_sockets_exit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DAEMOON_NEWLIB_H */

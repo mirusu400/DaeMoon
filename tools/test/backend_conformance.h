@@ -20,6 +20,10 @@
 
 #include <daemoon/backend.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     /* Shown in failure messages. */
     const char *name;
@@ -53,5 +57,9 @@ typedef struct {
 /* Runs the whole battery. Failures are reported through the test harness, so the
  * caller only has to check the global failure count afterwards. */
 void daemoon_backend_conformance(const daemoon_backend_under_test_t *ut);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DAEMOON_TEST_BACKEND_CONFORMANCE_H */

@@ -6,6 +6,9 @@
   "btn.no": "Nein",
   "btn.ok": "OK",
   "btn.cancel": "Abbrechen",
+  "btn.back": "Zurück",
+  "btn.exit": "Beenden",
+  "btn.open": "Öffnen",
 
   "sync.action_none": "Aktuell",
   "sync.action_upload": "Hochladen",
@@ -105,6 +108,7 @@
   "hint.choose": "A wählen   B zurück   hoch/runter bewegen",
   "hint.edit": "A bearbeiten   B zurück   hoch/runter bewegen",
   "hint.continue": "A weiter",
+  "hint.exit_app": "Die App wird beendet",
   "err.no_server": "Kein Server eingerichtet. Adresse und Token in den Einstellungen eintragen.",
   "err.title_list": "Die Titelliste konnte nicht gelesen werden.",
   "op.backup": "Sicherung",
@@ -324,8 +328,8 @@
   "autosync.cancelled": "Vor jeder Ausführung angehalten.",
   "autosync.nothing": "Nichts abzugleichen.",
   "nx.account": "Konto",
+  "nx.reload": "Liste neu laden",
   "nx.no_account": "Es wurde kein Konto gewählt, also gibt es keinen Spielstand zu sehen. Ein Spielstand auf dieser Konsole gehört zu genau einem Konto.",
-  "nx.hint": "A sichern   Y abgleichen   X neu laden   L+X Selbsttest   hoch/runter bewegen   + beenden",
   "settings.survey": "Diagnoseinformationen sammeln",
   "settings.survey_hint": "Öffnet jedes Speicherarchiv und schreibt das Ergebnis nach survey.txt. Nur lesend, und ignoriert den Namens-Cache - also der Knopf für den Fall, dass ein Name oder ein Symbol falsch aussieht."
 }

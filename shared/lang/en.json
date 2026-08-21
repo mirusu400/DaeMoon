@@ -6,6 +6,9 @@
   "btn.no": "No",
   "btn.ok": "OK",
   "btn.cancel": "Cancel",
+  "btn.back": "Back",
+  "btn.exit": "Exit",
+  "btn.open": "Open",
 
   "sync.action_none": "Up to date",
   "sync.action_upload": "Upload",
@@ -105,6 +108,7 @@
   "hint.choose": "A select   B back   up/down move",
   "hint.edit": "A edit   B back   up/down move",
   "hint.continue": "A continue",
+  "hint.exit_app": "You will exit this app",
   "err.no_server": "No server is set. Open Settings and enter the address and the token.",
   "err.title_list": "The list of titles could not be read.",
   "op.backup": "Backup",
@@ -324,8 +328,8 @@
   "autosync.cancelled": "Stopped before anything ran.",
   "autosync.nothing": "Nothing to sync.",
   "nx.account": "Account",
+  "nx.reload": "Reload the list",
   "nx.no_account": "No account was chosen, so there is no save to look at. A save on this console belongs to one account.",
-  "nx.hint": "A back up   Y sync   X reload   L+X self test   up/down move   + exit",
   "settings.survey": "Collect debug information",
   "settings.survey_hint": "Opens every save archive and writes what it found to survey.txt. Reads only, and ignores the name cache, so this is the button to press when a name or an icon looks wrong."
 }

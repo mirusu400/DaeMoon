@@ -10,6 +10,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int daemoon_test_failures;
 extern int daemoon_test_checks;
 extern const char *daemoon_test_current;
@@ -127,5 +131,9 @@ int daemoon_test_read_fixture(const char *rel_path, char *buf, size_t cap, size_
 /* A unique scratch directory under the system temp dir, removed by the caller with
  * daemoon_posix_rmtree. */
 int daemoon_test_tempdir(char *buf, size_t cap, const char *tag);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DAEMOON_TEST_H */

@@ -63,16 +63,27 @@ there instead - the app writes that file, never a person. Check
 `LIBCURL_VERSION_NUM`, not the platform: if the port is updated the blob path starts
 being taken and the file stops being written, with nothing to change here.
 
-## What is left for hardware
+## What hardware has said
 
-Everything that matters. `make core-test` covers the half with no libnx in it - title
-id formatting, the config parser, the tree walk and the clear - and says nothing about
-whether the FS service behaves the way this assumes. Run the conformance suite
-(**X with L or R**, and it asks twice) against a dummy title under a selected account
-before a real save is anywhere near this.
+**The backend behaves: `277 checks, 0 failures`.** The conformance suite, run the way
+this file asks for it - a dummy title, under a selected account, before a real save was
+anywhere near it. Thirteen mounts and twelve commits, every one `ok`. `docs/hardware.md`
+carries the detail, including the three faults found getting there: a `NULL` passed to
+`pselShowUserSelector`, a missing font fallback on a console whose language this screen
+cannot draw, and a fresh `PadState` reading held buttons as pressed.
 
-The `other` title case is skipped: two dummy titles that both already have saves is a
-hardware setup question, and it is the case that would catch one account's save being
+The suite is **X with a shoulder or a trigger held**, and it asks twice. Either
+shoulder and either trigger, because L against ZL is not a distinction anybody makes
+while reading a legend and the wrong one silently reloaded the list instead. It is in
+the on screen legend now (`nx.hint`); it used to be reachable and undocumented, which
+is the same as absent.
+
+`make core-test` covers the half with no libnx in it - title id formatting, the config
+parser, the tree walk and the clear - and still says nothing about the FS service. That
+is what the suite is for, and it now has an answer on a console.
+
+**Still open: the `other` title case.** Two dummy titles that both already have saves is
+a hardware setup question, and it is the case that would catch one account's save being
 handed to another.
 
 ## Not done yet

@@ -318,7 +318,7 @@
   "autosync.nothing": "Rien à synchroniser.",
   "nx.account": "Compte",
   "nx.no_account": "Aucun compte n'a été choisi, il n'y a donc aucune sauvegarde à voir. Une sauvegarde sur cette console appartient à un seul compte.",
-  "nx.hint": "A sauvegarder   Y synchroniser   X recharger   haut/bas déplacer   + quitter",
+  "nx.hint": "A sauvegarder   Y synchroniser   X recharger   L+X autotest   haut/bas déplacer   + quitter",
   "settings.survey": "Recueillir des informations de débogage",
   "settings.survey_hint": "Ouvre chaque archive de sauvegarde et écrit ce qu'elle trouve dans survey.txt. En lecture seule, et ignore le cache des noms - c'est donc le bouton à presser quand un nom ou une icône semble faux."
 }

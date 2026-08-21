@@ -36,8 +36,12 @@ static int ask(const char *body, const char *const *options, size_t n, size_t st
     PadState pad;
     size_t selected = start;
 
+    /* One discarded update first: this dialog is opened by a button that is still
+       down, and with no past to compare against its first update would read that
+       as an answer. See pad_open in main.c. */
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     padInitializeDefault(&pad);
+    padUpdate(&pad);
 
     while (appletMainLoop()) {
         u64 down;

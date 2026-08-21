@@ -318,7 +318,7 @@
   "autosync.nothing": "Nothing to sync.",
   "nx.account": "Account",
   "nx.no_account": "No account was chosen, so there is no save to look at. A save on this console belongs to one account.",
-  "nx.hint": "A back up   Y sync   X reload   up/down move   + exit",
+  "nx.hint": "A back up   Y sync   X reload   L+X self test   up/down move   + exit",
   "settings.survey": "Collect debug information",
   "settings.survey_hint": "Opens every save archive and writes what it found to survey.txt. Reads only, and ignores the name cache, so this is the button to press when a name or an icon looks wrong."
 }

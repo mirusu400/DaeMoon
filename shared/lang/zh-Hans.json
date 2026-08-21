@@ -318,7 +318,7 @@
   "autosync.nothing": "没有需要同步的内容。",
   "nx.account": "账户",
   "nx.no_account": "没有选择账户，所以没有可查看的存档。本机的存档属于某一个账户。",
-  "nx.hint": "A 备份   Y 同步   X 重新读取   上下 移动   + 退出",
+  "nx.hint": "A 备份   Y 同步   X 重新读取   L+X 自检   上下 移动   + 退出",
   "settings.survey": "收集调试信息",
   "settings.survey_hint": "打开每一个存档并把结果写入 survey.txt。只读，并且忽略名称缓存，所以名称或图标不对时按这个。"
 }

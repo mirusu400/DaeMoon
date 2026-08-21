@@ -318,7 +318,7 @@
   "autosync.nothing": "Nada que sincronizar.",
   "nx.account": "Cuenta",
   "nx.no_account": "No se ha elegido ninguna cuenta, así que no hay partidas que mirar. Una partida en esta consola pertenece a una sola cuenta.",
-  "nx.hint": "A copiar   Y sincronizar   X recargar   arriba/abajo mover   + salir",
+  "nx.hint": "A copiar   Y sincronizar   X recargar   L+X autocomprobación   arriba/abajo mover   + salir",
   "settings.survey": "Recoger información de depuración",
   "settings.survey_hint": "Abre todos los archivos de partida y escribe lo que encuentra en survey.txt. Solo lectura, e ignora la caché de nombres, así que es el botón que pulsar cuando un nombre o un icono se ve mal."
 }

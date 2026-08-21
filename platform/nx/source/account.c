@@ -71,8 +71,20 @@ daemoon_result_t daemoon_nx_account_select(daemoon_nx_account_t *out)
 
     /* The system selector. It is a library applet, so it needs the memory an
      * application has - which is the other half of why applet mode is refused at
-     * startup rather than partway through. */
-    rc = pselShowUserSelector(&uid, NULL);
+     * startup rather than partway through.
+     *
+     * The settings are required, not optional. Passing NULL here is a data abort
+     * at address zero inside the applet library, which is what this build did on
+     * the first console it ever reached: `app/start`, `account/init ok`, and then
+     * nothing. The header says [in] and never says it may be null; there is no
+     * default to fall back on, so the caller supplies one. All zero is the plain
+     * case - every user offered, no skip button, no linked account demanded. */
+    {
+        PselUserSelectionSettings settings;
+
+        memset(&settings, 0, sizeof(settings));
+        rc = pselShowUserSelector(&uid, &settings);
+    }
     if (R_FAILED(rc) || !accountUidIsValid(&uid)) {
         daemoon_nx_trace("account/selector", "cancelled");
         return DAEMOON_ERR_USER_CANCELLED;

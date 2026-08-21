@@ -113,7 +113,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Survey every title to the SD card", /* menu.survey */
         "Sync with the server", /* menu.sync */
         "Account", /* nx.account */
-        "A back up   Y sync   X reload   up/down move   + exit", /* nx.hint */
+        "A back up   Y sync   X reload   L+X self test   up/down move   + exit", /* nx.hint */
         "No account was chosen, so there is no save to look at. A save on this console belongs to one account.", /* nx.no_account */
         "Backup", /* op.backup */
         "Restore", /* op.restore */
@@ -290,7 +290,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "모든 타이틀 조사해 SD 카드에 기록", /* menu.survey */
         "서버와 동기화", /* menu.sync */
         "계정", /* nx.account */
-        "A 백업   Y 동기화   X 새로 읽기   위/아래 이동   + 종료", /* nx.hint */
+        "A 백업   Y 동기화   X 새로 읽기   L+X 자체 검사   위/아래 이동   + 종료", /* nx.hint */
         "계정을 고르지 않아 볼 세이브가 없습니다. 이 본체의 세이브는 계정 하나에 속합니다.", /* nx.no_account */
         "백업", /* op.backup */
         "복원", /* op.restore */
@@ -467,7 +467,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "すべてのタイトルを調べて SD カードに記録", /* menu.survey */
         "サーバーと同期", /* menu.sync */
         "アカウント", /* nx.account */
-        "A バックアップ   Y 同期   X 再読み込み   上下 移動   + 終了", /* nx.hint */
+        "A バックアップ   Y 同期   X 再読み込み   L+X セルフテスト   上下 移動   + 終了", /* nx.hint */
         "アカウントが選ばれていないため、見るセーブがありません。この本体のセーブはアカウントごとのものです。", /* nx.no_account */
         "バックアップ", /* op.backup */
         "復元", /* op.restore */
@@ -644,7 +644,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "调查所有游戏并写入 SD 卡", /* menu.survey */
         "与服务器同步", /* menu.sync */
         "账户", /* nx.account */
-        "A 备份   Y 同步   X 重新读取   上下 移动   + 退出", /* nx.hint */
+        "A 备份   Y 同步   X 重新读取   L+X 自检   上下 移动   + 退出", /* nx.hint */
         "没有选择账户，所以没有可查看的存档。本机的存档属于某一个账户。", /* nx.no_account */
         "备份", /* op.backup */
         "恢复", /* op.restore */
@@ -821,7 +821,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "調查所有遊戲並寫入 SD 卡", /* menu.survey */
         "與伺服器同步", /* menu.sync */
         "帳戶", /* nx.account */
-        "A 備份   Y 同步   X 重新讀取   上下 移動   + 結束", /* nx.hint */
+        "A 備份   Y 同步   X 重新讀取   L+X 自我測試   上下 移動   + 結束", /* nx.hint */
         "沒有選擇帳戶，所以沒有可查看的存檔。本機的存檔屬於某一個帳戶。", /* nx.no_account */
         "備份", /* op.backup */
         "還原", /* op.restore */
@@ -998,7 +998,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Analizar todos los juegos y escribirlo en la tarjeta SD", /* menu.survey */
         "Sincronizar con el servidor", /* menu.sync */
         "Cuenta", /* nx.account */
-        "A copiar   Y sincronizar   X recargar   arriba/abajo mover   + salir", /* nx.hint */
+        "A copiar   Y sincronizar   X recargar   L+X autocomprobación   arriba/abajo mover   + salir", /* nx.hint */
         "No se ha elegido ninguna cuenta, así que no hay partidas que mirar. Una partida en esta consola pertenece a una sola cuenta.", /* nx.no_account */
         "Copia de seguridad", /* op.backup */
         "Restauración", /* op.restore */
@@ -1175,7 +1175,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Analyser tous les jeux et écrire sur la carte SD", /* menu.survey */
         "Synchroniser avec le serveur", /* menu.sync */
         "Compte", /* nx.account */
-        "A sauvegarder   Y synchroniser   X recharger   haut/bas déplacer   + quitter", /* nx.hint */
+        "A sauvegarder   Y synchroniser   X recharger   L+X autotest   haut/bas déplacer   + quitter", /* nx.hint */
         "Aucun compte n'a été choisi, il n'y a donc aucune sauvegarde à voir. Une sauvegarde sur cette console appartient à un seul compte.", /* nx.no_account */
         "Sauvegarde", /* op.backup */
         "Restauration", /* op.restore */
@@ -1352,7 +1352,7 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "Alle Titel erfassen und auf die SD-Karte schreiben", /* menu.survey */
         "Mit dem Server abgleichen", /* menu.sync */
         "Konto", /* nx.account */
-        "A sichern   Y abgleichen   X neu laden   hoch/runter bewegen   + beenden", /* nx.hint */
+        "A sichern   Y abgleichen   X neu laden   L+X Selbsttest   hoch/runter bewegen   + beenden", /* nx.hint */
         "Es wurde kein Konto gewählt, also gibt es keinen Spielstand zu sehen. Ein Spielstand auf dieser Konsole gehört zu genau einem Konto.", /* nx.no_account */
         "Sicherung", /* op.backup */
         "Wiederherstellung", /* op.restore */

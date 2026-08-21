@@ -44,6 +44,53 @@ static daemoon_title_t *g_titles;
 static size_t           g_count;
 static size_t           g_selected;
 
+/* Whether the screen can actually draw a language.
+ *
+ * libnx's text console draws from a font of its own that covers ASCII and stops
+ * there, so a table carrying any byte above 0x7f comes out as rubbish - which is
+ * what a Korean console showed the first time this build reached a menu.
+ *
+ * docs/fonts.md already settled the policy for the 3DS: probe at runtime, fall
+ * back to English, and write the fallback down rather than leaving somebody to
+ * wonder why the words changed. The policy is the same here and only the test
+ * differs, because the thing being tested is a different font.
+ *
+ * The whole table is walked rather than one character per language. It costs a
+ * scan once at startup, it needs no list of representative glyphs to keep in step
+ * with the languages, and it answers for the strings actually drawn. When this
+ * build learns plGetSharedFontByType, this is the check that stops returning
+ * zero - on its own, with nothing here to remember to change. */
+static int console_can_draw(daemoon_lang_t lang)
+{
+    size_t i;
+
+    for (i = 0; i < (size_t)DAEMOON_STR_COUNT; i++) {
+        const char *p = daemoon_lang_table[lang][i];
+
+        if (p == NULL) {
+            continue;
+        }
+        for (; *p != '\0'; p++) {
+            if ((unsigned char)*p > 0x7f) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+/* Chosen, then checked against what the screen can draw. Both ways in go through
+ * here, because a language stored in the config is just as undrawable as one read
+ * off the system. */
+static void apply_language(daemoon_lang_t chosen)
+{
+    if (!console_can_draw(chosen)) {
+        daemoon_nx_trace("font/fallback", daemoon_lang_code(chosen));
+        chosen = DAEMOON_LANG_EN;
+    }
+    daemoon_i18n_set_language(chosen);
+}
+
 static void select_language(void)
 {
     u64 code = 0;
@@ -54,11 +101,12 @@ static void select_language(void)
      * person who picked one is not overruled by the system setting. */
     if (g_config.language[0] != '\0' &&
         daemoon_i18n_language_from_code(g_config.language, &chosen) == DAEMOON_OK) {
-        daemoon_i18n_set_language(chosen);
+        apply_language(chosen);
         return;
     }
 
     if (R_FAILED(setInitialize())) {
+        apply_language(chosen);
         return;
     }
     if (R_SUCCEEDED(setGetSystemLanguage(&code)) &&
@@ -77,7 +125,7 @@ static void select_language(void)
         }
     }
     setExit();
-    daemoon_i18n_set_language(chosen);
+    apply_language(chosen);
 }
 
 /* Informational only, like every other date in this project. The clock is user
@@ -98,12 +146,33 @@ static daemoon_result_t clock_iso8601(void *ctx, char *buf, size_t cap)
     return DAEMOON_OK;
 }
 
+/* A pad that does not mistake a button already held for one just pressed.
+ *
+ * padGetButtonsDown reports the edge between two updates, and a freshly
+ * initialised PadState has nothing behind it - so its very first update turns
+ * every button currently held into a press that never happened.
+ *
+ * That is not a corner case here, it is the main path. The self test is reached
+ * with a shoulder held and X pressed, and each question opened a pad of its own:
+ * the A that answered the first question was still physically down when the
+ * second one initialised, so the second question answered itself with the cursor
+ * where it started - on No - and the run ended before anybody could read it. From
+ * the outside that is indistinguishable from a combination that does not work.
+ *
+ * One discarded update gives the state a past. Held is then held, and only a new
+ * press is a press. */
+static void pad_open(PadState *pad)
+{
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+    padInitializeDefault(pad);
+    padUpdate(pad);
+}
+
 static void wait_for_a(void)
 {
     PadState pad;
 
-    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
-    padInitializeDefault(&pad);
+    pad_open(&pad);
     printf("\n%s\n", daemoon_str(DAEMOON_STR_HINT_CONTINUE));
     consoleUpdate(NULL);
 
@@ -273,11 +342,21 @@ static void action_conformance(void)
     if (g_count == 0) {
         return;
     }
+    /* Every way out of this function is recorded from here on.
+     *
+     * Three runs in a row left `list/done` followed straight by `app/exit`, which
+     * is what a declined confirmation looks like and also what never pressing the
+     * combination looks like. They are different problems and the file could not
+     * tell them apart, so now it can: whether the combination fired, which of the
+     * two questions was answered no, and whether the suite actually started. */
+    daemoon_nx_trace("selftest/asked", g_titles[g_selected].name);
+
     memset(&ask, 0, sizeof(ask));
     ask.id = DAEMOON_STR_SELFTEST_WARNING;
     ask.args[0] = g_titles[g_selected].name;
     ask.nargs = 1;
     if (!g_env.ui->confirm(g_env.ui_ctx, &ask)) {
+        daemoon_nx_trace("selftest/declined", "first");
         return;
     }
     /* Asked twice, because the first question is the one somebody reads and the
@@ -288,8 +367,10 @@ static void action_conformance(void)
     ask.args[0] = g_titles[g_selected].name;
     ask.nargs = 1;
     if (!g_env.ui->confirm(g_env.ui_ctx, &ask)) {
+        daemoon_nx_trace("selftest/declined", "second");
         return;
     }
+    daemoon_nx_trace("selftest/run", NULL);
 
     consoleClear();
     printf("%s\n\n", daemoon_str(DAEMOON_STR_SELFTEST_WARNING));
@@ -342,8 +423,7 @@ int main(int argc, char **argv)
     (void)argv;
 
     consoleInit(NULL);
-    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
-    padInitializeDefault(&pad);
+    pad_open(&pad);
 
     (void)daemoon_nx_config_load(DAEMOON_NX_CONFIG_PATH, &g_config);
     select_language();
@@ -416,6 +496,7 @@ int main(int argc, char **argv)
 
     while (appletMainLoop()) {
         u64 down;
+        int acted = 0;
 
         draw();
         padUpdate(&pad);
@@ -432,18 +513,35 @@ int main(int argc, char **argv)
         }
         if (down & HidNpadButton_A) {
             action_backup();
+            acted = 1;
         }
         if (down & HidNpadButton_Y) {
             action_sync();
+            acted = 1;
         }
         if (down & HidNpadButton_X) {
-            /* Both shoulders with it, so the destructive one cannot be reached by a
-             * single button on a list of saves. */
-            if (padGetButtons(&pad) & (HidNpadButton_L | HidNpadButton_R)) {
+            /* A shoulder held with it, so the destructive one cannot be reached by
+             * a single button on a list of saves.
+             *
+             * Either shoulder and either trigger, because the distinction between
+             * L and ZL is one nobody makes while reading a legend, and pressing the
+             * wrong one silently reloaded the list instead - which looks exactly
+             * like a combination that does not work. The guard is that a second
+             * hand is on the controller, and any of the four says that. */
+            if (padGetButtons(&pad) & (HidNpadButton_L | HidNpadButton_R |
+                                       HidNpadButton_ZL | HidNpadButton_ZR)) {
                 action_conformance();
+                acted = 1;
             } else {
                 load_titles();
             }
+        }
+
+        /* An action that put a dialog up came back with the answering button still
+           down. Resync so the next turn of this loop reads it as held rather than
+           as a press aimed at whatever the cursor is on. */
+        if (acted) {
+            padUpdate(&pad);
         }
     }
 

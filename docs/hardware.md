@@ -113,10 +113,53 @@ neither side, and counts the title.
 one up to the card, syncs one against a server, and can run the conformance suite
 against a dummy title. Zero warnings from a clean build.
 
-**Nothing about it has been on hardware.** That is the whole of what is open, and the
-order to answer it in is written in `platform/nx/CLAUDE.md`: the conformance suite
-first, under a selected account, against a dummy title, before a real save is anywhere
-near it.
+**Answered: the backend behaves.** `277 checks, 0 failures. this backend behaves the
+way core assumes`, run in the order `platform/nx/CLAUDE.md` asks for - the conformance
+suite, under a selected account, against a dummy title, before a real save was
+anywhere near it. Thirteen mounts and twelve commits against SUPER MARIO ODYSSEY
+(`0100000000010000`), every one `ok`: reads, writes, truncation, clearing an archive
+whole, nested directories, chunked streaming, and a commit after each. A save on this
+platform is an ordinary mounted filesystem and it acts like one.
+
+The console is a Korean Switch on Atmosphere, launched through Sphaira in full mode,
+against a server on the same network. Sixty-one saves enumerated for the selected
+account.
+
+**Still open: the `other` title case.** It needs two dummy titles that both already
+have saves, and it is the case that would catch one account's save being handed to
+another. One console with one disposable save cannot ask it.
+
+Three things had to be fixed to get there, and each of them is a thing only a console
+would have said:
+
+- **`pselShowUserSelector` dereferences its settings.** They were being passed as
+  `NULL`. The header marks the argument `[in]` and never says it may be absent, so
+  there is no default to fall back on and the applet library reads address zero. It
+  is a data abort before the account is ever chosen, and it was the first thing this
+  build did on the first console it reached.
+- **The text console draws ASCII and nothing else.** `docs/fonts.md` settled the
+  policy in Phase 3 - probe at runtime, fall back to English, write the fallback down
+  - and the 3DS build implements it. The Switch build never had the check, so a Korean
+  console rendered every string as rubbish. The table is now walked for any byte above
+  `0x7f`, which needs no list of representative glyphs to keep in step with the
+  languages and stops being true on its own the day this build draws with
+  `plGetSharedFontByType`.
+- **A fresh `PadState` reads held buttons as pressed.** `padGetButtonsDown` is the
+  edge between two updates and a newly initialised state has no past, so its first
+  update turns whatever is currently down into a press. Every dialog opened a pad of
+  its own, so the A that answered one question was still down when the next one
+  initialised and answered itself - with the cursor where it starts, on No. The
+  destructive confirmation was declining before it could be read, which from the
+  outside is indistinguishable from a button combination that does not work. Worse
+  was on the same fault: returning to the list with A still down could run a backup
+  on whatever the cursor sat on. One discarded update after initialising fixes all
+  three sites.
+
+That last one cost four rounds, and it cost them because the trace could not tell
+"the combination never fired" from "the confirmation was declined" - both were a
+`list/done` followed by `app/exit`. Every exit from the self test is now recorded
+(`selftest/asked`, `selftest/declined first|second`, `selftest/run`), which is the
+same lesson as the section below and it had to be learned again here.
 
 Writing it moved four files into `platform/common`, which is the thing worth recording
 here. The SD card backend, the curl request loop, a directory tree walk and the config
@@ -143,6 +186,12 @@ it was called Phase 6.
   means no *extra* region font was loaded and says nothing about what can be drawn.
 - **The camera stores rows of the frame width**, and overruns its port if no
   receive is armed while a frame is being processed.
+- **A homebrew crash in application mode wedges the launcher.** After the data
+  abort above, every NRO - not only this one - showed a black screen and returned
+  to the menu, with no trace line and no crash report to say why. Three rounds were
+  spent reading that as evidence about this application. A reboot cleared it. On
+  this platform "it closed instantly" is a statement about the console until a
+  second homebrew says otherwise.
 
 ## The pattern
 

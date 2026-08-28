@@ -217,8 +217,23 @@ jobs:
             sudo install -m 600 daemoon.env.new /opt/daemoon/.env
             rm -f daemoon-compose.yml.new daemoon.env.new
             cd /opt/daemoon
-            sudo docker compose -f compose.yml -f compose.turnstile.yml pull daemoond
-            sudo docker compose -f compose.yml -f compose.turnstile.yml up -d --no-deps daemoond
+
+            # Passing -f disables Compose's automatic compose.override.yml
+            # loading. Keep the host's production override (proxy network, TLS,
+            # and other host-only settings) ahead of our Turnstile overlay.
+            compose() {
+              if [ -f compose.override.yaml ]; then
+                sudo docker compose -f compose.yml -f compose.override.yaml \
+                  -f compose.turnstile.yml "$@"
+              elif [ -f compose.override.yml ]; then
+                sudo docker compose -f compose.yml -f compose.override.yml \
+                  -f compose.turnstile.yml "$@"
+              else
+                sudo docker compose -f compose.yml -f compose.turnstile.yml "$@"
+              fi
+            }
+            compose pull daemoond
+            compose up -d --no-deps daemoond
 
             # "Container Started" only means Docker ran the entrypoint. A bad
             # configuration can make the process exit one line later, which used
@@ -233,13 +248,28 @@ jobs:
               sleep 2
             done
             if [ "$healthy" != true ]; then
-              sudo docker compose -f compose.yml -f compose.turnstile.yml ps
-              sudo docker compose -f compose.yml -f compose.turnstile.yml logs \
-                --tail 100 daemoond
+              compose ps
+              compose logs --tail 100 daemoond
               exit 1
             fi
             sudo docker image prune -f
           '
+
+          # The daemon can be healthy on localhost while a production-only proxy
+          # network is missing. Verify the path users actually reach as well.
+          healthy=false
+          for attempt in $(seq 1 15); do
+            if curl --fail --silent --show-error --max-time 5 \
+                 https://daemoon.mir.sh/healthz; then
+              healthy=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "$healthy" != true ]; then
+            echo '::error::Public health check failed for https://daemoon.mir.sh/healthz'
+            exit 1
+          fi
 
   # A job id may not start with a digit, so this is `_3ds`, not `3ds`.
   _3ds:

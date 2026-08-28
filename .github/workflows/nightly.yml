@@ -275,13 +275,18 @@ jobs:
             compose pull daemoond
             compose up -d --no-deps daemoond
 
-            # "Container Started" only means Docker ran the entrypoint. A bad
-            # configuration can make the process exit one line later, which used
-            # to leave this job green and the public site returning 502.
+            # "Container Started" only means Docker ran the entrypoint. Resolve
+            # the published port from the production override instead of assuming 8080.
+            health_port=$(compose port daemoond 8080 | awk -F: "END { print \$NF }")
+            if [ -z "$health_port" ]; then
+              compose ps
+              echo "No host port is published for daemoond:8080" >&2
+              exit 1
+            fi
             healthy=false
             for attempt in $(seq 1 15); do
               if curl --fail --silent --show-error --max-time 5 \
-                   http://127.0.0.1:8080/healthz; then
+                   "http://127.0.0.1:$health_port/healthz"; then
                 healthy=true
                 break
               fi

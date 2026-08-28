@@ -51,6 +51,8 @@ func TestEnvOverrides(t *testing.T) {
 	t.Setenv("DAEMOON_MAX_SAVE_SIZE", "1048576")
 	t.Setenv("DAEMOON_READ_TIMEOUT", "90s")
 	t.Setenv("DAEMOON_SHARE_TTL", "48h")
+	t.Setenv("DAEMOON_TURNSTILE_SITE_KEY", "site-key")
+	t.Setenv("DAEMOON_TURNSTILE_SECRET_KEY", "secret-key")
 
 	c, err := config.FromEnv()
 	if err != nil {
@@ -70,6 +72,9 @@ func TestEnvOverrides(t *testing.T) {
 	}
 	if c.ShareTTL != 48*time.Hour {
 		t.Errorf("ShareTTL = %s", c.ShareTTL)
+	}
+	if !c.Turnstile() || c.TurnstileSiteKey != "site-key" || c.TurnstileSecretKey != "secret-key" {
+		t.Errorf("Turnstile configuration was not loaded")
 	}
 	// Anything not set keeps its default.
 	if c.WriteTimeout != config.Default().WriteTimeout {
@@ -164,6 +169,34 @@ func TestTLSMustBeBothOrNeither(t *testing.T) {
 			}
 			if err == nil && c.TLS() != tc.wantTLS {
 				t.Fatalf("TLS() = %v, want %v", c.TLS(), tc.wantTLS)
+			}
+		})
+	}
+}
+
+func TestTurnstileMustBeBothOrNeither(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		site    string
+		secret  string
+		wantErr bool
+		wantOn  bool
+	}{
+		{"neither", "", "", false, false},
+		{"both", "site-key", "secret-key", false, true},
+		{"site key only", "site-key", "", true, false},
+		{"secret key only", "", "secret-key", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("DAEMOON_TURNSTILE_SITE_KEY", tc.site)
+			t.Setenv("DAEMOON_TURNSTILE_SECRET_KEY", tc.secret)
+
+			c, err := config.FromEnv()
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tc.wantErr)
+			}
+			if err == nil && c.Turnstile() != tc.wantOn {
+				t.Fatalf("Turnstile() = %v, want %v", c.Turnstile(), tc.wantOn)
 			}
 		})
 	}

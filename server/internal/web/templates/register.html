@@ -8,6 +8,10 @@
     <label>{{.T "web.login.name"}}<input type="text" name="username" autocomplete="username" autofocus></label>
     <label>{{.T "web.login.password"}}<input type="password" name="password" autocomplete="new-password"></label>
     <span class="t-mut mono">{{.T "web.setup.min_password"}}</span>
+    {{if .TurnstileSiteKey}}
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <div class="cf-turnstile" data-sitekey="{{.TurnstileSiteKey}}" data-action="register" data-size="flexible" data-theme="{{if .Theme}}{{.Theme}}{{else}}auto{{end}}"></div>
+    {{end}}
     <button class="btn-key">{{.T "web.register.title"}}</button>
   </form>
   {{end}}

@@ -154,7 +154,7 @@ jobs:
   deploy:
     name: deploy
     needs: image
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -170,7 +170,7 @@ jobs:
             # of a new branch) - deploy rather than guess.
             echo "changed=true" >> "$GITHUB_OUTPUT"
           elif git diff --name-only "$before" "$GITHUB_SHA" \
-               | grep -qE '^(server/|shared/|docker/server\.Dockerfile|compose\.yml)'; then
+               | grep -qE '^(server/|shared/|docker/server\.Dockerfile|compose\.yml|deploy/compose\.turnstile\.yml)'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -180,18 +180,47 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           HOST: ${{ secrets.EC2_HOST }}
+          TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
         run: |
           set -eu
+          trap 'rm -f key.pem daemoon.env' EXIT
+
+          # Both values are optional so a private self-hosted deployment keeps its
+          # old behaviour. One without the other is always a mistake: the app also
+          # refuses that configuration at startup, but catching it here avoids
+          # replacing a healthy container with one that cannot start.
+          if { [ -z "$TURNSTILE_SITE_KEY" ] && [ -n "$TURNSTILE_SECRET_KEY" ]; } || \
+             { [ -n "$TURNSTILE_SITE_KEY" ] && [ -z "$TURNSTILE_SECRET_KEY" ]; }; then
+            echo '::error::TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY must both be set'
+            exit 1
+          fi
+
           install -m 600 /dev/null key.pem
           printf '%s' "$SSH_KEY" > key.pem
+          umask 077
+          {
+            printf 'TURNSTILE_SITE_KEY=%s\n' "$TURNSTILE_SITE_KEY"
+            printf 'TURNSTILE_SECRET_KEY=%s\n' "$TURNSTILE_SECRET_KEY"
+          } > daemoon.env
+
+          # The compose override carries only variable names. It leaves the host's
+          # base compose file untouched; the values cross SSH in a mode-0600 file
+          # and never enter the repository, image, or command line.
+          scp -o StrictHostKeyChecking=accept-new -i key.pem \
+            deploy/compose.turnstile.yml "ubuntu@$HOST:daemoon-compose.yml.new"
+          scp -o StrictHostKeyChecking=accept-new -i key.pem \
+            daemoon.env "ubuntu@$HOST:daemoon.env.new"
           ssh -o StrictHostKeyChecking=accept-new -i key.pem "ubuntu@$HOST" '
             set -eu
+            sudo install -m 644 daemoon-compose.yml.new /opt/daemoon/compose.turnstile.yml
+            sudo install -m 600 daemoon.env.new /opt/daemoon/.env
+            rm -f daemoon-compose.yml.new daemoon.env.new
             cd /opt/daemoon
-            sudo docker compose pull daemoond
-            sudo docker compose up -d --no-deps daemoond
+            sudo docker compose -f compose.yml -f compose.turnstile.yml pull daemoond
+            sudo docker compose -f compose.yml -f compose.turnstile.yml up -d --no-deps daemoond
             sudo docker image prune -f
           '
-          rm -f key.pem
 
   # A job id may not start with a digit, so this is `_3ds`, not `3ds`.
   _3ds:

@@ -33,6 +33,11 @@ services:
       # A save larger than this is refused before the body is read. 64 MiB is the
       # default and is generous for a 3DS; Switch saves are the reason to raise it.
       DAEMOON_MAX_SAVE_SIZE: "67108864"
+      # Optional. Both empty leaves sign-up unchanged for private self-hosted
+      # instances; setting both makes every public /register submission pass
+      # Cloudflare Turnstile before an account can be created.
+      DAEMOON_TURNSTILE_SITE_KEY: "${TURNSTILE_SITE_KEY:-}"
+      DAEMOON_TURNSTILE_SECRET_KEY: "${TURNSTILE_SECRET_KEY:-}"
 
     # Nothing writes to the image, so the root filesystem is read only and the one
     # directory that is written to is a tmpfs. An upload is staged in a temp file - a

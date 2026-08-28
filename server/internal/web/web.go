@@ -44,6 +44,7 @@ import (
 	"github.com/mirusu400/DaeMoon/server/internal/config"
 	"github.com/mirusu400/DaeMoon/server/internal/i18n"
 	"github.com/mirusu400/DaeMoon/server/internal/store"
+	"github.com/mirusu400/DaeMoon/server/internal/turnstile"
 )
 
 //go:embed templates/*.html static/*
@@ -61,6 +62,11 @@ type Server struct {
 	cfg      config.Config
 	tpl      *template.Template
 	releases *releaseCache
+	captcha  captchaVerifier
+}
+
+type captchaVerifier interface {
+	Verify(context.Context, string) error
 }
 
 func New(st *store.Store, cfg config.Config) (*Server, error) {
@@ -75,7 +81,13 @@ func New(st *store.Store, cfg config.Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
-	return &Server{store: st, cfg: cfg, tpl: tpl, releases: &releaseCache{}}, nil
+	var captcha captchaVerifier
+	if cfg.Turnstile() {
+		captcha = turnstile.New(cfg.TurnstileSecretKey)
+	}
+	return &Server{
+		store: st, cfg: cfg, tpl: tpl, releases: &releaseCache{}, captcha: captcha,
+	}, nil
 }
 
 /* Static files are addressed by what is in them.
@@ -348,8 +360,11 @@ type page struct {
 	// SignUpOpen decides whether the login page offers a way to make an account.
 	// A link to a page that would refuse is worse than no link.
 	SignUpOpen bool
-	Nav        nav
-	Downloads  downloads
+	// TurnstileSiteKey is the public half of the optional sign-up challenge. The
+	// secret half never enters a page or a template.
+	TurnstileSiteKey string
+	Nav              nav
+	Downloads        downloads
 	// InstallQR decides whether the welcome page offers the scan to install code.
 	// A code that cannot resolve to a build is worse than no code: somebody finds
 	// that out holding a console, after going to fetch one.
@@ -406,6 +421,9 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 		p.SEO = landingSEO(p.Lang)
 	}
 	p.SignUpOpen = s.store.OpenRegistration(r.Context())
+	if s.cfg.Turnstile() {
+		p.TurnstileSiteKey = s.cfg.TurnstileSiteKey
+	}
 	p.Downloads = downloads{
 		ThreeDS: buildsURL, Switch: buildsURL, Server: buildsURL, Source: repoURL,
 	}
@@ -727,6 +745,15 @@ func (s *Server) postRegister(w http.ResponseWriter, r *http.Request) {
 	if msg := checkCredentials(username, password); msg != "" {
 		fail(msg)
 		return
+	}
+	if s.captcha != nil {
+		if err := s.captcha.Verify(r.Context(), r.FormValue("cf-turnstile-response")); err != nil {
+			if !errors.Is(err, turnstile.ErrRejected) {
+				slog.WarnContext(r.Context(), "verify sign-up captcha", "err", err)
+			}
+			fail("web.err.captcha")
+			return
+		}
 	}
 	hash, err := auth.HashPassword(password)
 	if err != nil {

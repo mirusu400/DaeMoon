@@ -1,0 +1,7 @@
+# Production-only override installed by the nightly deployment job. The values
+# live in /opt/daemoon/.env on the host, not in this file or in the image.
+services:
+  daemoond:
+    environment:
+      DAEMOON_TURNSTILE_SITE_KEY: "${TURNSTILE_SITE_KEY:-}"
+      DAEMOON_TURNSTILE_SECRET_KEY: "${TURNSTILE_SECRET_KEY:-}"

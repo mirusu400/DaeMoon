@@ -211,6 +211,7 @@
   "web.register.have_account": "已經有帳戶？登入",
   "web.register.link": "建立帳戶",
   "web.register.closed": "本執行個體不接受新帳戶。請讓管理者開放註冊，或者把你加進來。",
+  "web.err.captcha": "請完成安全驗證後再試一次。",
   "web.people.signup": "註冊",
   "web.people.signup_open": "任何能存取這個位址的人都可以建立帳戶。",
   "web.people.signup_closed": "只有你能新增使用者。註冊頁面已關閉。",

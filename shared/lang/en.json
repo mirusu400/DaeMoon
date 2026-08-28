@@ -211,6 +211,7 @@
   "web.register.have_account": "Already have one? Sign in",
   "web.register.link": "Create an account",
   "web.register.closed": "This instance is not accepting new accounts. Ask whoever runs it to open sign up, or to add you.",
+  "web.err.captcha": "Complete the security check and try again.",
   "web.people.signup": "Signing up",
   "web.people.signup_open": "Anybody who can reach this address may create an account.",
   "web.people.signup_closed": "Only you can add people. The sign up page is closed.",

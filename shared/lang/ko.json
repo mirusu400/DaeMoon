@@ -210,6 +210,7 @@
   "web.register.have_account": "이미 계정이 있나요? 로그인",
   "web.register.link": "계정 만들기",
   "web.register.closed": "이 인스턴스는 새 계정을 받지 않습니다. 운영자에게 가입을 열어 달라고 하거나, 추가해 달라고 하세요.",
+  "web.err.captcha": "보안 확인을 완료한 후 다시 시도해 주세요.",
   "web.people.signup": "가입",
   "web.people.signup_open": "이 주소에 접근할 수 있는 사람은 누구나 계정을 만들 수 있습니다.",
   "web.people.signup_closed": "관리자만 사용자를 추가할 수 있습니다. 가입 페이지는 닫혀 있습니다.",

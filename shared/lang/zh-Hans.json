@@ -211,6 +211,7 @@
   "web.register.have_account": "已经有账户？登录",
   "web.register.link": "创建账户",
   "web.register.closed": "本实例不接受新账户。请让管理者开放注册，或者把你加进来。",
+  "web.err.captcha": "请完成安全验证后重试。",
   "web.people.signup": "注册",
   "web.people.signup_open": "任何能访问这个地址的人都可以创建账户。",
   "web.people.signup_closed": "只有你能添加用户。注册页面已关闭。",

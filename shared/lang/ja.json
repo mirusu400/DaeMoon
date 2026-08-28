@@ -211,6 +211,7 @@
   "web.register.have_account": "すでにお持ちですか。サインイン",
   "web.register.link": "アカウントを作成",
   "web.register.closed": "このインスタンスは新しいアカウントを受け付けていません。運営者に登録を開くよう、または追加してもらうよう頼んでください。",
+  "web.err.captcha": "セキュリティ確認を完了して、もう一度お試しください。",
   "web.people.signup": "新規登録",
   "web.people.signup_open": "このアドレスに到達できる人は誰でもアカウントを作成できます。",
   "web.people.signup_closed": "ユーザーを追加できるのは管理者だけです。登録ページは閉じています。",

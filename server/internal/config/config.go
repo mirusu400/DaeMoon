@@ -16,6 +16,13 @@ type Config struct {
 	Addr     string
 	Database string
 
+	// TurnstileSiteKey is public and rendered into the sign-up form. The secret
+	// key is only sent to Cloudflare from the server. Both or neither: silently
+	// drawing a widget whose answer is never checked would be worse than having
+	// no widget at all.
+	TurnstileSiteKey   string
+	TurnstileSecretKey string
+
 	// MaxSaveSize is enforced before the body is read. Default 64 MiB.
 	MaxSaveSize int64
 
@@ -50,6 +57,11 @@ type Config struct {
 // TLS reports whether https is configured.
 func (c Config) TLS() bool { return c.TLSCert != "" && c.TLSKey != "" }
 
+// Turnstile reports whether sign-up requires a successful Turnstile challenge.
+func (c Config) Turnstile() bool {
+	return c.TurnstileSiteKey != "" && c.TurnstileSecretKey != ""
+}
+
 func Default() Config {
 	return Config{
 		Addr:          ":8080",
@@ -80,6 +92,11 @@ func FromEnv() (Config, error) {
 		// Half configured TLS is the case where somebody thinks they have https
 		// and does not. Refuse rather than quietly serving plaintext.
 		return c, fmt.Errorf("DAEMOON_TLS_CERT and DAEMOON_TLS_KEY: set both or neither")
+	}
+	c.TurnstileSiteKey = os.Getenv("DAEMOON_TURNSTILE_SITE_KEY")
+	c.TurnstileSecretKey = os.Getenv("DAEMOON_TURNSTILE_SECRET_KEY")
+	if (c.TurnstileSiteKey == "") != (c.TurnstileSecretKey == "") {
+		return c, fmt.Errorf("DAEMOON_TURNSTILE_SITE_KEY and DAEMOON_TURNSTILE_SECRET_KEY: set both or neither")
 	}
 	if v := os.Getenv("DAEMOON_MAX_SAVE_SIZE"); v != "" {
 		n, err := strconv.ParseInt(v, 10, 64)

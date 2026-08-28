@@ -211,6 +211,7 @@
   "web.register.have_account": "Schon eines? Anmelden",
   "web.register.link": "Konto erstellen",
   "web.register.closed": "Diese Instanz nimmt keine neuen Konten an. Bitte die Person, die sie betreibt, die Registrierung zu öffnen oder dich hinzuzufügen.",
+  "web.err.captcha": "Schließe die Sicherheitsprüfung ab und versuche es erneut.",
   "web.people.signup": "Registrierung",
   "web.people.signup_open": "Wer diese Adresse erreicht, kann ein Konto anlegen.",
   "web.people.signup_closed": "Nur du kannst Personen hinzufügen. Die Registrierungsseite ist geschlossen.",

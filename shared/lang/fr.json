@@ -211,6 +211,7 @@
   "web.register.have_account": "Tu en as déjà un ? Se connecter",
   "web.register.link": "Créer un compte",
   "web.register.closed": "Cette instance n'accepte pas de nouveaux comptes. Demande à la personne qui l'administre d'ouvrir les inscriptions, ou de t'ajouter.",
+  "web.err.captcha": "Effectue la vérification de sécurité, puis réessaie.",
   "web.people.signup": "Inscriptions",
   "web.people.signup_open": "Toute personne qui atteint cette adresse peut créer un compte.",
   "web.people.signup_closed": "Toi seul peux ajouter des personnes. La page d'inscription est fermée.",

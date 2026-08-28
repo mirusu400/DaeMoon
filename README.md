@@ -5,34 +5,23 @@
 
 Save data sync for 3DS, Switch and nds-bootstrap, backed by a self-hostable server.
 
-<!-- Screenshots: put the files in docs/screenshots/ under these names, then
-     delete this line and the two around the block to show it.
-
 ## What it looks like
 
 <p align="center">
-  <img src="docs/screenshots/panel.png" width="49%" alt="The web panel, listing synced saves">
-  <img src="docs/screenshots/3ds.png" width="49%" alt="A sync running on the 3DS">
+  <img src="docs/screenshots/3ds-library.png" width="49%" alt="DaeMoon's title library and save actions on a 3DS">
+  <img src="docs/screenshots/3ds-settings.png" width="49%" alt="DaeMoon's settings and startup sync option on a 3DS">
 </p>
-
--->
 
 The name is Korean for "main gate" (대문). The resemblance to "daemon" is wordplay:
 there is no background daemon here and there cannot be one, because syncing while a
 game holds a save archive corrupts it.
 
-**Status: written through the Switch client, pending hardware.** The shared core,
-the desktop backend, the server, the web panel and the internationalization
-pipeline are done and tested. The 3DS client is a CIA that builds carrying the
-right permissions, and its backend conformance suite passes both on a desktop
-against a libctru stub and as a real ARM binary inside an emulator. The autoboot
-sync runs the same way, against a real server. The Switch client is an NRO that
-lists a chosen account's saves, backs one up and syncs one.
-
-What remains is the part only a console can answer: whether those permissions
-actually reach another title's save archive, what the secure value does to a
-restored save, whether Luma autoboots this title, and whether leaving it lands
-back on HOME. The procedure is `docs/phase1-hardware.md`.
+**Status: the 3DS client is complete and running on hardware.** It discovers
+installed 3DS and nds-bootstrap titles, makes local backups, restores and syncs
+individual saves or the whole library, pairs with a server and can sync at startup.
+The shared core, the desktop backend, the server, the web panel and the
+internationalization pipeline are done and tested. The Switch client is an NRO
+that lists a chosen account's saves, backs one up and syncs one.
 
 ## What works today
 

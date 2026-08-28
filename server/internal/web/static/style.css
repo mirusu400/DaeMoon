@@ -709,7 +709,7 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
 
 .lhead { margin-bottom: 2.6rem; }
 /* The number and a rule that runs off the end of it. Every panel opens the same
-   way, which is most of what makes five of them read as one set. */
+   way, which is most of what makes six of them read as one set. */
 .lnum {
   display: flex;
   align-items: center;
@@ -737,7 +737,7 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
 /* The full stop on a section heading, as a shape rather than as a character. A
    period typed here would be a user-facing string living in a stylesheet, and
    there are languages that do not end a heading with one; a disc is punctuation
-   nobody has to translate. It is only on these four - the line the hero ends on
+   nobody has to translate. It is only on these five - the line the hero ends on
    already has a full stop of its own, in the language table where it belongs. */
 .ldisplay::after {
   content: "";
@@ -877,6 +877,36 @@ input:focus, select:focus { outline: 2px solid var(--ds); outline-offset: 1px; }
 .feat:hover {
   transform: translateY(-4px);
   border-color: color-mix(in srgb, var(--accent) 50%, var(--bd));
+}
+
+/* --------------------------------------------------------- real hardware */
+
+/* The captures keep the 3DS's unequal screen widths: 400 pixels above and 320
+   below. Two columns at 20rem render the lower screen at 256 CSS pixels, large
+   enough to read without making this one panel taller than most viewports. */
+.lshots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 20rem));
+  justify-content: center;
+  gap: clamp(1rem, 3vw, 2rem);
+}
+.lshot {
+  margin: 0;
+  overflow: hidden;
+  background: var(--surf2);
+  transition: transform .45s var(--ease), border-color .45s var(--ease);
+}
+.lshot:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--ds) 50%, var(--bd));
+}
+.lshot img { display: block; width: 100%; height: auto; }
+.lshot figcaption {
+  padding: .85rem 1rem;
+  border-top: 1px solid var(--bd);
+  color: var(--mut);
+  font-size: .84rem;
+  line-height: 1.5;
 }
 
 /* --------------------------------------------------------- the sync order */
@@ -1034,6 +1064,7 @@ a.lget:hover .lget-file { color: var(--ds); }
   .lhero-actions { display: grid; gap: .6rem; }
   .lhero-actions .btn { text-align: center; }
   .lrun { grid-template-columns: minmax(0, 1fr); row-gap: 1.8rem; }
+  .lshots { grid-template-columns: minmax(0, 20rem); }
   .lget-in { grid-template-columns: minmax(0, 1fr); }
   .lget-file { justify-self: start; text-align: left; }
   .lfoot-lang { margin-left: 0; }

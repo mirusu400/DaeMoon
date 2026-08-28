@@ -173,12 +173,37 @@
 </section>
 
 {{/* ------------------------------------------------------------------ 03 */}}
-<section class="lpanel" id="order">
+<section class="lpanel" id="hardware">
   <div class="ldisc ldisc-right" data-float=".05"></div>
 
   <div class="lwrap">
     <header class="lhead" data-anim="up">
       <p class="lnum mono">03</p>
+      <h2 class="ldisplay">{{.T "web.welcome.hw.head"}}</h2>
+    </header>
+
+    <div class="lshots" data-stagger="120">
+      <figure class="card lshot" data-anim="up">
+        <img src="{{asset "3ds-library.png"}}" width="400" height="496" loading="lazy"
+             decoding="async" alt="">
+        <figcaption>{{.T "web.welcome.hw.library"}}</figcaption>
+      </figure>
+      <figure class="card lshot" data-anim="up">
+        <img src="{{asset "3ds-settings.png"}}" width="400" height="496" loading="lazy"
+             decoding="async" alt="">
+        <figcaption>{{.T "web.welcome.hw.settings"}}</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+{{/* ------------------------------------------------------------------ 04 */}}
+<section class="lpanel lpanel-band" id="order">
+  <div class="ldisc ldisc-2 ldisc-left" data-float="-.05"></div>
+
+  <div class="lwrap">
+    <header class="lhead" data-anim="up">
+      <p class="lnum mono">04</p>
       <h2 class="ldisplay">{{.T "web.welcome.order.head"}}</h2>
     </header>
 
@@ -210,13 +235,13 @@
   </div>
 </section>
 
-{{/* ------------------------------------------------------------------ 04 */}}
-<section class="lpanel lpanel-band" id="install">
-  <div class="ldisc ldisc-2 ldisc-right" data-float="-.05"></div>
+{{/* ------------------------------------------------------------------ 05 */}}
+<section class="lpanel" id="install">
+  <div class="ldisc ldisc-right" data-float=".05"></div>
 
   <div class="lwrap">
     <header class="lhead" data-anim="up">
-      <p class="lnum mono">04</p>
+      <p class="lnum mono">05</p>
       <h2 class="ldisplay">{{.T "web.welcome.nav.install"}}</h2>
     </header>
 
@@ -274,13 +299,13 @@
   </div>
 </section>
 
-{{/* ------------------------------------------------------------------ 05 */}}
-<section class="lpanel lpanel-last lpanel-warn" id="wont">
-  <div class="ldisc ldisc-low" data-float=".05"></div>
+{{/* ------------------------------------------------------------------ 06 */}}
+<section class="lpanel lpanel-band lpanel-last lpanel-warn" id="wont">
+  <div class="ldisc ldisc-2 ldisc-low" data-float=".05"></div>
 
   <div class="lwrap">
     <header class="lhead" data-anim="up">
-      <p class="lnum mono">05</p>
+      <p class="lnum mono">06</p>
       <h2 class="ldisplay">{{.T "web.welcome.wont"}}</h2>
     </header>
 

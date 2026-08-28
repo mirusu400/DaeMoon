@@ -222,14 +222,17 @@ jobs:
             # loading. Keep the host's production override (proxy network, TLS,
             # and other host-only settings) ahead of our Turnstile overlay.
             compose() {
-              if [ -f compose.override.yaml ]; then
-                sudo docker compose -f compose.yml -f compose.override.yaml \
-                  -f compose.turnstile.yml "$@"
-              elif [ -f compose.override.yml ]; then
-                sudo docker compose -f compose.yml -f compose.override.yml \
-                  -f compose.turnstile.yml "$@"
+              if [ -f /opt/daemoon/compose.override.yaml ]; then
+                sudo docker compose -f /opt/daemoon/compose.yml \
+                  -f /opt/daemoon/compose.override.yaml \
+                  -f /opt/daemoon/compose.turnstile.yml "$@"
+              elif [ -f /opt/daemoon/compose.override.yml ]; then
+                sudo docker compose -f /opt/daemoon/compose.yml \
+                  -f /opt/daemoon/compose.override.yml \
+                  -f /opt/daemoon/compose.turnstile.yml "$@"
               else
-                sudo docker compose -f compose.yml -f compose.turnstile.yml "$@"
+                sudo docker compose -f /opt/daemoon/compose.yml \
+                  -f /opt/daemoon/compose.turnstile.yml "$@"
               fi
             }
             compose pull daemoond

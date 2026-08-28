@@ -219,6 +219,9 @@
   "web.people.signup_close_it": "登録を閉じる",
 
   "web.welcome.title": "セーブ同期",
+  "web.welcome.seo.title": "DaeMoon：Nintendo 3DS・Switch・nds-bootstrapのセーブ同期",
+  "web.welcome.seo.desc": "DaeMoonでNintendo 3DS、Switch、nds-bootstrapのセーブデータをセルフホストのサーバーへバックアップし、同期できます。すべてのバージョンを保持します。",
+  "web.welcome.seo.image": "Nintendo 3DS、Switch、nds-bootstrapのセーブ同期ツール DaeMoon",
   "web.welcome.lede": "どこからでもセーブを受け取って、遊んでください。",
   "web.welcome.sub": "DaeMoon は 3DS と Switch、nds-bootstrap のセーブをバックアップして同期します。すべてのバージョンを残し、勝手に統合しません。",
   "web.welcome.warn_head": "ゲームの起動中は絶対に同期しないでください。",

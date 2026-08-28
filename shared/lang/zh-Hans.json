@@ -219,6 +219,9 @@
   "web.people.signup_close_it": "关闭注册",
 
   "web.welcome.title": "存档同步",
+  "web.welcome.seo.title": "DaeMoon：Nintendo 3DS、Switch 与 nds-bootstrap 存档同步",
+  "web.welcome.seo.desc": "使用 DaeMoon 将 Nintendo 3DS、Switch 和 nds-bootstrap 的存档备份并同步到自托管服务器，同时保留每个版本。",
+  "web.welcome.seo.image": "Nintendo 3DS、Switch 和 nds-bootstrap 存档同步工具 DaeMoon",
   "web.welcome.lede": "在任何地方取回存档，接着玩。",
   "web.welcome.sub": "DaeMoon 为 3DS、Switch 和 nds-bootstrap 备份并同步存档。每个版本都保留，绝不在背后合并。",
   "web.welcome.warn_head": "游戏运行时绝对不要同步。",

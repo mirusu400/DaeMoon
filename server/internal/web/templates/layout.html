@@ -5,7 +5,31 @@
 <html lang="{{.Lang}}"{{if .Theme}} data-theme="{{.Theme}}"{{end}}><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+{{if .Indexable}}
+<title>{{.SEO.Title}}</title>
+<meta name="description" content="{{.SEO.Description}}">
+<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">
+<link rel="canonical" href="{{.SEO.Canonical}}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DaeMoon">
+<meta property="og:title" content="{{.SEO.Title}}">
+<meta property="og:description" content="{{.SEO.Description}}">
+<meta property="og:url" content="{{.SEO.Canonical}}">
+<meta property="og:image" content="{{.SEO.Image}}">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="2560">
+<meta property="og:image:height" content="1280">
+<meta property="og:image:alt" content="{{.SEO.ImageAlt}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{.SEO.Title}}">
+<meta name="twitter:description" content="{{.SEO.Description}}">
+<meta name="twitter:image" content="{{.SEO.Image}}">
+<meta name="twitter:image:alt" content="{{.SEO.ImageAlt}}">
+<script type="application/ld+json">{{.SEO.StructuredData}}</script>
+{{else}}
 <title>{{.T .Title}} · DaeMoon</title>
+<meta name="robots" content="noindex,nofollow">
+{{end}}
 <link rel="icon" href="{{asset "favicon.ico"}}" sizes="any">
 <link rel="icon" href="{{asset "favicon-32x32.png"}}" type="image/png" sizes="32x32">
 <link rel="icon" href="{{asset "favicon-16x16.png"}}" type="image/png" sizes="16x16">

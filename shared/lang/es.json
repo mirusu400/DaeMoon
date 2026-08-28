@@ -219,6 +219,9 @@
   "web.people.signup_close_it": "Cerrar el registro",
 
   "web.welcome.title": "Sincronización de partidas",
+  "web.welcome.seo.title": "DaeMoon: sincronización de partidas 3DS, Switch y nds-bootstrap",
+  "web.welcome.seo.desc": "Haz copias de seguridad y sincroniza partidas de Nintendo 3DS, Switch y nds-bootstrap con DaeMoon y un servidor propio. Se conserva cada versión.",
+  "web.welcome.seo.image": "DaeMoon, sincronización de partidas para Nintendo 3DS, Switch y nds-bootstrap",
   "web.welcome.lede": "Descarga tu partida donde estés y juega.",
   "web.welcome.sub": "DaeMoon respalda y sincroniza las partidas de 3DS, Switch y nds-bootstrap. Se conserva cada versión y nunca se fusiona nada a tus espaldas.",
   "web.welcome.warn_head": "No sincronices nunca con un juego abierto.",

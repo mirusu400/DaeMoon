@@ -143,6 +143,8 @@ func (s *Server) Routes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Handle("/static/*", staticCache(http.FileServer(http.FS(assets))))
+	r.Get("/robots.txt", s.getRobots)
+	r.Get("/sitemap.xml", s.getSitemap)
 
 	// The root is the one address somebody is given, so it answers for whoever
 	// arrives at it rather than bouncing everybody to a sign in form. See getRoot.
@@ -265,6 +267,7 @@ func (s *Server) getRoot(w http.ResponseWriter, r *http.Request) {
 	// GitHub to draw a screen that has nothing to do with it.
 	s.render(w, r, "welcome.html", page{
 		Title:     "web.welcome.title",
+		Indexable: true,
 		InstallQR: s.installAvailable(r.Context()),
 	})
 }
@@ -351,6 +354,10 @@ type page struct {
 	// A code that cannot resolve to a build is worse than no code: somebody finds
 	// that out holding a console, after going to fetch one.
 	InstallQR bool
+	// Only the public landing page belongs in a search index. Every account,
+	// setup and panel page gets noindex from the shared document head.
+	Indexable bool
+	SEO       seoData
 	Data      any
 }
 
@@ -395,6 +402,9 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 	p.Themes = themeChoices(p.Theme)
 	p.Lang = i18n.Of(r)
 	p.Langs = langChoices(p.Lang)
+	if p.Indexable {
+		p.SEO = landingSEO(p.Lang)
+	}
 	p.SignUpOpen = s.store.OpenRegistration(r.Context())
 	p.Downloads = downloads{
 		ThreeDS: buildsURL, Switch: buildsURL, Server: buildsURL, Source: repoURL,
@@ -416,6 +426,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Language", string(p.Lang))
 	if err := s.tpl.ExecuteTemplate(w, name, p); err != nil {
 		// The status line is already out by the time a template fails partway, so
 		// this can only be logged.

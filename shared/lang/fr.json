@@ -219,6 +219,9 @@
   "web.people.signup_close_it": "Fermer les inscriptions",
 
   "web.welcome.title": "Synchronisation des sauvegardes",
+  "web.welcome.seo.title": "DaeMoon : synchronisation 3DS, Switch et nds-bootstrap",
+  "web.welcome.seo.desc": "Sauvegardez et synchronisez les sauvegardes Nintendo 3DS, Switch et nds-bootstrap avec DaeMoon et un serveur auto-hébergé. Chaque version est conservée.",
+  "web.welcome.seo.image": "DaeMoon, synchronisation des sauvegardes Nintendo 3DS, Switch et nds-bootstrap",
   "web.welcome.lede": "Récupérez votre sauvegarde où que vous soyez, et jouez.",
   "web.welcome.sub": "DaeMoon sauvegarde et synchronise les sauvegardes de 3DS, de Switch et de nds-bootstrap. Chaque version est conservée, et rien n'est jamais fusionné dans votre dos.",
   "web.welcome.warn_head": "Ne synchronisez jamais pendant qu'un jeu tourne.",

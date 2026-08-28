@@ -219,6 +219,9 @@
   "web.people.signup_close_it": "Registrierung schließen",
 
   "web.welcome.title": "Speicherstand-Abgleich",
+  "web.welcome.seo.title": "DaeMoon: Spielstand-Sync für 3DS, Switch und nds-bootstrap",
+  "web.welcome.seo.desc": "Sichere und synchronisiere Spielstände von Nintendo 3DS, Switch und nds-bootstrap mit DaeMoon und einem selbst gehosteten Server. Jede Version bleibt erhalten.",
+  "web.welcome.seo.image": "DaeMoon, Spielstand-Sync für Nintendo 3DS, Switch und nds-bootstrap",
   "web.welcome.lede": "Hol dir deinen Spielstand überall und spiel weiter.",
   "web.welcome.sub": "DaeMoon sichert und gleicht Spielstände von 3DS, Switch und nds-bootstrap ab. Jede Version bleibt erhalten, und nichts wird hinter deinem Rücken zusammengeführt.",
   "web.welcome.warn_head": "Niemals abgleichen, während ein Spiel läuft.",

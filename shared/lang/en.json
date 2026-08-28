@@ -219,6 +219,9 @@
   "web.people.signup_close_it": "Close sign up",
 
   "web.welcome.title": "Save data sync",
+  "web.welcome.seo.title": "DaeMoon: Nintendo 3DS, Switch & nds-bootstrap Save Sync",
+  "web.welcome.seo.desc": "Back up and sync save data for Nintendo 3DS, Switch and nds-bootstrap with DaeMoon and a self-hosted server. Every version is kept.",
+  "web.welcome.seo.image": "DaeMoon save data sync for Nintendo 3DS, Switch and nds-bootstrap",
   "web.welcome.lede": "Download your save anywhere and play.",
   "web.welcome.sub": "DaeMoon backs up and syncs saves for the 3DS, the Switch and nds-bootstrap. Every version is kept, and nothing is ever merged behind your back.",
   "web.welcome.warn_head": "Never sync while a game is running.",

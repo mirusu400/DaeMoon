@@ -218,6 +218,9 @@
   "web.people.signup_close_it": "가입 닫기",
 
   "web.welcome.title": "세이브 동기화",
+  "web.welcome.seo.title": "DaeMoon: 닌텐도 3DS·Switch·nds-bootstrap 세이브 동기화",
+  "web.welcome.seo.desc": "DaeMoon으로 닌텐도 3DS, Switch, nds-bootstrap의 세이브 데이터를 직접 운영하는 서버에 백업하고 동기화하세요. 모든 버전을 보관합니다.",
+  "web.welcome.seo.image": "닌텐도 3DS, Switch, nds-bootstrap 세이브 동기화 도구 DaeMoon",
   "web.welcome.lede": "어디서든 세이브를 내려받아 플레이하세요.",
   "web.welcome.sub": "DaeMoon은 3DS와 Switch, nds-bootstrap의 세이브를 백업하고 동기화합니다. 모든 버전을 남기고, 뒤에서 몰래 합치지 않습니다.",
   "web.welcome.warn_head": "게임이 실행 중일 때는 절대 동기화하지 마세요.",

@@ -208,30 +208,67 @@ jobs:
           # base compose file untouched; the values cross SSH in a mode-0600 file
           # and never enter the repository, image, or command line.
           scp -o StrictHostKeyChecking=accept-new -i key.pem \
+            compose.yml "ubuntu@$HOST:daemoon-base.yml.new"
+          scp -o StrictHostKeyChecking=accept-new -i key.pem \
             deploy/compose.turnstile.yml "ubuntu@$HOST:daemoon-compose.yml.new"
           scp -o StrictHostKeyChecking=accept-new -i key.pem \
             daemoon.env "ubuntu@$HOST:daemoon.env.new"
           ssh -o StrictHostKeyChecking=accept-new -i key.pem "ubuntu@$HOST" '
             set -eu
+            sudo install -m 644 daemoon-base.yml.new /opt/daemoon/compose.repo.yml
             sudo install -m 644 daemoon-compose.yml.new /opt/daemoon/compose.turnstile.yml
-            sudo install -m 600 daemoon.env.new /opt/daemoon/.env
-            rm -f daemoon-compose.yml.new daemoon.env.new
+            sudo install -m 600 daemoon.env.new /opt/daemoon/.env.turnstile
+            rm -f daemoon-base.yml.new daemoon-compose.yml.new daemoon.env.new
             cd /opt/daemoon
 
-            # Passing -f disables Compose's automatic compose.override.yml
-            # loading. Keep the host's production override (proxy network, TLS,
-            # and other host-only settings) ahead of our Turnstile overlay.
+            # Keep whichever legacy/default Compose filename the host already
+            # uses. The checked-in base is only a fallback for a fresh host.
+            if [ -f compose.yaml ]; then
+              base=/opt/daemoon/compose.yaml
+            elif [ -f compose.yml ]; then
+              base=/opt/daemoon/compose.yml
+            elif [ -f docker-compose.yaml ]; then
+              base=/opt/daemoon/docker-compose.yaml
+            elif [ -f docker-compose.yml ]; then
+              base=/opt/daemoon/docker-compose.yml
+            else
+              base=/opt/daemoon/compose.repo.yml
+            fi
+
+            override=
+            case "$(basename "$base")" in
+              compose.*)
+                if [ -f compose.override.yaml ]; then
+                  override=/opt/daemoon/compose.override.yaml
+                elif [ -f compose.override.yml ]; then
+                  override=/opt/daemoon/compose.override.yml
+                fi
+                ;;
+              *)
+                if [ -f docker-compose.override.yaml ]; then
+                  override=/opt/daemoon/docker-compose.override.yaml
+                elif [ -f docker-compose.override.yml ]; then
+                  override=/opt/daemoon/docker-compose.override.yml
+                fi
+                ;;
+            esac
+
+            # Passing -f disables automatic override loading, so append the
+            # detected production override before the Turnstile overlay.
+            compose_cli() {
+              if [ -f /opt/daemoon/.env ]; then
+                sudo docker compose --env-file /opt/daemoon/.env \
+                  --env-file /opt/daemoon/.env.turnstile "$@"
+              else
+                sudo docker compose --env-file /opt/daemoon/.env.turnstile "$@"
+              fi
+            }
             compose() {
-              if [ -f /opt/daemoon/compose.override.yaml ]; then
-                sudo docker compose -f /opt/daemoon/compose.yml \
-                  -f /opt/daemoon/compose.override.yaml \
-                  -f /opt/daemoon/compose.turnstile.yml "$@"
-              elif [ -f /opt/daemoon/compose.override.yml ]; then
-                sudo docker compose -f /opt/daemoon/compose.yml \
-                  -f /opt/daemoon/compose.override.yml \
+              if [ -n "$override" ]; then
+                compose_cli -f "$base" -f "$override" \
                   -f /opt/daemoon/compose.turnstile.yml "$@"
               else
-                sudo docker compose -f /opt/daemoon/compose.yml \
+                compose_cli -f "$base" \
                   -f /opt/daemoon/compose.turnstile.yml "$@"
               fi
             }

@@ -219,6 +219,25 @@ jobs:
             cd /opt/daemoon
             sudo docker compose -f compose.yml -f compose.turnstile.yml pull daemoond
             sudo docker compose -f compose.yml -f compose.turnstile.yml up -d --no-deps daemoond
+
+            # "Container Started" only means Docker ran the entrypoint. A bad
+            # configuration can make the process exit one line later, which used
+            # to leave this job green and the public site returning 502.
+            healthy=false
+            for attempt in $(seq 1 15); do
+              if curl --fail --silent --show-error --max-time 5 \
+                   http://127.0.0.1:8080/healthz; then
+                healthy=true
+                break
+              fi
+              sleep 2
+            done
+            if [ "$healthy" != true ]; then
+              sudo docker compose -f compose.yml -f compose.turnstile.yml ps
+              sudo docker compose -f compose.yml -f compose.turnstile.yml logs \
+                --tail 100 daemoond
+              exit 1
+            fi
             sudo docker image prune -f
           '
 

@@ -124,3 +124,8 @@ written out in `CLAUDE.md` and tested in `tools/test/test_sync.c`:
 core isolation grep, the spec check, and both test suites.
 
 Read `CLAUDE.md` first. Each top level directory has its own with the specifics.
+
+## License
+
+DaeMoon is released under the [MIT License](LICENSE). Third-party components
+remain under their respective licenses.

@@ -170,7 +170,7 @@ jobs:
             # of a new branch) - deploy rather than guess.
             echo "changed=true" >> "$GITHUB_OUTPUT"
           elif git diff --name-only "$before" "$GITHUB_SHA" \
-               | grep -qE '^(server/|shared/|docker/server\.Dockerfile|compose\.yml|deploy/compose\.turnstile\.yml)'; then
+               | grep -qE '^(server/|shared/|docker/server\.Dockerfile|compose\.yml|deploy/compose\.turnstile\.yml|\.github/workflows/nightly\.yml)'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,166 @@
+name: release
+run-name: release ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+
+# Publishing a GitHub Release builds the tag it names and uploads every runnable
+# target to that same release. workflow_dispatch exists for a release that was
+# published before this workflow, or for retrying a failed build without deleting
+# and recreating the release.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub Release tag to build
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+
+concurrency:
+  group: release-${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: validate release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          gh release view "$RELEASE_TAG" >/dev/null
+          git tag --points-at HEAD | grep -Fxq "$RELEASE_TAG"
+      - name: build daemoonctl
+        run: make -C tools/cli ROOT="$PWD"
+      - name: everything CI runs except the console builds
+        run: make check
+
+  server:
+    name: server (${{ matrix.goos }}/${{ matrix.goarch }})
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux,   goarch: amd64 }
+          - { goos: linux,   goarch: arm64 }
+          - { goos: linux,   goarch: arm,   goarm: '7' }
+          - { goos: darwin,  goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: '0'
+        run: |
+          set -eux
+          name="daemoond-${GOOS}-${GOARCH}${GOARM:+v$GOARM}-${RELEASE_TAG}"
+          if [ "$GOOS" = windows ]; then
+            name="$name.exe"
+          fi
+          mkdir -p out
+          cd server
+          go build -trimpath \
+            -ldflags "-s -w -X main.version=${RELEASE_TAG}" \
+            -o "../out/$name" ./cmd/daemoond
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
+          path: out/*
+          if-no-files-found: error
+
+  _3ds:
+    name: 3ds cia
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - name: toolchain image
+        run: docker build -f docker/3ds.Dockerfile -t daemoon-3ds:local .
+      - name: build the cia
+        run: make docker-cia
+      - name: check the cia permissions
+        run: |
+          docker build -f docker/ctrtool.Dockerfile -t daemoon-ctrtool:local .
+          make cia-verify
+      - name: name the release asset
+        run: |
+          mkdir -p out
+          cp platform/3ds/daemoon.cia "out/daemoon-3ds-${RELEASE_TAG}.cia"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cia
+          path: out/*
+          if-no-files-found: error
+
+  nx:
+    name: switch nro
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - name: toolchain image
+        run: docker build -f docker/nx.Dockerfile -t daemoon-nx:local .
+      - name: build the nro
+        run: make docker-nx
+      - name: name the release asset
+        run: |
+          mkdir -p out
+          cp platform/nx/daemoon.nro "out/daemoon-switch-${RELEASE_TAG}.nro"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nro
+          path: out/*
+          if-no-files-found: error
+
+  publish:
+    name: upload release assets
+    needs: [server, _3ds, nx]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: collect and checksum
+        run: |
+          set -eu
+          mkdir -p release
+          find artifacts -type f -exec cp '{}' release/ \;
+          cd release
+          sha256sum ./* > SHA256SUMS
+          ls -l
+      - name: upload to the existing GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" release/* --clobber

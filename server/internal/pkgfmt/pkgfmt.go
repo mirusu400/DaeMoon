@@ -107,6 +107,13 @@ type Manifest struct {
 	// CreatedAt is informational and never used for ordering: the console RTC is
 	// user settable.
 	CreatedAt string `json:"created_at"`
+	// SecureValue is the console stored value the save was bound to when it was
+	// packed, for the 3DS titles that have one. A pointer because its absence is
+	// meaningful: zero is a legitimate secure value, so a package without the
+	// field leaves the console's own value alone on restore. The server never
+	// interprets it - it only has to accept it, because the decoder below refuses
+	// what it does not know.
+	SecureValue *uint64 `json:"secure_value,omitempty"`
 }
 
 // Parent returns ParentVersion with null flattened to 0.

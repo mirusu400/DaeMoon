@@ -12,6 +12,7 @@ than a save being written back wrong on someone's console.
 | `manifest_first_upload.json` | `version: 0`, `parent_version: null`, non ASCII `device_label`. |
 | `manifest_bad_parent.json` | `parent_version >= version`. Must be rejected: versions are server issued and strictly increase. |
 | `manifest_future_format.json` | `format_version: 2`. Must be rejected rather than guessed at. |
+| `manifest_secure_value.json` | A 3DS package carrying `secure_value` and `title_name`. Both sides have to accept it: the server rejected it as an unknown field once, and every secure value title failed to sync. |
 | `error_version_conflict.json` | A 409 body, including the detail the conflict dialog needs. |
 
 Adding a case means adding it to both suites in the same commit.

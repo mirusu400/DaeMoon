@@ -48,6 +48,34 @@ TEST_CASE(parses_a_first_upload)
     CHECK_STR(m.device_label, "리빙룸 스위치");
 }
 
+TEST_CASE(parses_a_secure_value_package)
+{
+    char json[DAEMOON_MANIFEST_MAX_BYTES];
+    char out[DAEMOON_MANIFEST_MAX_BYTES];
+    daemoon_manifest_t m;
+    daemoon_manifest_t back;
+    size_t len = 0;
+    size_t out_len = 0;
+
+    /* The server refused this file as an unknown field once, and every 3DS title
+     * with a secure value failed to sync with a manifest error. Both suites read
+     * it now, so the next field added on one side fails here. */
+    CHECK_EQ_INT(daemoon_test_read_fixture("shared/fixtures/manifest_secure_value.json", json,
+                                           sizeof(json), &len), 0);
+    CHECK_OK(daemoon_manifest_parse(json, len, &m));
+
+    CHECK_EQ_INT(m.has_secure_value, 1);
+    CHECK(m.secure_value == 0xffffffffffffffffull);
+    CHECK_STR(m.title_name, "포켓몬스터");
+
+    /* And it survives being written back out: a restore reads the value from the
+     * package it downloaded, not from the one it packed. */
+    CHECK_OK(daemoon_manifest_write(&m, out, sizeof(out), &out_len));
+    CHECK_OK(daemoon_manifest_parse(out, out_len, &back));
+    CHECK_EQ_INT(back.has_secure_value, 1);
+    CHECK(back.secure_value == m.secure_value);
+}
+
 TEST_CASE(rejects_a_newer_format_version)
 {
     char json[DAEMOON_MANIFEST_MAX_BYTES];
@@ -163,6 +191,7 @@ void test_manifest(void)
     printf("manifest\n");
     RUN(parses_the_shared_fixture);
     RUN(parses_a_first_upload);
+    RUN(parses_a_secure_value_package);
     RUN(rejects_a_newer_format_version);
     RUN(rejects_a_parent_that_is_not_older);
     RUN(rejects_malformed_input);

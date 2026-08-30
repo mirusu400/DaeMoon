@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -188,6 +189,25 @@ func TestParseManifestFixtures(t *testing.T) {
 		// the conflict dialog.
 		if m.DeviceLabel != "리빙룸 스위치" {
 			t.Errorf("device_label = %q", m.DeviceLabel)
+		}
+	})
+
+	t.Run("secure value", func(t *testing.T) {
+		// This file was rejected as an unknown field once, which made every 3DS
+		// title with a secure value fail to sync with a manifest error. The
+		// server never interprets the value; it only has to carry it.
+		m, err := pkgfmt.ParseManifest(readFixture(t, "manifest_secure_value.json"))
+		if err != nil {
+			t.Fatalf("parse: %v", err)
+		}
+		if m.SecureValue == nil {
+			t.Fatal("secure_value was dropped")
+		}
+		if *m.SecureValue != math.MaxUint64 {
+			t.Errorf("secure_value = %d, want %d", *m.SecureValue, uint64(math.MaxUint64))
+		}
+		if m.TitleName != "포켓몬스터" {
+			t.Errorf("title_name = %q", m.TitleName)
 		}
 	})
 

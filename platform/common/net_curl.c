@@ -407,8 +407,14 @@ static daemoon_result_t net_request(void *vctx, const daemoon_http_req_t *req,
     } else {
         daemoon_newlib_trace("net/ca", "no bundle: https will fail verification");
     }
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    if (ctx != NULL && ctx->insecure_tls) {
+        daemoon_newlib_trace("net/tls", "certificate verification disabled");
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    } else {
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    }
 
     if (strcmp(req->method, "POST") == 0) {
         curl_easy_setopt(curl, CURLOPT_POST, 1L);

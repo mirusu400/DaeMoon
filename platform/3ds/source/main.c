@@ -2203,6 +2203,7 @@ int main(void)
     g_net_ctx.ca_bundle = g_config.ca_bundle;
     g_net_ctx.ca_blob = cacert_bin;
     g_net_ctx.ca_blob_len = cacert_bin_size;
+    g_net_ctx.insecure_tls = 1;
 
     g_nds_ctx.rom_dir = DAEMOON_3DS_NDS_ROM_DIR;
     g_nds_ctx.save_dir = DAEMOON_3DS_NDS_SAVE_DIR;

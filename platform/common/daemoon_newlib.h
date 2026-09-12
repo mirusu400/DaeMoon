@@ -85,6 +85,10 @@ typedef struct {
      * Written by the app, not by a person, and rewritten whenever it does not
      * match the bundle in the binary. */
     const char *ca_cache_path;
+    /* Nonzero disables both certificate-chain and host-name verification.
+     * Kept in the shared context so a platform can opt in without weakening
+     * every curl-backed build. */
+    int insecure_tls;
     /* The last curl code, for a diagnostic that says more than "network error". */
     int last_curl_code;
 } daemoon_net_curl_ctx_t;

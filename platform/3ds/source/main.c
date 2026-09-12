@@ -540,6 +540,55 @@ static void report(daemoon_str_id_t op, daemoon_result_t r)
     message(daemoon_str(DAEMOON_STR_APP_TITLE), body, GFX_DANGER);
 }
 
+static void update_progress(void *user, unsigned done, unsigned total)
+{
+    (void)user;
+    draw_loading(DAEMOON_STR_UPDATE_DOWNLOADING, done, total);
+}
+
+/* Check the moving nightly build and replace this CIA when the user accepts it.
+ * A failed check is silent: being offline must not turn launching the save manager
+ * into an error dialog. An accepted install is not silent, because leaving halfway
+ * through an AM import is different from merely skipping a network check. */
+static int action_auto_update(void)
+{
+    char latest[64];
+    int available = 0;
+    daemoon_result_t r;
+    daemoon_str_ref_t ask;
+
+    r = daemoon_3ds_update_available(DAEMOON_BUILD_STAMP, latest, sizeof(latest),
+                                     &available);
+    if (r != DAEMOON_OK) {
+        daemoon_3ds_trace("update/check", daemoon_result_code(r));
+        return 0;
+    }
+    daemoon_3ds_trace("update/latest", latest);
+    if (!available) {
+        return 0;
+    }
+
+    memset(&ask, 0, sizeof(ask));
+    ask.id = DAEMOON_STR_UPDATE_AVAILABLE;
+    ask.args[0] = latest;
+    ask.nargs = 1;
+    if (!g_env.ui->confirm(g_env.ui_ctx, &ask)) {
+        daemoon_3ds_trace("update/declined", latest);
+        return 0;
+    }
+
+    draw_loading(DAEMOON_STR_UPDATE_DOWNLOADING, 0, 0);
+    r = daemoon_3ds_update_install(update_progress, NULL);
+    daemoon_3ds_trace("update/install", daemoon_result_code(r));
+    if (r != DAEMOON_OK) {
+        report(DAEMOON_STR_UPDATE_TITLE, r);
+        return 0;
+    }
+    message(daemoon_str(DAEMOON_STR_UPDATE_TITLE),
+            daemoon_str(DAEMOON_STR_UPDATE_INSTALLED), GFX_OK);
+    return 1;
+}
+
 static void action_backup(void)
 {
     char path[DAEMOON_PATH_MAX * 2];
@@ -2255,11 +2304,20 @@ int main(void)
          * boots into a sync must not stop at an explanation waiting for A. Every
          * reason not to run is a separate one, which is why the decision is a pure
          * function with four arguments rather than a chain of ifs here. */
+        u32 held;
+
         hidScanInput();
+        held = hidKeysHeld();
         int autosync = daemoon_3ds_autosync_due(g_config.autosync,
                                                 daemoon_3ds_config_can_sync(&g_config),
-                                                (hidKeysHeld() & KEY_B) != 0,
+                                                (held & KEY_B) != 0,
                                                 unattended);
+
+        /* B skips boot-time network work. It already bypasses autosync and is also
+         * the escape hatch for an update endpoint that is slow or unavailable. */
+        if (!unattended && !(held & KEY_B) && action_auto_update()) {
+            goto done;
+        }
 
         /* Before the library rather than after it. The first launch is the one with
          * no name and icon cache and so the slowest, and an explanation that

@@ -125,6 +125,10 @@
   "settings.language": "Sprache",
   "settings.language_auto": "Wie die Konsole ({0})",
   "settings.no_font": "Diese Konsole hat keine Schrift für {0}, der Text bliebe leer. Die Sprache wurde nicht geändert.",
+  "update.title": "Softwareaktualisierung",
+  "update.available": "Ein neuer Build ({0}) ist verfügbar. Jetzt installieren?",
+  "update.downloading": "Aktualisierung wird heruntergeladen und installiert…",
+  "update.installed": "Die Aktualisierung wurde installiert. Kehre zum HOME-Menü zurück und starte DaeMoon erneut.",
 
   "pair.title": "Diese Konsole verbinden",
   "pair.enter_code": "Gib den sechsstelligen Code von der Webseite ein.",

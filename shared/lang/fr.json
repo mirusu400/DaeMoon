@@ -125,6 +125,10 @@
   "settings.language": "Langue",
   "settings.language_auto": "Selon la console ({0})",
   "settings.no_font": "Cette console n'a pas de police pour {0}, le texte serait vide. La langue n'a pas été changée.",
+  "update.title": "Mise à jour du logiciel",
+  "update.available": "Une nouvelle version ({0}) est disponible. L'installer maintenant ?",
+  "update.downloading": "Téléchargement et installation de la mise à jour…",
+  "update.installed": "La mise à jour est installée. Revenez au menu HOME et relancez DaeMoon.",
 
   "pair.title": "Associer cette console",
   "pair.enter_code": "Saisis le code à six chiffres affiché sur la page web.",

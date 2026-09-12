@@ -119,10 +119,39 @@ func resolveAsset(ctx context.Context, api, prefix, suffix string) (string, erro
 // The one build a console can install this way. A .3dsx cannot reach another
 // title's save archive, so there is nothing else here to offer a 3DS.
 const (
-	ciaPrefix = "daemoon-3ds-"
-	ciaSuffix = ".cia"
-	ciaPath   = "/install/3ds.cia"
+	ciaPrefix      = "daemoon-3ds-"
+	ciaSuffix      = ".cia"
+	ciaPath        = "/install/3ds.cia"
+	ciaVersionPath = "/install/3ds.version"
 )
+
+// getInstallVersion returns the build id embedded in the current nightly asset
+// name. The 3DS uses it for a cheap update check before downloading the CIA.
+func (s *Server) getInstallVersion(w http.ResponseWriter, r *http.Request) {
+	url, err := s.releases.assetURLFor(r.Context(), ciaPrefix, ciaSuffix)
+	if err != nil {
+		s.fail(w, r, err, "could not find the current 3DS build")
+		return
+	}
+	name := url
+	if slash := strings.LastIndexByte(name, '/'); slash >= 0 {
+		name = name[slash+1:]
+	}
+	if !strings.HasPrefix(name, ciaPrefix) || !strings.HasSuffix(name, ciaSuffix) {
+		s.fail(w, r, fmt.Errorf("unexpected 3DS asset name %q", name),
+			"could not identify the current 3DS build")
+		return
+	}
+	build := strings.TrimSuffix(strings.TrimPrefix(name, ciaPrefix), ciaSuffix)
+	if build == "" {
+		s.fail(w, r, fmt.Errorf("empty build id in %q", name),
+			"could not identify the current 3DS build")
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = fmt.Fprintln(w, build)
+}
 
 // getInstallCIA sends a console to the current nightly CIA.
 //

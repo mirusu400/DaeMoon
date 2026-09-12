@@ -125,6 +125,10 @@
   "settings.language": "語言",
   "settings.language_auto": "跟隨主機設定（{0}）",
   "settings.no_font": "這台主機沒有{0}字型，文字會是空白。語言未變更。",
+  "update.title": "軟體更新",
+  "update.available": "有新版本（{0}）。現在安裝嗎？",
+  "update.downloading": "正在下載並安裝更新…",
+  "update.installed": "更新已安裝。請返回HOME選單並重新啟動DaeMoon。",
 
   "pair.title": "配對這台主機",
   "pair.enter_code": "輸入網頁上顯示的六位代碼。",

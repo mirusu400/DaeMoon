@@ -125,6 +125,10 @@
   "settings.language": "语言",
   "settings.language_auto": "跟随主机设置（{0}）",
   "settings.no_font": "这台主机没有{0}字体，文字会是空白。语言未更改。",
+  "update.title": "软件更新",
+  "update.available": "有新版本（{0}）。现在安装吗？",
+  "update.downloading": "正在下载并安装更新…",
+  "update.installed": "更新已安装。请返回HOME菜单并重新启动DaeMoon。",
 
   "pair.title": "配对这台主机",
   "pair.enter_code": "输入网页上显示的六位代码。",

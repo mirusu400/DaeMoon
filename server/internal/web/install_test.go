@@ -12,7 +12,7 @@ import (
 const nightlyJSON = `{"assets":[
   {"name":"SHA256SUMS","browser_download_url":"https://example.test/SHA256SUMS"},
   {"name":"daemoon-switch-abc1234.nro","browser_download_url":"https://example.test/nro"},
-  {"name":"daemoon-3ds-abc1234.cia","browser_download_url":"https://example.test/cia"},
+  {"name":"daemoon-3ds-abc1234.cia","browser_download_url":"https://example.test/daemoon-3ds-abc1234.cia"},
   {"name":"daemoond-linux-amd64-abc1234","browser_download_url":"https://example.test/server"}
 ]}`
 
@@ -38,7 +38,7 @@ func TestTheCIAIsPickedOutOfTheRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != "https://example.test/cia" {
+	if got != "https://example.test/daemoon-3ds-abc1234.cia" {
 		t.Errorf("resolved %q", got)
 	}
 }
@@ -90,7 +90,7 @@ func TestAStaleAnswerBeatsNoAnswer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("a working instance lost its build URL to one bad response: %v", err)
 	}
-	if got != "https://example.test/cia" {
+	if got != "https://example.test/daemoon-3ds-abc1234.cia" {
 		t.Errorf("resolved %q", got)
 	}
 }
@@ -106,11 +106,27 @@ func TestTheInstallURLRedirectsToTheBuild(t *testing.T) {
 	if rec.Code != http.StatusFound {
 		t.Fatalf("status %d, want 302", rec.Code)
 	}
-	if got := rec.Header().Get("Location"); got != "https://example.test/cia" {
+	if got := rec.Header().Get("Location"); got != "https://example.test/daemoon-3ds-abc1234.cia" {
 		t.Errorf("Location = %q", got)
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
 		t.Errorf("Cache-Control = %q; this URL means whatever the newest build is", got)
+	}
+}
+
+func TestInstallVersionComesFromTheCIAName(t *testing.T) {
+	s := &Server{releases: fakeGitHub(t, nightlyJSON, http.StatusOK, nil)}
+	rec := httptest.NewRecorder()
+	s.getInstallVersion(rec, httptest.NewRequest(http.MethodGet, ciaVersionPath, nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d, want 200", rec.Code)
+	}
+	if got := rec.Body.String(); got != "abc1234\n" {
+		t.Errorf("version = %q", got)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control = %q", got)
 	}
 }
 

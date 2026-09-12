@@ -125,6 +125,10 @@
   "settings.language": "Idioma",
   "settings.language_auto": "Según la consola ({0})",
   "settings.no_font": "Esta consola no tiene una fuente para {0}, el texto quedaría en blanco. No se ha cambiado el idioma.",
+  "update.title": "Actualización de software",
+  "update.available": "Hay una compilación nueva ({0}). ¿Instalarla ahora?",
+  "update.downloading": "Descargando e instalando la actualización…",
+  "update.installed": "La actualización está instalada. Vuelve al menú HOME e inicia DaeMoon de nuevo.",
 
   "pair.title": "Vincular esta consola",
   "pair.enter_code": "Escribe el código de seis dígitos que muestra la página web.",

@@ -165,6 +165,7 @@ func (s *Server) Routes() chi.Router {
 	// No session on either: the thing reading the code is a console that has
 	// never signed in to anything, and the thing following the URL is FBI.
 	r.Get(ciaPath, s.getInstallCIA)
+	r.Get(ciaVersionPath, s.getInstallVersion)
 	r.Get("/install/3ds.qr.svg", s.getInstallQR)
 
 	r.Get("/setup", s.getSetup)

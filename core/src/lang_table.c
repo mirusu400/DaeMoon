@@ -168,6 +168,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} is already up to date.", /* sync.up_to_date */
         "no secure value", /* title.no_secure_value */
         "secure value {0}", /* title.secure_value */
+        "A new build ({0}) is available. Install it now?", /* update.available */
+        "Downloading and installing the update...", /* update.downloading */
+        "The update is installed. Return to HOME and launch DaeMoon again.", /* update.installed */
+        "Software update", /* update.title */
         "Checksum does not match. The restore was aborted and nothing was changed.", /* verify.failed */
         "Running in applet mode with limited memory. Launch the app over a game to enable every feature.", /* warn.applet_mode */
         "Close the game before syncing. Syncing while a game is running corrupts the save.", /* warn.game_running */
@@ -349,6 +353,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0}은(는) 이미 최신 상태입니다.", /* sync.up_to_date */
         "보안 값 없음", /* title.no_secure_value */
         "보안 값 {0}", /* title.secure_value */
+        "새 빌드({0})가 있습니다. 지금 설치할까요?", /* update.available */
+        "업데이트를 내려받아 설치하는 중...", /* update.downloading */
+        "업데이트를 설치했습니다. HOME으로 돌아간 뒤 DaeMoon을 다시 실행하세요.", /* update.installed */
+        "소프트웨어 업데이트", /* update.title */
         "체크섬이 일치하지 않습니다. 복원을 중단했으며 변경된 내용은 없습니다.", /* verify.failed */
         "메모리가 제한된 애플릿 모드입니다. 모든 기능을 쓰려면 게임 위에서 실행하세요.", /* warn.applet_mode */
         "동기화 전에 게임을 종료하세요. 게임 실행 중 동기화하면 세이브가 손상됩니다.", /* warn.game_running */
@@ -530,6 +538,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} はすでに最新です。", /* sync.up_to_date */
         "セキュア値なし", /* title.no_secure_value */
         "セキュア値 {0}", /* title.secure_value */
+        "新しいビルド（{0}）があります。今すぐインストールしますか？", /* update.available */
+        "更新をダウンロードしてインストールしています…", /* update.downloading */
+        "更新をインストールしました。HOMEに戻ってDaeMoonをもう一度起動してください。", /* update.installed */
+        "ソフトウェア更新", /* update.title */
         "チェックサムが一致しません。復元を中止し、変更はありません。", /* verify.failed */
         "メモリが制限されたアプレットモードです。すべての機能を使うにはゲーム上から起動してください。", /* warn.applet_mode */
         "同期の前にゲームを終了してください。ゲーム実行中の同期はセーブを壊します。", /* warn.game_running */
@@ -711,6 +723,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} 已是最新。", /* sync.up_to_date */
         "无安全值", /* title.no_secure_value */
         "安全值 {0}", /* title.secure_value */
+        "有新版本（{0}）。现在安装吗？", /* update.available */
+        "正在下载并安装更新…", /* update.downloading */
+        "更新已安装。请返回HOME菜单并重新启动DaeMoon。", /* update.installed */
+        "软件更新", /* update.title */
         "校验值不匹配。已中止恢复，未做任何更改。", /* verify.failed */
         "当前为内存受限的小程序模式。请在游戏之上启动本应用以使用全部功能。", /* warn.applet_mode */
         "同步前请先关闭游戏。游戏运行时同步会损坏存档。", /* warn.game_running */
@@ -892,6 +908,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} 已是最新。", /* sync.up_to_date */
         "無安全值", /* title.no_secure_value */
         "安全值 {0}", /* title.secure_value */
+        "有新版本（{0}）。現在安裝嗎？", /* update.available */
+        "正在下載並安裝更新…", /* update.downloading */
+        "更新已安裝。請返回HOME選單並重新啟動DaeMoon。", /* update.installed */
+        "軟體更新", /* update.title */
         "校驗值不符。已中止還原，未做任何變更。", /* verify.failed */
         "目前為記憶體受限的小程式模式。請在遊戲之上啟動本程式以使用完整功能。", /* warn.applet_mode */
         "同步前請先關閉遊戲。遊戲執行中同步會損壞存檔。", /* warn.game_running */
@@ -1073,6 +1093,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} ya está al día.", /* sync.up_to_date */
         "sin valor seguro", /* title.no_secure_value */
         "valor seguro {0}", /* title.secure_value */
+        "Hay una compilación nueva ({0}). ¿Instalarla ahora?", /* update.available */
+        "Descargando e instalando la actualización…", /* update.downloading */
+        "La actualización está instalada. Vuelve al menú HOME e inicia DaeMoon de nuevo.", /* update.installed */
+        "Actualización de software", /* update.title */
         "La suma de verificación no coincide. La restauración se ha cancelado y no se ha cambiado nada.", /* verify.failed */
         "En modo applet con memoria limitada. Abre la aplicación desde un juego para tener todas las funciones.", /* warn.applet_mode */
         "Cierra el juego antes de sincronizar. Sincronizar con el juego abierto daña la partida.", /* warn.game_running */
@@ -1254,6 +1278,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} est déjà à jour.", /* sync.up_to_date */
         "pas de valeur sécurisée", /* title.no_secure_value */
         "valeur sécurisée {0}", /* title.secure_value */
+        "Une nouvelle version ({0}) est disponible. L'installer maintenant ?", /* update.available */
+        "Téléchargement et installation de la mise à jour…", /* update.downloading */
+        "La mise à jour est installée. Revenez au menu HOME et relancez DaeMoon.", /* update.installed */
+        "Mise à jour du logiciel", /* update.title */
         "La somme de contrôle ne correspond pas. La restauration a été annulée et rien n'a été modifié.", /* verify.failed */
         "Mode applet avec mémoire limitée. Lancez l'application depuis un jeu pour accéder à toutes les fonctions.", /* warn.applet_mode */
         "Fermez le jeu avant de synchroniser. Synchroniser pendant une partie corrompt la sauvegarde.", /* warn.game_running */
@@ -1435,6 +1463,10 @@ const char *const daemoon_lang_table[DAEMOON_LANG_COUNT][DAEMOON_STR_COUNT] = {
         "{0} ist bereits aktuell.", /* sync.up_to_date */
         "kein Sicherheitswert", /* title.no_secure_value */
         "Sicherheitswert {0}", /* title.secure_value */
+        "Ein neuer Build ({0}) ist verfügbar. Jetzt installieren?", /* update.available */
+        "Aktualisierung wird heruntergeladen und installiert…", /* update.downloading */
+        "Die Aktualisierung wurde installiert. Kehre zum HOME-Menü zurück und starte DaeMoon erneut.", /* update.installed */
+        "Softwareaktualisierung", /* update.title */
         "Die Prüfsumme stimmt nicht. Die Wiederherstellung wurde abgebrochen, es wurde nichts geändert.", /* verify.failed */
         "Applet-Modus mit stark begrenztem Speicher. Starte die Anwendung über ein Spiel, um alle Funktionen zu nutzen.", /* warn.applet_mode */
         "Beende das Spiel vor dem Abgleich. Ein Abgleich bei laufendem Spiel beschädigt den Spielstand.", /* warn.game_running */

@@ -125,6 +125,10 @@
   "settings.language": "언어",
   "settings.language_auto": "본체 설정 따름 ({0})",
   "settings.no_font": "이 본체에는 {0} 글꼴이 없어 글자가 비어 보입니다. 언어를 바꾸지 않았습니다.",
+  "update.title": "소프트웨어 업데이트",
+  "update.available": "새 빌드({0})가 있습니다. 지금 설치할까요?",
+  "update.downloading": "업데이트를 내려받아 설치하는 중...",
+  "update.installed": "업데이트를 설치했습니다. HOME으로 돌아간 뒤 DaeMoon을 다시 실행하세요.",
 
   "pair.title": "이 본체 연결",
   "pair.enter_code": "웹 페이지에 표시된 여섯 자리 코드를 입력하세요.",

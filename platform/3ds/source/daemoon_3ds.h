@@ -142,6 +142,16 @@ daemoon_result_t daemoon_3ds_config_load(const char *path, daemoon_3ds_config_t 
 daemoon_result_t daemoon_3ds_config_save(const char *path, const daemoon_3ds_config_t *cfg);
 int              daemoon_3ds_config_can_sync(const daemoon_3ds_config_t *cfg);
 
+/* Installed-CIA updater. The check is small; installation streams the new CIA
+ * directly into AM's overwrite handle. */
+typedef void (*daemoon_3ds_update_progress_fn)(void *user, unsigned done,
+                                                unsigned total);
+daemoon_result_t daemoon_3ds_update_available(const char *current_build,
+                                               char *latest, size_t latest_cap,
+                                               int *out_available);
+daemoon_result_t daemoon_3ds_update_install(daemoon_3ds_update_progress_fn progress,
+                                             void *progress_user);
+
 /* The first run. welcome_steps.c decides what it says; welcome.c draws it.
  *
  * Split so the part with no citro2d in it runs under `make core-test`: which pages

@@ -125,6 +125,10 @@
   "settings.language": "Language",
   "settings.language_auto": "From the console ({0})",
   "settings.no_font": "This console has no font for {0}, so the text would be blank. The language was not changed.",
+  "update.title": "Software update",
+  "update.available": "A new build ({0}) is available. Install it now?",
+  "update.downloading": "Downloading and installing the update...",
+  "update.installed": "The update is installed. Return to HOME and launch DaeMoon again.",
 
   "pair.title": "Pair this console",
   "pair.enter_code": "Type the six digit code shown on the web page.",
